@@ -5,7 +5,8 @@
  */
 async function createSchema(db) {
   const has = (t) => db.schema.hasTable(t);
-  const make = async (name, cb) => { if (!(await has(name))) await db.schema.createTable(name, cb); };
+  const isMysql = /mysql/.test(String(db.client.config.client));
+  const make = async (name, cb) => { if (!(await has(name))) await db.schema.createTable(name, (t) => { if (isMysql) { t.charset('utf8mb4'); t.collate('utf8mb4_unicode_ci'); } cb(t); }); };
   const ts = (t) => { t.dateTime('created_at').defaultTo(db.fn.now()); };
 
   await make('settings', (t) => { t.string('key', 100).primary(); t.text('value'); });

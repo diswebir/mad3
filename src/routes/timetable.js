@@ -19,7 +19,7 @@ const cellQuery = (k) => k('timetable as tt').join('class_subjects as cs', 'cs.i
 router.get('/timetable', async (req, res, next) => {
   try {
     const k = db.get(); const u = req.user; const periods = settings.periods(); const days = settings.weekDays();
-    const data = { title: 'برنامه هفتگی', periods, days, mode: 'class', cells: {}, edit: false, WEEKDAYS: J.WEEKDAYS };
+    const data = { title: 'برنامه هفتگی', periods, days, mode: 'class', cells: {}, edit: false, WEEKDAYS: J.WEEKDAYS, subject: '', classes: [], hours: [], placed: {}, options: [] };
     if (u.role === 'teacher' && req.query.mode !== 'class' && !req.query.class_id) {
       data.mode = 'teacher'; data.subject = u.full_name;
       const rows = await cellQuery(k).where('cs.teacher_id', u.teacher ? u.teacher.id : 0);

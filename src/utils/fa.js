@@ -9,8 +9,11 @@ const normalizeText = (s) => String(s).replace(/ي/g, 'ی').replace(/ك/g, 'ک')
 const money = (n) => toFa(Math.round(Number(n) || 0).toString().replace(/\B(?=(\d{3})+(?!\d))/g, '٬'));
 const number = (n, d = 0) => toFa((Number(n) || 0).toFixed(d).replace(/\.0+$/, ''));
 /** نرمال‌سازی ورودی کاربر: ارقام فارسی/عربی → لاتین، ی/ک عربی → فارسی، حذف فاصله‌های اضافی */
+// اگر متن شامل حرف فارسی/عربی باشد (متن آزاد مثل پیام، توضیح، نشانی) ارقام را همان‌طور که کاربر نوشته حفظ می‌کنیم؛
+// فیلدهای عددی/تاریخ/تلفن/کدها (بدون حرف) به ارقام لاتین تبدیل می‌شوند تا اعتبارسنجی درست کار کند.
+const HAS_LETTERS = /[\u0600-\u065F\u066E-\u06D3\u06D5\u06FA-\u06FF]/;
 function normalizeInput(value) {
-  if (typeof value === 'string') return normalizeText(toEn(value)).trim();
+  if (typeof value === 'string') return normalizeText(HAS_LETTERS.test(value) ? value : toEn(value)).trim();
   if (Array.isArray(value)) return value.map(normalizeInput);
   if (value && typeof value === 'object') { const o = {}; for (const k of Object.keys(value)) o[k] = normalizeInput(value[k]); return o; }
   return value;

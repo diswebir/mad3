@@ -43,7 +43,14 @@ function defs(db) {
       orderBy: [['t.id', 'desc']], csv: false,
       fields: [{ name: 'title', label: 'عنوان (مثلاً ۱۴۰۵-۱۴۰۶)', type: 'text', required: true }, { name: 'start_date', label: 'تاریخ شروع', type: 'date' }, { name: 'end_date', label: 'تاریخ پایان', type: 'date' }, { name: 'is_current', label: 'سال تحصیلی جاری', type: 'checkbox' }, { name: 'notes', label: 'توضیحات', type: 'textarea' }],
       columns: [{ key: 'title', label: 'سال' }, { key: 'start_date', label: 'شروع', type: 'date' }, { key: 'end_date', label: 'پایان', type: 'date' }, { key: 'is_current', label: 'جاری', type: 'bool' }],
-      validate: (d) => (d.start_date && d.end_date && d.start_date > d.end_date ? 'تاریخ پایان باید بعد از شروع باشد.' : null),
+      validate: async (d, req, existing) => {
+        if (d.start_date && d.end_date && d.start_date > d.end_date) return 'تاریخ پایان باید بعد از شروع باشد.';
+        if (!d.is_current) { // همیشه باید یک سال جاری وجود داشته باشد
+          const other = await k0()('academic_years').where({ is_current: 1 }).modify((b) => { if (existing) b.whereNot('id', existing.id); }).first();
+          if (!other) { if (existing) return 'باید همیشه یک سال تحصیلی جاری وجود داشته باشد؛ برای تغییر، سال دیگری را «جاری» کنید.'; d.is_current = 1; }
+        }
+        return null;
+      },
       afterSave: async (id, data) => { if (data.is_current) await k0()('academic_years').whereNot({ id }).update({ is_current: 0 }); },
       beforeDelete: async (row) => { if (row.is_current) return 'سال تحصیلی جاری قابل حذف نیست.'; const n = await k0()('classrooms').where({ academic_year_id: row.id }).first(); return n ? 'کلاس‌هایی به این سال تحصیلی وابسته‌اند.' : null; },
     },
@@ -99,6 +106,8 @@ function defs(db) {
         { name: 'type', label: 'نوع', type: 'select', required: true, options: pairs(L.examType) }, { name: 'location', label: 'مکان', type: 'text' }, { name: 'notes', label: 'توضیحات', type: 'textarea' }],
       defaults: () => ({ type: 'midterm', duration: 60 }),
       validate: async (d, req, existing) => {
+        const inClass = await k0()('class_subjects').where({ classroom_id: d.classroom_id, subject_id: d.subject_id }).first();
+        if (!inClass) return 'این درس در فهرست دروس کلاس انتخاب‌شده تعریف نشده است.';
         const q = k0()('exam_schedule').where({ classroom_id: d.classroom_id, exam_date: d.exam_date }).modify((b) => { if (existing) b.whereNot('id', existing.id); });
         const same = await q.clone().where({ subject_id: d.subject_id, type: d.type }).first(); if (same) return 'این امتحان برای این کلاس و تاریخ قبلاً ثبت شده است.';
         if (d.start_time) { const toMin = (t) => { const [h, m] = t.split(':').map(Number); return h * 60 + m; }; const a0 = toMin(d.start_time); const a1 = a0 + (d.duration || 60); for (const e of await q.clone().whereNotNull('start_time')) { const b0 = toMin(e.start_time); const b1 = b0 + (e.duration || 60); if (a0 < b1 && b0 < a1) return 'زمان این امتحان با امتحان دیگری از همین کلاس در همان روز تداخل دارد.'; } }

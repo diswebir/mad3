@@ -56,7 +56,9 @@ async function collect(req, existing) {
   if (!opts.find((o) => o[0] === csId)) errors.push('درس/کلاس را انتخاب کنید.');
   if (!b.title || b.title.length < 3) errors.push('عنوان تکلیف را وارد کنید.');
   const due = b.due_date ? J.parseJalali(b.due_date) : null; if (b.due_date && !due) errors.push('مهلت تحویل نامعتبر است.');
+  if (due && !existing && due < J.todayISO()) errors.push('مهلت تحویل نمی‌تواند قبل از امروز باشد.');
   const max = Number(b.max_score || 20); if (isNaN(max) || max < 1 || max > 100) errors.push('بیشینه نمره نامعتبر است.');
+  if (existing && !isNaN(max)) { const mx = await db.get()('homework_submissions').where({ homework_id: existing.id }).max({ m: 'score' }).first(); if (mx && mx.m !== null && Number(mx.m) > max) errors.push(`بیشینه نمره نمی‌تواند کمتر از بالاترین نمره ثبت‌شده (${mx.m}) باشد.`); }
   return { errors, data: { class_subject_id: csId, title: b.title, description: b.description || null, due_date: due, max_score: max } };
 }
 router.post('/homework/new', staff, uploader('homework', 'attachment', { maxMB: 5 }), async (req, res, next) => {
@@ -117,14 +119,15 @@ router.post('/homework/:id(\\d+)/submit', requireRole('student'), uploader('home
 router.post('/homework/:id(\\d+)/grade', staff, async (req, res, next) => {
   try {
     const k = db.get(); const h = await loadHw(req, req.params.id); if (!h || !canEdit(req, h)) return nf(res);
-    const sc = req.body.score || {}; const fb = req.body.feedback || {}; const subs = await k('homework_submissions').where({ homework_id: h.id }); let n = 0; const notify = [];
+    const sc = req.body.score || {}; const fb = req.body.feedback || {}; const subs = await k('homework_submissions').where({ homework_id: h.id }); let n = 0; const notify = []; let invalid = 0;
     for (const s of subs) {
-      const raw = String(sc[s.student_id] === undefined ? '' : sc[s.student_id]).replace(',', '.'); const val = raw === '' ? null : Number(raw);
-      if (val !== null && (isNaN(val) || val < 0 || val > h.max_score)) continue;
+      const raw = String(sc[s.student_id] === undefined ? '' : sc[s.student_id]).replace(',', '.').replace('٫', '.'); const val = raw === '' ? null : Number(raw);
+      if (val !== null && (isNaN(val) || val < 0 || val > h.max_score)) { invalid++; continue; }
       const feedback = (fb[s.student_id] || '').slice(0, 1000) || null;
       if ((s.score === null ? null : Number(s.score)) !== val || (s.feedback || null) !== feedback) { await k('homework_submissions').where({ id: s.id }).update({ score: val, feedback }); n++; if (val !== null && s.score === null) notify.push(s.student_id); }
     }
     if (notify.length) { const us = await k('students').whereIn('id', notify).select('user_id'); await svc.notify(us.map((x) => x.user_id), `نمره تکلیف ${h.title} ثبت شد`, '', '/homework/' + h.id, 'success'); }
+    if (invalid) req.flash('error', `${invalid} نمره نامعتبر بود (باید بین ۰ و ${h.max_score} باشد) و ثبت نشد.`);
     req.flash('success', `${n} مورد بروزرسانی شد.`); res.redirect('/homework/' + h.id);
   } catch (e) { next(e); }
 });

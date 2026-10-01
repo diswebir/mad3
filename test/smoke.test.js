@@ -166,6 +166,8 @@ async function waitUp() { for (let i = 0; i < 80; i++) { try { const r = await f
     let r = await admin.post('/students/1/reset-password', {}, '/students/1'); const pw = /رمز جدید دانش‌آموز: (\S+)/.exec(r.text)[1];
     const s = (await login('14050001', pw)).c; r = await s.get('/'); assert.ok(/تغییر دهید|تغییر رمز/.test(r.text));
     r = await s.post('/profile/password', { current: pw, password: 'NewPass123', password2: 'NewPass123' }, '/profile/password?force=1'); ok(r);
+    assert.ok(/ورود به حساب/.test((await student.get('/')).text), 'نشست قدیمی دانش‌آموز پس از بازنشانی رمز باید بسته شود');
+    student = s;
   });
   await t('صفحه 404', async () => { const r = await admin.get('/nope'); assert.equal(r.status, 404); });
 
@@ -259,6 +261,51 @@ async function waitUp() { for (let i = 0; i < 80; i++) { try { const r = await f
     for (const k of opt) { const r = await admin.post(`/modules/${k}/toggle`, {}, '/modules'); ok(r); }
     ok(await admin.get('/tickets')); ok(await student.get('/finance'));
   });
+  console.log('\n● بازبینی منطق و امنیت');
+  await t('دانش‌آموز به صفحه کلاس و چاپ آن دسترسی ندارد', async () => { for (const p of ['/classes/1', '/classes/1/print']) assert.equal((await student.get(p)).status, 403, p); });
+  await t('بازگشت پس از ورود: آدرس خارجی (//) نادیده گرفته می‌شود', async () => {
+    const c = new Client(); await c.req('GET', '//evil.example/x', null, { follow: false });
+    const p = await c.get('/login'); const r = await c.req('POST', '/login', { _csrf: c.csrf(p.text), username: 'deputy', password: 'deputy123' }, { follow: false });
+    assert.equal(r.status, 302); assert.ok(!/evil/.test(r.location || ''), 'redirect → ' + r.location);
+  });
+  await t('اعداد متن آزاد حفظ و فیلدهای عددی/تاریخ به لاتین تبدیل می‌شوند', async () => {
+    const { normalizeInput } = require('../src/utils/fa');
+    assert.equal(normalizeInput('ساعت ۸ صبح'), 'ساعت ۸ صبح'); assert.equal(normalizeInput('۱۴۰۵/۰۷/۰۹'), '1405/07/09'); assert.equal(normalizeInput('۰۹۱۲۳۴۵۶۷۸۹'), '09123456789');
+  });
+  await t('توجیه غیبت: تاریخ آینده و تاریخ نامعتبر رد می‌شود', async () => {
+    const page = await student.get('/tickets/new?category=absence'); const token = student.csrf(page.text);
+    const fut = J.isoToJString(J.addDays(J.todayISO(), 3));
+    const r = await student.req('POST', '/tickets/new', { _csrf: token, recipient: 'admin', category: 'absence', priority: 'normal', subject: 'غیبت آینده', body: 'x', related_date: fut }, { query: `?_csrf=${token}` });
+    assert.ok(/نمی‌تواند در آینده باشد/.test(r.text), 'تاریخ آینده پذیرفته شد');
+  });
+  await t('تکلیف با مهلت گذشته ثبت نمی‌شود', async () => {
+    const past = J.isoToJString(J.addDays(J.todayISO(), -5));
+    const r = await teacher.multipart('/homework/new', { class_subject_id: '1', title: 'تکلیف گذشته', due_date: past, max_score: '20' }); assert.ok(/قبل از امروز/.test(r.text));
+  });
+  await t('امتحان برای درسی که در کلاس نیست ثبت نمی‌شود', async () => {
+    const j = J.isoToJString(J.addDays(J.todayISO(), 60));
+    const r = await admin.post('/exams/new', { classroom_id: '1', subject_id: '9999', exam_date: j, start_time: '09:00', duration: '60', type: 'quiz' }, '/exams/new');
+    assert.ok(/تعریف نشده|نامعتبر|انتخاب/.test(r.text), 'امتحان درس نامعتبر پذیرفته شد');
+  });
+  await t('سال تحصیلی: همیشه یک سال جاری می‌ماند', async () => {
+    const page = await admin.get('/academic-years'); const id = /academic-years\/(\d+)\/edit/.exec(page.text)[1];
+    const form = await admin.get(`/academic-years/${id}/edit`); const cur = /name="is_current"[^>]*checked/.test(form.text) || /checked[^>]*name="is_current"/.test(form.text);
+    if (cur) {
+      const r = await admin.req('POST', `/academic-years/${id}/edit`, { _csrf: admin.csrf(form.text), title: '1405-1406', is_current: '' }); assert.ok(/همیشه یک سال تحصیلی جاری/.test(r.text), 'سال جاری بدون جایگزین غیرجاری شد');
+    }
+  });
+  await t('ویرایش کاربرِ معلم از «کاربران» به پرونده معلم هدایت می‌شود و غیرفعال‌سازی همگام است', async () => {
+    const list = await admin.get('/users?role=teacher'); const uid = /users\/(\d+)\/edit/.exec(list.text)[1];
+    const r = await admin.req('GET', `/users/${uid}/edit`, null, { follow: false }); assert.equal(r.status, 302); assert.ok(/\/teachers\/\d+\/edit/.test(r.location), r.location);
+  });
+  await t('غیرفعال‌سازی دانش‌آموز نشست او را می‌بندد و وضعیت پرونده را همگام می‌کند', async () => {
+    const stu = (await login('14050003', 'student123')).c; ok(await stu.get('/'));
+    const list = await admin.get('/users?q=14050003'); const uid = /users\/(\d+)\/toggle/.exec(list.text)[1];
+    let r = await admin.post(`/users/${uid}/toggle`, {}, '/users?q=14050003'); ok(r);
+    assert.ok(/ورود به حساب/.test((await stu.get('/')).text), 'نشست باقی ماند');
+    r = await admin.post(`/users/${uid}/toggle`, {}, '/users?q=14050003'); ok(r);
+  });
+
   await t('قفل موقت پس از تلاش‌های ناموفق', async () => {
     let last; for (let i = 0; i < 6; i++) { const c = new Client(); const p = await c.get('/login'); last = await c.req('POST', '/login', { _csrf: c.csrf(p.text), username: 'deputy', password: 'wrong' + i }); }
     assert.ok(/مسدود/.test(last.text), 'قفل موقت فعال نشد');

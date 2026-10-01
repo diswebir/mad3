@@ -38,6 +38,7 @@ router.post('/profile/password', async (req, res, next) => {
     if (b.password && b.password === b.current) errors.push('رمز جدید باید با رمز فعلی متفاوت باشد.');
     if (errors.length) return res.view('profile/password', { title: 'تغییر رمز عبور', errors, force: req.user.must_change_password });
     await db.get()('users').where({ id: req.user.id }).update({ password_hash: svc.hash(b.password), must_change_password: 0 });
+    await svc.killSessions(req.user.id, req.sessionID); // سایر دستگاه‌ها باید دوباره وارد شوند
     await svc.audit(req, 'password_change', 'user', req.user.id, '');
     req.flash('success', 'رمز عبور با موفقیت تغییر کرد.'); res.redirect('/');
   } catch (e) { next(e); }

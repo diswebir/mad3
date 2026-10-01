@@ -1,6 +1,6 @@
 <div class="page-head"><div><h1><%- icon('calendar-check', 24) %> ثبت حضور و غیاب</h1><div class="muted"><%= cls ? 'کلاس ' + cls.name : '' %> — <%= ld(date) %> (<%= J.WEEKDAYS[J.dow(date)] %>)</div></div>
 <div class="actions"><a class="btn" href="<%= u('/attendance/report') %><%= cls ? '?class_id=' + cls.id : '' %>"><%- icon('list-checks', 16) %> گزارش ماهانه</a><a class="btn" href="<%= u('/attendance/absentees') %>"><%- icon('phone', 16) %> لیست غایبین امروز</a></div></div>
-<% if (!classes.length) { %><div class="card empty"><%- icon('school', 42) %><div>کلاسی برای ثبت حضور و غیاب در دسترس شما نیست.</div></div><% } else { %>
+<% if (!classes.length) { %><div class="card empty"><%- icon('school', 42) %><div>کلاسی برای ثبت حضور و غیاب در دسترس شما نیست.<% if (user.role === 'teacher' && mode !== 'periodic') { %><div class="muted small" style="margin-top:.4rem">در حالت «روزانه» فقط معلم راهنمای هر کلاس می‌تواند حضور و غیاب را ثبت کند.</div><% } %></div></div><% } else { %>
 <form class="card" method="get" style="display:flex;gap:.8rem;flex-wrap:wrap;align-items:end">
   <div class="field"><label>کلاس</label><select name="class_id" data-autosubmit><% classes.forEach(function(c){ %><option value="<%= c.id %>" <%= cls && c.id === cls.id ? 'selected' : '' %>><%= c.name %><%= (typeof recordedIds !== 'undefined' && recordedIds.includes(c.id)) ? ' ✓' : '' %></option><% }) %></select></div>
   <div class="field"><label>تاریخ</label><input class="jdate ltr" type="text" name="date" value="<%= J.isoToJString(date) %>" data-autosubmit autocomplete="off"></div>

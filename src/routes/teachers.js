@@ -93,6 +93,11 @@ router.post('/teachers/:id(\\d+)/edit', async (req, res, next) => {
     await k('teachers').where({ id: t.id }).update(data);
     await k('users').where({ id: t.user_id }).update({ full_name: user.full_name, email: user.email, phone: user.phone, active: data.status === 'inactive' ? 0 : 1 });
     await svc.audit(req, 'update', 'teachers', t.id, user.full_name);
+    if (data.status === 'inactive') {
+      await svc.killSessions(t.user_id);
+      const used = Number((await k('classrooms').where({ homeroom_teacher_id: t.id }).count({ c: '*' }).first()).c) + Number((await k('class_subjects').where({ teacher_id: t.id }).count({ c: '*' }).first()).c);
+      if (used) req.flash('error', 'توجه: این معلم غیرفعال شد ولی هنوز به کلاس/درس اختصاص دارد؛ تخصیص‌ها را به معلم دیگری بدهید.');
+    }
     req.flash('success', 'اطلاعات معلم ذخیره شد.'); res.redirect('/teachers/' + t.id);
   } catch (e) { next(e); }
 });
@@ -100,6 +105,7 @@ router.post('/teachers/:id(\\d+)/reset-password', async (req, res, next) => {
   try {
     const t = await load(req.params.id); if (!t) return nf(res); const pw = svc.randomPassword(8);
     await db.get()('users').where({ id: t.user_id }).update({ password_hash: svc.hash(pw), must_change_password: 1 });
+    await svc.killSessions(t.user_id);
     await svc.audit(req, 'reset_password', 'teachers', t.id, t.username);
     req.flash('success', `رمز جدید «${t.full_name}»: ${pw} (فقط یک‌بار نمایش داده می‌شود)`); res.redirect('/teachers/' + t.id);
   } catch (e) { next(e); }
@@ -109,7 +115,12 @@ router.post('/teachers/:id(\\d+)/delete', async (req, res, next) => {
     const k = db.get(); const t = await load(req.params.id); if (!t) return nf(res);
     const used = Number((await k('classrooms').where({ homeroom_teacher_id: t.id }).count({ c: '*' }).first()).c) + Number((await k('class_subjects').where({ teacher_id: t.id }).count({ c: '*' }).first()).c);
     if (used) { req.flash('error', 'این معلم هنوز به کلاس یا درسی اختصاص دارد. ابتدا تخصیص‌ها را بردارید یا وضعیت او را «غیرفعال» کنید.'); return res.redirect('/teachers/' + t.id); }
-    await k('teachers').where({ id: t.id }).del(); await k('notifications').where({ user_id: t.user_id }).del(); await k('users').where({ id: t.user_id }).del();
+    const tk = Number((await k('tickets').where((b) => b.where('created_by', t.user_id).orWhere('recipient_user_id', t.user_id)).count({ c: '*' }).first()).c) + Number((await k('ticket_messages').where({ user_id: t.user_id }).count({ c: '*' }).first()).c);
+    if (tk) { req.flash('error', 'این معلم در تیکت‌ها سابقه دارد؛ برای حفظ سوابق، وضعیت او را «غیرفعال» کنید.'); return res.redirect('/teachers/' + t.id); }
+    const loans = Number((await k('book_loans').where({ teacher_id: t.id }).whereNull('returned_at').count({ c: '*' }).first()).c);
+    if (loans) { req.flash('error', 'این معلم کتاب امانت‌گرفته‌شده بازنگردانده دارد.'); return res.redirect('/teachers/' + t.id); }
+    await k.transaction(async (x) => { await x('book_loans').where({ teacher_id: t.id }).del(); await x('teachers').where({ id: t.id }).del(); await x('notifications').where({ user_id: t.user_id }).del(); await x('users').where({ id: t.user_id }).del(); });
+    await svc.killSessions(t.user_id);
     await svc.audit(req, 'delete', 'teachers', t.id, t.full_name);
     req.flash('success', 'معلم حذف شد.'); res.redirect('/teachers');
   } catch (e) { next(e); }

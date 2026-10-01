@@ -35,13 +35,21 @@ router.post('/users/new', async (req, res, next) => {
     req.flash('success', 'کاربر ایجاد شد.'); res.redirect('/users');
   } catch (e) { next(e); }
 });
-router.get('/users/:id/edit', async (req, res, next) => {
-  try { const row = await db.get()('users').where({ id: req.params.id }).first(); if (!row) return res.status(404).view('error', { code: 404, title: 'یافت نشد', message: 'کاربر یافت نشد.' }); res.view('users/form', { title: 'ویرایش کاربر', row, errors: [], vals: row }); } catch (e) { next(e); }
+/** ویرایش معلم/دانش‌آموز باید از پرونده خودشان انجام شود تا اطلاعات پرونده و حساب ناهمگون نشود */
+async function profileRedirect(row) {
+  const k = db.get();
+  if (row.role === 'teacher') { const t = await k('teachers').where({ user_id: row.id }).first(); return t ? '/teachers/' + t.id + '/edit' : null; }
+  if (row.role === 'student') { const s = await k('students').where({ user_id: row.id }).first(); return s ? '/students/' + s.id + '/edit' : null; }
+  return null;
+}
+router.get('/users/:id(\\d+)/edit', async (req, res, next) => {
+  try { const row = await db.get()('users').where({ id: req.params.id }).first(); if (!row) return res.status(404).view('error', { code: 404, title: 'یافت نشد', message: 'کاربر یافت نشد.' }); const pr = await profileRedirect(row); if (pr) return res.redirect(pr); res.view('users/form', { title: 'ویرایش کاربر', row, errors: [], vals: row }); } catch (e) { next(e); }
 });
-router.post('/users/:id/edit', async (req, res, next) => {
+router.post('/users/:id(\\d+)/edit', async (req, res, next) => {
   try {
     const k = db.get(); const row = await k('users').where({ id: req.params.id }).first(); const b = req.body; const errors = [];
     if (!row) return res.status(404).view('error', { code: 404, title: 'یافت نشد', message: 'کاربر یافت نشد.' });
+    if (['teacher', 'student'].includes(row.role)) return res.redirect((await profileRedirect(row)) || '/users');
     if (!b.full_name || b.full_name.length < 3) errors.push('نام کامل را وارد کنید.');
     if (b.email && !/^\S+@\S+\.\S+$/.test(b.email)) errors.push('ایمیل معتبر نیست.');
     if (!svc.validPhone(b.phone)) errors.push('تلفن معتبر نیست.');
@@ -53,31 +61,41 @@ router.post('/users/:id/edit', async (req, res, next) => {
     req.flash('success', 'کاربر ویرایش شد.'); res.redirect('/users');
   } catch (e) { next(e); }
 });
-router.post('/users/:id/toggle', async (req, res, next) => {
+router.post('/users/:id(\\d+)/toggle', async (req, res, next) => {
   try {
     const k = db.get(); const row = await k('users').where({ id: req.params.id }).first();
     if (!row || row.id === req.user.id) { req.flash('error', 'امکان غیرفعال‌سازی حساب خودتان وجود ندارد.'); return res.redirect('/users'); }
-    await k('users').where({ id: row.id }).update({ active: row.active ? 0 : 1 });
+    const on = row.active ? 0 : 1;
+    await k('users').where({ id: row.id }).update({ active: on });
+    // همگام‌سازی وضعیت پرونده معلم/دانش‌آموز با حساب کاربری
+    if (row.role === 'teacher') await k('teachers').where({ user_id: row.id }).update({ status: on ? 'active' : 'inactive' });
+    if (row.role === 'student') await k('students').where({ user_id: row.id }).update({ status: on ? 'active' : 'inactive' });
+    if (!on) await svc.killSessions(row.id);
     await svc.audit(req, row.active ? 'deactivate' : 'activate', 'users', row.id, row.username);
     req.flash('success', row.active ? 'حساب غیرفعال شد.' : 'حساب فعال شد.'); res.redirect('/users');
   } catch (e) { next(e); }
 });
-router.post('/users/:id/reset-password', async (req, res, next) => {
+router.post('/users/:id(\\d+)/reset-password', async (req, res, next) => {
   try {
     const k = db.get(); const row = await k('users').where({ id: req.params.id }).first();
     if (!row) return res.redirect('/users');
     const pw = svc.randomPassword(8);
     await k('users').where({ id: row.id }).update({ password_hash: svc.hash(pw), must_change_password: 1 });
+    await svc.killSessions(row.id);
     await svc.audit(req, 'reset_password', 'users', row.id, row.username);
     req.flash('success', `رمز جدید «${row.full_name}»: ${pw}  (کاربر در اولین ورود باید آن را تغییر دهد؛ این رمز فقط یک‌بار نمایش داده می‌شود.)`);
     res.redirect('/users');
   } catch (e) { next(e); }
 });
-router.post('/users/:id/delete', async (req, res, next) => {
+router.post('/users/:id(\\d+)/delete', async (req, res, next) => {
   try {
     const k = db.get(); const row = await k('users').where({ id: req.params.id }).first();
     if (!row || row.id === req.user.id || !['admin', 'deputy'].includes(row.role)) { req.flash('error', 'فقط حساب‌های مدیر/معاون (غیر از حساب خودتان) از اینجا قابل حذف‌اند.'); return res.redirect('/users'); }
+    const used = Number((await k('tickets').where((b) => b.where('created_by', row.id).orWhere('recipient_user_id', row.id)).count({ c: '*' }).first()).c) + Number((await k('ticket_messages').where({ user_id: row.id }).count({ c: '*' }).first()).c);
+    if (used) { req.flash('error', 'این کاربر در تیکت‌ها سابقه دارد؛ برای حفظ سوابق، به‌جای حذف، حساب را غیرفعال کنید.'); return res.redirect('/users'); }
+    await k('notifications').where({ user_id: row.id }).del();
     await k('users').where({ id: row.id }).del();
+    await svc.killSessions(row.id);
     await svc.audit(req, 'delete', 'users', row.id, row.username);
     req.flash('success', 'کاربر حذف شد.'); res.redirect('/users');
   } catch (e) { next(e); }

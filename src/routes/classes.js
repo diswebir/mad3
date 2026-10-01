@@ -6,7 +6,23 @@ const modules = require('../modules');
 const J = require('../utils/jalali');
 const { requireRole, isManager } = require('../middleware');
 const { classResults } = require('../lib/gradesCalc');
+const fs = require('fs');
+const path = require('path');
+const config = require('../config');
 const router = express.Router();
+/** حذف تکالیف درس‌ها همراه با پاسخ‌ها و فایل‌های پیوست (بدون رکورد یتیم) */
+async function purgeHomework(k, csIds) {
+  if (!csIds.length) return;
+  const hws = await k('homework').whereIn('class_subject_id', csIds);
+  const ids = hws.map((h) => h.id);
+  if (ids.length) {
+    const subs = await k('homework_submissions').whereIn('homework_id', ids);
+    const rm = (f) => f && fs.unlink(path.join(config.UPLOAD_DIR, 'homework', f), () => {});
+    subs.forEach((x) => rm(x.file)); hws.forEach((h) => rm(h.attachment));
+    await k('homework_submissions').whereIn('homework_id', ids).del();
+  }
+  await k('homework').whereIn('class_subject_id', csIds).del();
+}
 const M = modules.isEnabled;
 const mgr = requireRole('admin', 'deputy');
 const nf = (res) => res.status(404).view('error', { code: 404, title: 'یافت نشد', message: 'کلاس مورد نظر یافت نشد یا به آن دسترسی ندارید.' });
@@ -92,13 +108,13 @@ router.post('/classes/:id(\\d+)/delete', mgr, async (req, res, next) => {
     const n = Number((await k('students').where({ classroom_id: c.id }).count({ c: '*' }).first()).c);
     if (n) { req.flash('error', 'کلاس دارای دانش‌آموز است. ابتدا دانش‌آموزان را به کلاس دیگری منتقل کنید.'); return res.redirect('/classes/' + c.id); }
     const cs = (await k('class_subjects').where({ classroom_id: c.id }).select('id')).map((x) => x.id);
-    if (cs.length) { const a = Number((await k('assessments').whereIn('class_subject_id', cs).count({ c: '*' }).first()).c); if (a) { req.flash('error', 'برای دروس این کلاس ارزشیابی ثبت شده است؛ حذف ممکن نیست.'); return res.redirect('/classes/' + c.id); } await k('homework').whereIn('class_subject_id', cs).del(); }
+    if (cs.length) { const a = Number((await k('assessments').whereIn('class_subject_id', cs).count({ c: '*' }).first()).c); if (a) { req.flash('error', 'برای دروس این کلاس ارزشیابی ثبت شده است؛ حذف ممکن نیست.'); return res.redirect('/classes/' + c.id); } await purgeHomework(k, cs); }
     await k('timetable').where({ classroom_id: c.id }).del(); await k('exam_schedule').where({ classroom_id: c.id }).del(); await k('class_subjects').where({ classroom_id: c.id }).del(); await k('classrooms').where({ id: c.id }).del();
     await svc.audit(req, 'delete', 'classrooms', c.id, c.name); req.flash('success', 'کلاس حذف شد.'); res.redirect('/classes');
   } catch (e) { next(e); }
 });
 
-router.get('/classes/:id(\\d+)', async (req, res, next) => {
+router.get('/classes/:id(\\d+)', requireRole('admin', 'deputy', 'teacher'), async (req, res, next) => {
   try {
     const k = db.get(); const c = await getClass(req, req.params.id); if (!c) return nf(res);
     const students = await k('students').where({ classroom_id: c.id }).orderBy('last_name').orderBy('first_name').select('id', 'first_name', 'last_name', 'student_code', 'gender', 'status', 'father_phone', 'mother_phone');
@@ -115,11 +131,11 @@ router.get('/classes/:id(\\d+)', async (req, res, next) => {
       const m = Object.fromEntries(rows.map((r) => [r.status, Number(r.c)])); const tot = Object.values(m).reduce((a, b) => a + b, 0);
       data.attRate = tot ? Math.round(((m.present || 0) + (m.late || 0)) * 100 / tot) : null;
     }
-    if (M('grades')) { const r = await classResults(k, c.id, {}); const v = r.students.filter((x) => x.overall !== null); data.avg = v.length ? Math.round(v.reduce((a, b) => a + b.overall, 0) / v.length * 100) / 100 : null; data.topStudents = v.sort((a, b) => b.overall - a.overall).slice(0, 3); }
+    if (M('grades') && !(await svc.gradeScope(req.user, c.id)).onlyTeacherId) { const r = await classResults(k, c.id, {}); const v = r.students.filter((x) => x.overall !== null); data.avg = v.length ? Math.round(v.reduce((a, b) => a + b.overall, 0) / v.length * 100) / 100 : null; data.topStudents = v.sort((a, b) => b.overall - a.overall).slice(0, 3); }
     res.view('classes/show', data);
   } catch (e) { next(e); }
 });
-router.get('/classes/:id(\\d+)/print', async (req, res, next) => {
+router.get('/classes/:id(\\d+)/print', requireRole('admin', 'deputy', 'teacher'), async (req, res, next) => {
   try {
     const k = db.get(); const c = await getClass(req, req.params.id); if (!c) return nf(res);
     const students = await k('students').where({ classroom_id: c.id, status: 'active' }).orderBy('last_name').orderBy('first_name');
@@ -135,7 +151,9 @@ router.post('/classes/:id(\\d+)/subjects', mgr, async (req, res, next) => {
     if (!subject) { req.flash('error', 'درس را انتخاب کنید.'); return res.redirect('/classes/' + c.id); }
     if (await k('class_subjects').where({ classroom_id: c.id, subject_id: subject.id }).first()) { req.flash('error', 'این درس قبلاً به کلاس اضافه شده است.'); return res.redirect('/classes/' + c.id); }
     const hours = Math.max(1, Math.min(20, Number(req.body.weekly_hours) || subject.weekly_hours || 2));
-    await k('class_subjects').insert({ classroom_id: c.id, subject_id: subject.id, teacher_id: req.body.teacher_id ? Number(req.body.teacher_id) : null, weekly_hours: hours });
+    const tid = req.body.teacher_id ? Number(req.body.teacher_id) : null;
+    if (tid && !(await k('teachers').where({ id: tid, status: 'active' }).first())) { req.flash('error', 'معلم انتخاب‌شده معتبر یا فعال نیست.'); return res.redirect('/classes/' + c.id); }
+    await k('class_subjects').insert({ classroom_id: c.id, subject_id: subject.id, teacher_id: tid, weekly_hours: hours });
     await svc.audit(req, 'assign', 'class_subjects', c.id, `${subject.name} → ${c.name}`);
     req.flash('success', 'درس به کلاس اضافه شد.'); res.redirect('/classes/' + c.id);
   } catch (e) { next(e); }
@@ -145,6 +163,7 @@ router.post('/classes/:id(\\d+)/subjects/:csid/update', mgr, async (req, res, ne
     const k = db.get(); const c = await getClass(req, req.params.id); if (!c) return nf(res);
     const teacher_id = req.body.teacher_id ? Number(req.body.teacher_id) : null;
     const hours = Math.max(1, Math.min(20, Number(req.body.weekly_hours) || 2));
+    if (teacher_id && !(await k('teachers').where({ id: teacher_id, status: 'active' }).first())) { req.flash('error', 'معلم انتخاب‌شده معتبر یا فعال نیست.'); return res.redirect('/classes/' + c.id); }
     const old = await k('class_subjects').where({ id: req.params.csid, classroom_id: c.id }).first();
     if (!old) return nf(res);
     if (teacher_id && old.teacher_id !== teacher_id && M('timetable')) { // بررسی تداخل در برنامه هفتگی
@@ -165,7 +184,7 @@ router.post('/classes/:id(\\d+)/subjects/:csid/delete', mgr, async (req, res, ne
     const cs = await k('class_subjects').where({ id: req.params.csid, classroom_id: c.id }).first(); if (!cs) return nf(res);
     const a = Number((await k('assessments').where({ class_subject_id: cs.id }).count({ c: '*' }).first()).c);
     if (a) { req.flash('error', 'برای این درس ارزشیابی ثبت شده است؛ ابتدا ارزشیابی‌ها را حذف کنید.'); return res.redirect('/classes/' + c.id); }
-    await k('timetable').where({ class_subject_id: cs.id }).del(); await k('homework').where({ class_subject_id: cs.id }).del(); await k('class_subjects').where({ id: cs.id }).del();
+    await k('timetable').where({ class_subject_id: cs.id }).del(); await purgeHomework(k, [cs.id]); await k('class_subjects').where({ id: cs.id }).del();
     req.flash('success', 'درس از کلاس حذف شد.'); res.redirect('/classes/' + c.id);
   } catch (e) { next(e); }
 });
@@ -173,10 +192,12 @@ router.post('/classes/:id(\\d+)/subjects/:csid/delete', mgr, async (req, res, ne
 router.post('/classes/:id(\\d+)/add-students', mgr, async (req, res, next) => {
   try {
     const k = db.get(); const c = await getClass(req, req.params.id); if (!c) return nf(res);
-    const ids = [].concat(req.body.ids || []).map(Number).filter(Boolean);
+    const wanted = [].concat(req.body.ids || []).map(Number).filter(Boolean);
+    if (!wanted.length) { req.flash('error', 'هیچ دانش‌آموزی انتخاب نشده است.'); return res.redirect('/classes/' + c.id); }
+    const ids = (await k('students').whereIn('id', wanted).whereNull('classroom_id').where({ status: 'active' }).select('id')).map((x) => x.id);
     const cnt = Number((await k('students').where({ classroom_id: c.id, status: 'active' }).count({ c: '*' }).first()).c);
-    if (cnt + ids.length > c.capacity) { req.flash('error', `ظرفیت کلاس (${c.capacity}) کافی نیست؛ ${cnt} نفر عضو هستند.`); return res.redirect('/classes/' + c.id); }
-    await k('students').whereIn('id', ids).whereNull('classroom_id').update({ classroom_id: c.id });
+    if (c.capacity && cnt + ids.length > c.capacity) { req.flash('error', `ظرفیت کلاس (${c.capacity}) کافی نیست؛ ${cnt} نفر عضو هستند.`); return res.redirect('/classes/' + c.id); }
+    if (ids.length) await k('students').whereIn('id', ids).update({ classroom_id: c.id });
     await svc.audit(req, 'add_students', 'classrooms', c.id, `${ids.length} نفر`); req.flash('success', `${ids.length} دانش‌آموز به کلاس اضافه شد.`); res.redirect('/classes/' + c.id);
   } catch (e) { next(e); }
 });

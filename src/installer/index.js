@@ -14,6 +14,7 @@ const modulesReg = require('../modules');
 const settingsSvc = require('../settings');
 const { normalizeInput, toFa } = require('../utils/fa');
 const { validPhone } = require('../services');
+const svc = require('../services');
 
 const STEPS = [['welcome', 'خوش‌آمدگویی'], ['db', 'پایگاه داده'], ['school', 'مدرسه'], ['admin', 'مدیر'], ['modules', 'ماژول‌ها'], ['finish', 'نصب']];
 
@@ -106,7 +107,7 @@ function createRouter(onComplete) {
     if (!b.password || b.password.length < 8) errors.push('رمز عبور باید حداقل ۸ نویسه باشد.');
     if (b.password !== b.password2) errors.push('تکرار رمز عبور مطابقت ندارد.');
     if (errors.length) return render(res, 'admin', { admin: b, errors });
-    const st = readState(); st.admin = { username: b.username, full_name: b.full_name, password: b.password, email: b.email || '' }; writeState(st);
+    const st = readState(); st.admin = { username: b.username, full_name: b.full_name, password_hash: svc.hash(b.password), email: b.email || '' }; writeState(st); // رمز به‌صورت متن ساده روی دیسک نگهداری نمی‌شود
     res.redirect('/install/modules');
   });
 

@@ -16,7 +16,7 @@ function buildKnex(dbCfg) {
       connection: {
         host: dbCfg.host || 'localhost', port: dbCfg.port || 3306,
         user: dbCfg.user, password: dbCfg.password, database: dbCfg.database,
-        charset: 'utf8mb4', dateStrings: true, timezone: '+00:00',
+        charset: 'utf8mb4', dateStrings: true, decimalNumbers: true, timezone: '+00:00',
       },
       pool: {
         min: 0, max: 8, idleTimeoutMillis: 30000,

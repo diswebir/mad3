@@ -40,11 +40,12 @@
 <% } %>
 
 <% if (tab === 'grades') { %>
-<% if (!report || !me) { %><div class="card empty">برای این دانش‌آموز نمره‌ای ثبت یا منتشر نشده است.</div><% } else { %>
+<% if (!report || !me || (me.overall === null && !(report.partial && Object.keys(me.subjects).length))) { %><div class="card empty">برای این دانش‌آموز نمره‌ای ثبت یا منتشر نشده است.</div><% } else { %>
+<% if (report.partial) { %><div class="alert info" style="margin-bottom:1rem"><%- icon('info', 18) %><div>فقط نمرات دروس شما نمایش داده می‌شود (معدل کل و رتبه فقط برای معلم راهنما و مدیریت قابل مشاهده است).</div></div><% } else { %>
 <div class="grid g3" style="margin-bottom:1rem">
   <div class="card stat" style="margin:0"><div><div class="v"><%= me.overall === null ? '—' : fa(me.overall) %></div><div class="l">معدل (از <%= fa(report.scale) %>)</div></div></div>
-  <div class="card stat green" style="margin:0"><div><div class="v"><%= me.rank ? fa(me.rank) + ' از ' + fa(report.rankedCount) : '—' %></div><div class="l">رتبه در کلاس</div></div></div>
-  <div class="card stat amber" style="margin:0"><div><div class="v"><%= classAvg === null ? '—' : fa(classAvg) %></div><div class="l">میانگین کلاس</div></div></div></div>
+  <% if (showRank) { %><div class="card stat green" style="margin:0"><div><div class="v"><%= me.rank ? fa(me.rank) + ' از ' + fa(report.rankedCount) : '—' %></div><div class="l">رتبه در کلاس</div></div></div>
+  <div class="card stat amber" style="margin:0"><div><div class="v"><%= classAvg === null ? '—' : fa(classAvg) %></div><div class="l">میانگین کلاس</div></div></div><% } %></div><% } %>
 <div class="card flush"><div class="table-wrap"><table class="t"><thead><tr><th>درس</th><th>معلم</th><th>تعداد ارزشیابی</th><th>میانگین</th><th>وضعیت</th></tr></thead><tbody>
 <% report.subjects.forEach(function(c){ var r = me.subjects[c.id]; %><tr><td><b><%= c.name %></b></td><td><%= c.teacher_name || '—' %></td><td><%= r ? fa(r.count) : '—' %></td><td class="num"><%= r ? fa(r.avg) : '—' %></td><td><%- r ? (r.passed ? pill('قبول', 'green') : pill('مردود', 'red')) : '' %></td></tr><% }) %>
 </tbody></table></div></div>

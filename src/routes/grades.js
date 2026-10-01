@@ -81,13 +81,13 @@ router.get('/grades/assessments/:id(\\d+)', staff, async (req, res, next) => {
 router.post('/grades/assessments/:id(\\d+)/scores', staff, async (req, res, next) => {
   try {
     const k = db.get(); const r = await loadAssessment(req, req.params.id); if (!r) return nf(res); const { a, cs } = r;
-    const students = await k('students').where({ classroom_id: cs.classroom_id, status: 'active' }).select('id');
+    const students = await k('students').where({ classroom_id: cs.classroom_id, status: 'active' }).select('id', 'first_name', 'last_name');
     const existing = Object.fromEntries((await k('scores').where({ assessment_id: a.id })).map((s) => [s.student_id, s]));
     const sc = req.body.score || {}; const notes = req.body.note || {}; const errors = []; const ops = [];
     for (const s of students) {
       const raw = String(sc[s.id] === undefined ? '' : sc[s.id]).replace(',', '.').replace('٫', '.').trim(); const note = (notes[s.id] || '').slice(0, 250) || null;
       let val = null;
-      if (raw !== '') { val = Number(raw); if (isNaN(val) || val < 0 || val > Number(a.max_score)) { errors.push(`نمره دانش‌آموز شماره ${s.id} باید بین ۰ و ${a.max_score} باشد.`); continue; } val = Math.round(val * 100) / 100; }
+      if (raw !== '') { val = Number(raw); if (isNaN(val) || val < 0 || val > Number(a.max_score)) { errors.push(`نمره «${s.last_name} ${s.first_name}» باید بین ۰ و ${a.max_score} باشد.`); continue; } val = Math.round(val * 100) / 100; }
       ops.push([s.id, val, note]);
     }
     if (errors.length) { req.flash('error', errors.slice(0, 3).join(' ')); return res.redirect('/grades/assessments/' + a.id); }
@@ -105,6 +105,7 @@ router.post('/grades/assessments/:id(\\d+)/update', staff, async (req, res, next
   try {
     const r = await loadAssessment(req, req.params.id); if (!r) return nf(res);
     const errors = []; const data = parseAssessment(req.body, errors);
+    if (!errors.length) { const mx = await db.get()('scores').where({ assessment_id: r.a.id }).max({ m: 'score' }).first(); if (mx && mx.m !== null && Number(mx.m) > data.max_score) errors.push(`بیشینه نمره نمی‌تواند کمتر از بالاترین نمره ثبت‌شده (${mx.m}) باشد.`); }
     if (errors.length) { req.flash('error', errors.join(' ')); return res.redirect('/grades/assessments/' + r.a.id); }
     await db.get()('assessments').where({ id: r.a.id }).update(data); req.flash('success', 'مشخصات ارزشیابی ذخیره شد.'); res.redirect('/grades/assessments/' + r.a.id);
   } catch (e) { next(e); }
@@ -113,7 +114,8 @@ router.post('/grades/assessments/:id(\\d+)/publish', staff, async (req, res, nex
   try {
     const k = db.get(); const r = await loadAssessment(req, req.params.id); if (!r) return nf(res); const pub = r.a.published ? 0 : 1;
     await k('assessments').where({ id: r.a.id }).update({ published: pub });
-    if (pub) { const us = await k('students').where({ classroom_id: r.cs.classroom_id, status: 'active' }).select('user_id'); await svc.notify(us.map((x) => x.user_id), `نمره ${r.cs.subject_name} منتشر شد`, r.a.title, '/grades/my', 'success'); }
+    const already = pub ? await k('notifications').where({ title: `نمره ${r.cs.subject_name} منتشر شد`, body: r.a.title, link: '/grades/my' }).first() : null; // انتشار مجدد، اعلان تکراری نمی‌سازد
+    if (pub && !already) { const us = await k('students').where({ classroom_id: r.cs.classroom_id, status: 'active' }).select('user_id'); await svc.notify(us.map((x) => x.user_id), `نمره ${r.cs.subject_name} منتشر شد`, r.a.title, '/grades/my', 'success'); }
     await svc.audit(req, pub ? 'publish' : 'unpublish', 'assessments', r.a.id, r.a.title);
     req.flash('success', pub ? 'نمرات برای دانش‌آموزان منتشر شد.' : 'انتشار نمرات لغو شد.'); res.redirect('/grades/assessments/' + r.a.id);
   } catch (e) { next(e); }
@@ -131,7 +133,7 @@ router.get('/grades/class/:id(\\d+)', staff, async (req, res, next) => {
   try {
     const k = db.get(); const c = await k('classrooms').where({ id: req.params.id }).first(); if (!c) return nf(res);
     if (!isManager(req.user)) { const ids = await svc.accessibleClassIds(req.user); if (!ids.includes(c.id)) return nf(res); }
-    const term = parseInt(req.query.term, 10) || null; const r = await classResults(k, c.id, { term });
+    const term = parseInt(req.query.term, 10) || null; const r = await classResults(k, c.id, { term, ...(await svc.gradeScope(req.user, c.id)) });
     if (req.query.format === 'csv') {
       const head = ['رتبه', 'شماره', 'نام', ...r.subjects.map((s) => s.name), 'معدل'];
       const rows = [...r.students].sort((a, b) => (a.rank || 999) - (b.rank || 999)).map((s) => [s.rank || '', s.student_code, `${s.first_name} ${s.last_name}`, ...r.subjects.map((x) => (s.subjects[x.id] ? s.subjects[x.id].avg : '')), s.overall === null ? '' : s.overall]);
@@ -151,12 +153,12 @@ router.get('/grades/report-card/:sid(\\d+)', async (req, res, next) => {
     if (u.role === 'student' && s.user_id !== u.id) return nf(res);
     if (u.role === 'teacher') { const ids = await svc.accessibleClassIds(u); if (!ids.includes(s.classroom_id)) return nf(res); }
     const term = parseInt(req.query.term, 10) || null; const publishedOnly = u.role === 'student';
-    const r = s.classroom_id ? await classResults(k, s.classroom_id, { term, publishedOnly }) : null;
+    const r = s.classroom_id ? await classResults(k, s.classroom_id, { term, publishedOnly, ...(await svc.gradeScope(u, s.classroom_id)) }) : null;
     const me = r ? r.students.find((x) => x.id === s.id) : null;
     const data = { title: 'کارنامه ' + s.first_name + ' ' + s.last_name, s, r, me, term, terms: settings.num('terms_count') || 2, year: await k('academic_years').where({ is_current: 1 }).first() };
     if (modules.isEnabled('attendance')) { const rows = await k('attendance').where({ student_id: s.id }).groupBy('status').select('status').count({ c: '*' }); data.att = Object.fromEntries(rows.map((x) => [x.status, Number(x.c)])); }
-    if (modules.isEnabled('discipline')) { const d = await k('discipline_records').where({ student_id: s.id }).sum({ p: 'points' }).first(); data.behavior = 20 + (Number(d.p) || 0); }
-    if (r && me) { const v = r.students.filter((x) => x.overall !== null); data.classAvg = v.length ? round2(v.reduce((a, b) => a + b.overall, 0) / v.length) : null; data.subjectAvg = {}; for (const c of r.subjects) { const xs = r.students.map((st) => st.subjects[c.id]).filter(Boolean); data.subjectAvg[c.id] = xs.length ? round2(xs.reduce((a, b) => a + b.avg, 0) / xs.length) : null; } }
+    if (modules.isEnabled('discipline')) { const d = await k('discipline_records').where({ student_id: s.id }).sum({ p: 'points' }).first(); data.behavior = Math.max(0, Math.min(20, 20 + (Number(d.p) || 0))); }
+    if (r && me) { const v = r.students.filter((x) => x.overall !== null); data.classAvg = v.length ? round2(v.reduce((a, b) => a + b.overall, 0) / v.length) : null; data.showRank = u.role !== 'student' || settings.bool('show_rank_to_students'); data.subjectAvg = {}; for (const c of r.subjects) { const xs = r.students.map((st) => st.subjects[c.id]).filter(Boolean); data.subjectAvg[c.id] = xs.length ? round2(xs.reduce((a, b) => a + b.avg, 0) / xs.length) : null; } }
     res.view('grades/report-card', data);
   } catch (e) { next(e); }
 });

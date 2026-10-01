@@ -31,6 +31,14 @@ async function notify(userIds, title, body, link, type = 'info') {
   await db.get()('notifications').insert(ids.map((user_id) => ({ user_id, title: String(title).slice(0, 200), body: body ? String(body).slice(0, 1000) : null, link: link || null, type })));
   ids.forEach(invalidateBadges);
 }
+/** پایان‌دادن به تمام نشست‌های یک کاربر (به‌جز نشست فعلی در صورت ارسال exceptSid) */
+async function killSessions(userId, exceptSid) {
+  try {
+    const q = db.get()('sessions').where((b) => b.where('sess', 'like', `%"uid":${Number(userId)},%`).orWhere('sess', 'like', `%"uid":${Number(userId)}}%`));
+    if (exceptSid) q.whereNot('sid', exceptSid);
+    await q.del();
+  } catch (_) { /* ignore */ }
+}
 async function managerIds() {
   return (await db.get()('users').whereIn('role', ['admin', 'deputy']).where({ active: 1 }).select('id')).map((r) => r.id);
 }
@@ -51,6 +59,12 @@ async function accessibleClassIds(user) {
 async function homeroomClassIds(user) {
   if (user.role !== 'teacher' || !user.teacher) return [];
   return (await db.get()('classrooms').where({ homeroom_teacher_id: user.teacher.id }).select('id')).map((r) => r.id);
+}
+/** گزینه‌های classResults برای کاربر: معلم غیر راهنما فقط دروس خودش را می‌بیند */
+async function gradeScope(user, classroomId) {
+  if (user.role !== 'teacher') return {};
+  const home = await homeroomClassIds(user);
+  return home.includes(classroomId) ? {} : { onlyTeacherId: user.teacher ? user.teacher.id : -1 };
 }
 async function nextStudentCode() {
   const prefix = String(settings.get('student_code_prefix') || '');
@@ -91,4 +105,4 @@ function audienceFilter(qb, user, classIds, alias = 't', hasClass = true) {
   });
 }
 
-module.exports = { audienceFilter, canViewTicket, nowStr, hash, verify, randomPassword, randomDigits, audit, notify, managerIds, accessibleClassIds, homeroomClassIds, nextStudentCode, uniqueUsername, validNationalId, validPhone, validTime };
+module.exports = { gradeScope, killSessions, audienceFilter, canViewTicket, nowStr, hash, verify, randomPassword, randomDigits, audit, notify, managerIds, accessibleClassIds, homeroomClassIds, nextStudentCode, uniqueUsername, validNationalId, validPhone, validTime };

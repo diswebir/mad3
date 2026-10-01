@@ -107,11 +107,19 @@ router.post('/students/bulk', mgr, async (req, res, next) => {
     const ids = [].concat(req.body.ids || []).map(Number).filter(Boolean); const k = db.get();
     if (!ids.length) { req.flash('error', 'هیچ دانش‌آموزی انتخاب نشده است.'); return res.redirect('/students'); }
     if (req.body.action === 'move' && req.body.classroom_id) {
-      await k('students').whereIn('id', ids).update({ classroom_id: Number(req.body.classroom_id) });
-      await svc.audit(req, 'bulk_move', 'students', null, `${ids.length} دانش‌آموز`); req.flash('success', `${ids.length} دانش‌آموز منتقل شد.`);
+      const cls = await k('classrooms').where({ id: Number(req.body.classroom_id) }).first();
+      if (!cls) { req.flash('error', 'کلاس مقصد معتبر نیست.'); return res.redirect('/students'); }
+      const movers = (await k('students').whereIn('id', ids).where({ status: 'active' }).where((b) => b.whereNull('classroom_id').orWhereNot('classroom_id', cls.id)).select('id')).map((x) => x.id);
+      const cnt = Number((await k('students').where({ classroom_id: cls.id, status: 'active' }).count({ c: '*' }).first()).c);
+      if (cls.capacity && cnt + movers.length > cls.capacity) { req.flash('error', `ظرفیت کلاس «${cls.name}» (${cls.capacity} نفر) کافی نیست؛ ${cnt} نفر عضو هستند.`); return res.redirect('/students'); }
+      if (!movers.length) { req.flash('error', 'دانش‌آموز فعالِ قابل انتقالی در انتخاب شما نیست.'); return res.redirect('/students'); }
+      await k('students').whereIn('id', movers).update({ classroom_id: cls.id });
+      await svc.audit(req, 'bulk_move', 'students', null, `${movers.length} دانش‌آموز → ${cls.name}`); req.flash('success', `${movers.length} دانش‌آموز به «${cls.name}» منتقل شد.`);
     } else if (req.body.action === 'status' && L.studentStatus[req.body.status]) {
+      const before = await k('students').whereIn('id', ids).select('id', 'user_id', 'student_code', 'status');
       await k('students').whereIn('id', ids).update({ status: req.body.status });
-      const us = await k('students').whereIn('id', ids).select('user_id'); await k('users').whereIn('id', us.map((x) => x.user_id)).update({ active: req.body.status === 'active' ? 1 : 0 });
+      await k('users').whereIn('id', before.map((x) => x.user_id)).update({ active: req.body.status === 'active' ? 1 : 0 });
+      for (const b of before) { if (b.status !== req.body.status) await svc.audit(req, 'status_change', 'students', b.id, `${b.student_code}: ${b.status} → ${req.body.status}`); if (req.body.status !== 'active') await svc.killSessions(b.user_id); }
       await svc.audit(req, 'bulk_status', 'students', null, `${ids.length} → ${req.body.status}`); req.flash('success', 'وضعیت دانش‌آموزان تغییر کرد.');
     }
     res.redirect('/students');
@@ -129,8 +137,12 @@ router.post('/students/import', mgr, (req, res, next) => {
       if (err || !req.file) { req.flash('error', err ? err.message : 'فایل CSV را انتخاب کنید.'); return res.redirect('/students/import'); }
       const token = req.query._csrf; if (!token || token !== req.session.csrf) return res.status(403).view('error', { code: 403, title: 'درخواست نامعتبر', message: 'نشانه امنیتی نامعتبر است.' });
       const k = db.get(); const rows = parseCSV(req.file.buffer.toString('utf8')); rows.shift();
-      const classes = Object.fromEntries((await k('classrooms').select('id', 'name')).map((c) => [c.name, c.id]));
+      const classRows = await k('classrooms').select('id', 'name', 'capacity');
+      const classes = Object.fromEntries(classRows.map((c) => [c.name, c.id]));
+      const room = {}; // ظرفیت باقی‌مانده هر کلاس
+      for (const c of classRows) { const n = Number((await k('students').where({ classroom_id: c.id, status: 'active' }).count({ c: '*' }).first()).c); room[c.id] = c.capacity ? c.capacity - n : Infinity; }
       const result = { ok: 0, errors: [], creds: [] };
+      if (rows.length > 1000) { req.flash('error', 'حداکثر ۱۰۰۰ ردیف در هر بار ورود مجاز است.'); return res.redirect('/students/import'); }
       for (const [i, raw] of rows.entries()) {
         const r = normalizeInput(raw); const line = i + 2;
         const [first_name, last_name, g, national_id, bd, klass, father_name, father_phone, mother_name, mother_phone, address] = r;
@@ -143,6 +155,9 @@ router.post('/students/import', mgr, (req, res, next) => {
         if (bd && !birth) { result.errors.push(`ردیف ${line}: تاریخ تولد نامعتبر است.`); continue; }
         if (klass && !classes[klass]) { result.errors.push(`ردیف ${line}: کلاس «${klass}» وجود ندارد.`); continue; }
         if (!svc.validPhone(father_phone) || !svc.validPhone(mother_phone)) { result.errors.push(`ردیف ${line}: شماره تلفن نامعتبر است.`); continue; }
+        if (!father_phone && !mother_phone) { result.errors.push(`ردیف ${line}: حداقل یکی از شماره‌های پدر یا مادر الزامی است.`); continue; }
+        if (klass && room[classes[klass]] <= 0) { result.errors.push(`ردیف ${line}: ظرفیت کلاس «${klass}» تکمیل است.`); continue; }
+        if (klass) room[classes[klass]]--;
         const created = await createStudent(k, { first_name, last_name, gender, national_id: national_id || null, birth_date: birth, classroom_id: klass ? classes[klass] : null, father_name: father_name || null, father_phone: father_phone || null, mother_name: mother_name || null, mother_phone: mother_phone || null, address: address || null, status: 'active', enrollment_date: J.todayISO() });
         result.ok++; result.creds.push([created.student_code, `${first_name} ${last_name}`, created.password]);
       }
@@ -156,10 +171,13 @@ async function createStudent(k, data) {
   const code = data.student_code || await svc.nextStudentCode();
   const password = (settings.get('student_password_mode') === 'national_id' && data.national_id) ? data.national_id : svc.randomPassword(8);
   const username = await svc.uniqueUsername(code);
-  const ur = await k('users').insert({ username, password_hash: svc.hash(password), role: 'student', full_name: `${data.first_name} ${data.last_name}`, active: data.status === 'active' ? 1 : 0, must_change_password: 1 });
-  const user_id = Array.isArray(ur) ? ur[0] : ur;
-  const sr = await k('students').insert({ ...data, student_code: code, user_id });
-  return { id: Array.isArray(sr) ? sr[0] : sr, user_id, student_code: code, username, password };
+  const password_hash = svc.hash(password);
+  return k.transaction(async (t) => {
+    const ur = await t('users').insert({ username, password_hash, role: 'student', full_name: `${data.first_name} ${data.last_name}`, active: data.status === 'active' ? 1 : 0, must_change_password: 1 });
+    const user_id = Array.isArray(ur) ? ur[0] : ur;
+    const sr = await t('students').insert({ ...data, student_code: code, user_id });
+    return { id: Array.isArray(sr) ? sr[0] : sr, user_id, student_code: code, username, password };
+  });
 }
 
 /* ---------- افزودن/ویرایش ---------- */
@@ -237,14 +255,26 @@ router.post('/students/:id(\\d+)/edit', mgr, uploader('photos', 'photo', { image
 router.post('/students/:id(\\d+)/delete', mgr, async (req, res, next) => {
   try {
     const k = db.get(); const s = await getStudent(req, req.params.id); if (!s) return notFound(res);
+    const loans = Number((await k('book_loans').where({ student_id: s.id }).whereNull('returned_at').count({ c: '*' }).first()).c);
+    if (loans) { req.flash('error', 'این دانش‌آموز کتاب امانت‌گرفته‌شده بازنگردانده دارد؛ ابتدا بازگشت کتاب‌ها را ثبت کنید.'); return res.redirect('/students/' + s.id); }
+    const files = { documents: [], tickets: [], homework: [] };
+    (await k('student_documents').where({ student_id: s.id }).select('file_name')).forEach((d) => files.documents.push(d.file_name));
+    (await k('homework_submissions').where({ student_id: s.id }).whereNotNull('file').select('file')).forEach((d) => files.homework.push(d.file));
+    const tk = await k('tickets').where((b) => b.where('student_id', s.id).orWhere('created_by', s.user_id)).select('id');
+    const tkIds = tk.map((x) => x.id);
+    if (tkIds.length) (await k('ticket_messages').whereIn('ticket_id', tkIds).whereNotNull('attachment').select('attachment')).forEach((d) => files.tickets.push(d.attachment));
     await k.transaction(async (t) => {
+      if (tkIds.length) { await t('ticket_messages').whereIn('ticket_id', tkIds).del(); await t('tickets').whereIn('id', tkIds).del(); }
+      await t('ticket_messages').where({ user_id: s.user_id }).del();
       const fees = await t('fees').where({ student_id: s.id }).select('id');
       if (fees.length) await t('payments').whereIn('fee_id', fees.map((f) => f.id)).del();
       for (const tb of ['fees', 'attendance', 'scores', 'homework_submissions', 'discipline_records', 'health_records', 'meetings', 'student_notes', 'student_documents', 'book_loans']) await t(tb).where({ student_id: s.id }).del();
       await t('notifications').where({ user_id: s.user_id }).del();
       await t('students').where({ id: s.id }).del(); await t('users').where({ id: s.user_id }).del();
     });
+    await svc.killSessions(s.user_id);
     if (s.photo) fs.unlink(path.join(config.UPLOAD_DIR, 'photos', s.photo), () => {});
+    for (const [kind, list] of Object.entries(files)) list.forEach((f) => fs.unlink(path.join(config.UPLOAD_DIR, kind, f), () => {}));
     await svc.audit(req, 'delete', 'students', s.id, `${s.first_name} ${s.last_name}`);
     req.flash('success', 'دانش‌آموز و تمام سوابق او حذف شد.'); res.redirect('/students');
   } catch (e) { next(e); }
@@ -254,6 +284,7 @@ router.post('/students/:id(\\d+)/reset-password', mgr, async (req, res, next) =>
     const k = db.get(); const s = await getStudent(req, req.params.id); if (!s) return notFound(res);
     const pw = svc.randomPassword(8);
     await k('users').where({ id: s.user_id }).update({ password_hash: svc.hash(pw), must_change_password: 1 });
+    await svc.killSessions(s.user_id);
     await svc.audit(req, 'reset_password', 'students', s.id, s.student_code);
     req.flash('success', `رمز جدید دانش‌آموز: ${pw} (فقط یک‌بار نمایش داده می‌شود)`); res.redirect('/students/' + s.id);
   } catch (e) { next(e); }
@@ -348,13 +379,13 @@ router.get('/students/:id(\\d+)', async (req, res, next) => {
     }
     if (tab === 'grades' && s.classroom_id) {
       const published = !mgrFlag && u.role !== 'teacher';
-      const r = await classResults(k, s.classroom_id, { publishedOnly: published });
-      data.report = r; data.me = r.students.find((x) => x.id === s.id) || null;
+      const r = await classResults(k, s.classroom_id, { publishedOnly: published, ...(await svc.gradeScope(u, s.classroom_id)) });
+      data.report = r; data.me = r.students.find((x) => x.id === s.id) || null; data.showRank = u.role !== 'student' || settings.bool('show_rank_to_students');
       data.classAvg = (() => { const v = r.students.filter((x) => x.overall !== null); return v.length ? Math.round(v.reduce((a, b) => a + b.overall, 0) / v.length * 100) / 100 : null; })();
     }
     if (tab === 'behavior') {
-      if (M('discipline')) { data.discipline = await k('discipline_records').where({ student_id: s.id }).orderBy('record_date', 'desc'); data.behaviorScore = 20 + data.discipline.reduce((a, b) => a + (b.points || 0), 0); }
-      if (M('health') && u.role !== 'student') data.health = await k('health_records').where({ student_id: s.id }).orderBy('record_date', 'desc');
+      if (M('discipline')) { data.discipline = await k('discipline_records').where({ student_id: s.id }).orderBy('record_date', 'desc'); data.behaviorScore = Math.max(0, Math.min(20, 20 + data.discipline.reduce((a, b) => a + (b.points || 0), 0))); }
+      if (M('health') && mgrFlag) data.health = await k('health_records').where({ student_id: s.id }).orderBy('record_date', 'desc');
       if (M('meetings')) data.meetings = await k('meetings').where({ student_id: s.id }).orderBy('meeting_date', 'desc');
     }
     if (tab === 'documents') data.docs = await k('student_documents').where({ student_id: s.id }).orderBy('id', 'desc');
@@ -362,7 +393,7 @@ router.get('/students/:id(\\d+)', async (req, res, next) => {
     if (tab === 'finance') {
       data.fees = await k('fees as f').leftJoin(k('payments').select('fee_id').sum({ paid: 'amount' }).groupBy('fee_id').as('p'), 'p.fee_id', 'f.id').where('f.student_id', s.id).orderBy('f.due_date').select('f.*', k.raw('coalesce(p.paid,0) as paid'));
     }
-    if (tab === 'notes') data.notes = await k('student_notes as n').leftJoin('users as u', 'u.id', 'n.author_id').where('n.student_id', s.id).orderBy('n.id', 'desc').select('n.*', 'u.full_name as author');
+    if (tab === 'notes') data.notes = await k('student_notes as n').leftJoin('users as u', 'u.id', 'n.author_id').where('n.student_id', s.id).modify((q) => { if (!mgrFlag) q.where('n.author_id', u.id); }).orderBy('n.id', 'desc').select('n.*', 'u.full_name as author');
     res.view('students/show', data);
   } catch (e) { next(e); }
 });

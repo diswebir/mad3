@@ -31,8 +31,8 @@ async function recipientOptions(req) {
     groups.push({ label: 'مدیریت', opts: [['admin', 'مدیریت مدرسه (مدیر/معاون)']] });
     if (settings.bool('ticket_student_to_teacher') && u.student && u.student.classroom_id) {
       const c = await k('classrooms as c').leftJoin('teachers as t', 't.id', 'c.homeroom_teacher_id').where('c.id', u.student.classroom_id).first('t.user_id', 'c.homeroom_teacher_id');
-      const hu = c && c.homeroom_teacher_id ? await k('users').where({ id: c.user_id }).first() : null;
-      const subj = await k('class_subjects as cs').join('subjects as s', 's.id', 'cs.subject_id').join('teachers as t', 't.id', 'cs.teacher_id').join('users as x', 'x.id', 't.user_id').where('cs.classroom_id', u.student.classroom_id).orderBy('s.name').select('x.id', 'x.full_name', 's.name as subject');
+      const hu = c && c.homeroom_teacher_id ? await k('users').where({ id: c.user_id, active: 1 }).first() : null;
+      const subj = await k('class_subjects as cs').join('subjects as s', 's.id', 'cs.subject_id').join('teachers as t', 't.id', 'cs.teacher_id').join('users as x', 'x.id', 't.user_id').where('cs.classroom_id', u.student.classroom_id).where('x.active', 1).orderBy('s.name').select('x.id', 'x.full_name', 's.name as subject');
       const opts = []; if (hu) opts.push(['u:' + hu.id, `معلم راهنما — ${hu.full_name}`]);
       subj.forEach((s) => { if (!hu || s.id !== hu.id) opts.push(['u:' + s.id, `${s.subject} — ${s.full_name}`]); });
       if (opts.length) groups.push({ label: 'معلمان من', opts });
@@ -66,7 +66,7 @@ async function resolveRecipient(req, val) {
 async function notifyOther(t, req, msg) {
   let ids = [];
   if (req.user.id === t.created_by) ids = t.recipient_user_id ? [t.recipient_user_id] : await svc.managerIds();
-  else ids = [t.created_by];
+  else ids = [t.created_by, ...(t.recipient_user_id && t.recipient_user_id !== req.user.id ? [t.recipient_user_id] : [])];
   ids = ids.filter((i) => i !== req.user.id);
   await svc.notify(ids, msg, t.subject, '/tickets/' + t.id);
 }
@@ -87,7 +87,7 @@ router.get('/tickets', async (req, res, next) => {
     }
     const total = Number((await qb.clone().count({ c: '*' }).first()).c);
     const rows = await qb.orderByRaw("case t.status when 'closed' then 1 else 0 end").orderBy('t.updated_at', 'desc').orderBy('t.id', 'desc').limit(per).offset((page - 1) * per)
-      .select('t.*', 'c.full_name as creator_name', 'r.full_name as recipient_name', k.raw('(select count(*) from ticket_messages m where m.ticket_id = t.id) as msg_count'));
+      .select('t.*', 'c.full_name as creator_name', 'r.full_name as recipient_name', k.raw(`(select count(*) from ticket_messages m where m.ticket_id = t.id${staffLike(u) ? '' : ' and m.internal = 0'}) as msg_count`));
     res.view('tickets/index', { title: 'تیکت‌ها', rows, total, page, pages: Math.max(1, Math.ceil(total / per)), f: req.query, uid: u.id });
   } catch (e) { next(e); }
 });
@@ -111,6 +111,12 @@ router.post('/tickets/new', uploader('tickets', 'attachment', { maxMB: 5 }), asy
     if (b.category === 'absence') {
       related = J.parseJalali(b.related_date);
       if (!related) errors.push('برای توجیه غیبت، تاریخ غیبت را وارد کنید.');
+      else if (related > J.todayISO()) errors.push('تاریخ غیبت نمی‌تواند در آینده باشد.');
+      else if (related < J.addDays(J.todayISO(), -90)) errors.push('توجیه غیبت فقط برای ۹۰ روز اخیر ممکن است.');
+      else if (u.role === 'student') {
+        const dup = await k('tickets').where({ created_by: u.id, category: 'absence', related_date: related }).whereNot('status', 'closed').first();
+        if (dup) errors.push(`برای این تاریخ قبلاً درخواست توجیه ثبت کرده‌اید (تیکت شماره ${dup.id}).`);
+      }
     }
     if (errors.length) { if (req.file) fs.unlink(req.file.path, () => {}); return renderNew(req, res, errors, b); }
     const r = await k('tickets').insert({ subject: b.subject.slice(0, 200), category: b.category, priority: b.priority, status: 'open', created_by: u.id, recipient_user_id: rec.user, recipient_role: rec.role, student_id: rec.student, related_date: related, updated_at: svc.nowStr() });

@@ -15,7 +15,8 @@ async function canAccess(user, kind, name) {
     if (await k('users').where({ avatar: name }).first()) return { ok: true, inline: true };
     const s = await k('students').where({ photo: name }).first();
     if (!s) return { ok: false };
-    if (isMgr(user) || user.role === 'teacher' || s.user_id === user.id) return { ok: true, inline: true };
+    if (isMgr(user) || s.user_id === user.id) return { ok: true, inline: true };
+    if (user.role === 'teacher') { const ids = await svc.accessibleClassIds(user); if (ids.includes(s.classroom_id)) return { ok: true, inline: true }; }
     return { ok: false };
   }
   if (kind === 'documents') {

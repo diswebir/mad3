@@ -59,13 +59,14 @@
     var m = /^(\d{4})\/(\d{1,2})\/(\d{1,2})$/.exec(input.value);
     var sel = m ? { y: +m[1], m: +m[2], d: +m[3] } : null;
     var view = sel ? { y: sel.y, m: sel.m } : { y: tj.jy, m: tj.jm };
+    view.y = Math.min(Math.max(view.y, tj.jy - 120), tj.jy + 30);
     pop = document.createElement('div'); pop.className = 'jdate-pop';
     var r = input.getBoundingClientRect();
     pop.style.top = (window.scrollY + r.bottom + 4) + 'px';
     pop.style.left = Math.max(8, Math.min(window.scrollX + r.left, window.innerWidth - 280)) + 'px';
     function render() {
       var ys = '';
-      for (var y = tj.jy - 25; y <= tj.jy + 6; y++) ys += '<option value="' + y + '"' + (y === view.y ? ' selected' : '') + '>' + toFa(y) + '</option>';
+      for (var y = Math.min(tj.jy - 70, view.y); y <= Math.max(tj.jy + 6, view.y); y++) ys += '<option value="' + y + '"' + (y === view.y ? ' selected' : '') + '>' + toFa(y) + '</option>';
       var ms = MONTHS.map(function (n, i) { return '<option value="' + (i + 1) + '"' + (i + 1 === view.m ? ' selected' : '') + '>' + n + '</option>'; }).join('');
       var len = J.jalaaliMonthLength(view.y, view.m);
       var g = J.toGregorian(view.y, view.m, 1);

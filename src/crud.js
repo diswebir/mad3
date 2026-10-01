@@ -28,6 +28,8 @@ function mount(app, def) {
   def.perPage = def.perPage || PER_PAGE;
   const canRead = (u) => def.read.includes(u.role);
   const canWrite = (u) => def.write.includes(u.role);
+  // اگر canDelete تعریف نشده باشد، حذف هم‌سطح ویرایش است (معلم نمی‌تواند رکورد دیگران را حذف کند)
+  const canDeleteFn = def.canDelete || def.canEdit || null;
   const baseQuery = (k, req) => (def.base ? def.base(k, req) : k(def.table + ' as t').select('t.*'));
 
   async function scoped(req, qb) { if (def.scope) await def.scope(req, qb); }
@@ -69,7 +71,7 @@ function mount(app, def) {
       const filters = [];
       for (const f of def.filters || []) filters.push({ ...f, opts: (await resolveOptions(f, req)).map((o) => (Array.isArray(o) ? o : [o, o])), value: req.query[f.name] || '' });
       const extra = def.listExtra ? await def.listExtra(req, rows) : {};
-      res.view('crud/list', { def, rows, filters, q: req.query.q || '', page, pages: Math.max(1, Math.ceil(total / def.perPage)), total, sort: col, dir, canWrite: canWrite(req.user), canEditRow: (r) => canWrite(req.user) && (!def.canEdit || def.canEdit(req, r)), canDeleteRow: (r) => canWrite(req.user) && def.delete !== false && (!def.canDelete || def.canDelete(req, r)), extra, rbase: base, title: def.title });
+      res.view('crud/list', { def, rows, filters, q: req.query.q || '', page, pages: Math.max(1, Math.ceil(total / def.perPage)), total, sort: col, dir, canWrite: canWrite(req.user), canEditRow: (r) => canWrite(req.user) && (!def.canEdit || def.canEdit(req, r)), canDeleteRow: (r) => canWrite(req.user) && def.delete !== false && (!canDeleteFn || canDeleteFn(req, r)), extra, rbase: base, title: def.title });
     } catch (e) { next(e); }
   });
 
@@ -162,7 +164,7 @@ function mount(app, def) {
           const k = db.get();
           const qb = baseQuery(k, req).where('t.id', req.params.id); await scoped(req, qb);
           const row = await qb.first();
-          if (!row || (def.canDelete && !def.canDelete(req, row))) return res.status(404).view('error', { code: 404, title: 'یافت نشد', message: 'مورد درخواستی یافت نشد.' });
+          if (!row || (canDeleteFn && !canDeleteFn(req, row))) return res.status(404).view('error', { code: 404, title: 'یافت نشد', message: 'مورد درخواستی یافت نشد.' });
           if (def.beforeDelete) { const msg = await def.beforeDelete(row, req); if (msg) { req.flash('error', msg); return res.redirect(base); } }
           await k(def.table).where({ id: row.id }).del();
           if (def.afterDelete) await def.afterDelete(row, req);

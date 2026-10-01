@@ -15,7 +15,7 @@ async function seedBase(k, { school, admin, modules }) {
   await k.batchInsert('settings', Object.entries(vals).map(([key, value]) => ({ key, value: String(value) })), 50);
   const chosen = new Set(modules || modulesReg.MODULES.map((m) => m.key));
   await k.batchInsert('modules_state', modulesReg.MODULES.map((m) => ({ key: m.key, enabled: m.core || chosen.has(m.key) ? 1 : 0 })), 50);
-  await k('users').insert({ username: admin.username, password_hash: svc.hash(admin.password), role: 'admin', full_name: admin.full_name, email: admin.email || null, active: 1 });
+  await k('users').insert({ username: admin.username, password_hash: admin.password_hash || svc.hash(admin.password), role: 'admin', full_name: admin.full_name, email: admin.email || null, active: 1 });
   const jy = J.isoToJ(J.todayISO());
   const y0 = jy.jm >= 6 ? jy.jy : jy.jy - 1;
   await k('academic_years').insert({ title: `${y0}-${y0 + 1}`, start_date: J.jToIso(y0, 6, 31), end_date: J.jToIso(y0 + 1, 3, 31), is_current: 1 });

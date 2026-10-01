@@ -47,13 +47,16 @@ router.get('/', async (req, res, next) => {
         subjects: Number((await k('subjects').count({ c: '*' }).first()).c),
       };
       if (M('attendance')) {
-        const rows = await k('attendance').where({ date: today }).groupBy('status').select('status').count({ c: '*' });
-        const m = Object.fromEntries(rows.map((x) => [x.status, Number(x.c)]));
+        // در حالت «به‌تفکیک زنگ» هر دانش‌آموز چند رکورد دارد؛ بدترین وضعیت روز او ملاک است
+        const prio = { absent: 5, excused: 4, leave: 3, late: 2, present: 1 };
+        const worst = {};
+        for (const x of await k('attendance').where({ date: today }).select('student_id', 'status')) if (!worst[x.student_id] || (prio[x.status] || 0) > (prio[worst[x.student_id]] || 0)) worst[x.student_id] = x.status;
+        const m = {}; for (const st of Object.values(worst)) m[st] = (m[st] || 0) + 1;
         const total = Object.values(m).reduce((a, b) => a + b, 0);
         data.att = { total, absent: m.absent || 0, late: m.late || 0, present: m.present || 0, rate: total ? Math.round(((m.present || 0) + (m.late || 0)) * 100 / total) : null };
         const recorded = await k('attendance').where({ date: today }).countDistinct({ c: 'classroom_id' }).first();
         data.att.classesRecorded = Number(recorded.c); data.att.classesTotal = data.counts.classes;
-        data.absentees = await k('attendance as a').join('students as s', 's.id', 'a.student_id').leftJoin('classrooms as c', 'c.id', 'a.classroom_id').where({ 'a.date': today, 'a.status': 'absent' }).orderBy('c.name').limit(10).select('s.id', 's.first_name', 's.last_name', 'c.name as class_name');
+        data.absentees = await k('attendance as a').join('students as s', 's.id', 'a.student_id').leftJoin('classrooms as c', 'c.id', 'a.classroom_id').where({ 'a.date': today, 'a.status': 'absent' }).groupBy('s.id', 's.first_name', 's.last_name', 'c.name').orderBy('c.name').limit(10).select('s.id', 's.first_name', 's.last_name', 'c.name as class_name');
         const days = await k('attendance').where('date', '<=', today).groupBy('date').orderBy('date', 'desc').limit(7).select('date').count({ total: '*' }).sum({ present: k.raw("case when status in ('present','late') then 1 else 0 end") });
         data.trend = days.reverse().map((x) => ({ date: x.date, rate: x.total ? Math.round(Number(x.present) * 100 / Number(x.total)) : 0 }));
       }

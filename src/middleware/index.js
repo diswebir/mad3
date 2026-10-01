@@ -28,16 +28,26 @@ class KnexStore extends session.Store {
     } catch (e) { cb && cb(e); }
   }
   async destroy(sid, cb) { try { await db.get()('sessions').where({ sid }).del(); cb && cb(null); } catch (e) { cb && cb(e); } }
-  async touch(sid, sess, cb) { cb && cb(null); }
-  static async cleanup() { try { await db.get()('sessions').where('expires_at', '<', Date.now()).del(); } catch (_) { /* ignore */ } }
+  // تمدید نشست فعال (حداکثر هر ۵ دقیقه یک بار نوشتن در پایگاه داده)
+  async touch(sid, sess, cb) {
+    try {
+      const now = Date.now(); const last = KnexStore._touched.get(sid) || 0;
+      if (now - last > 300000 && sess && sess.cookie && sess.cookie.expires) {
+        KnexStore._touched.set(sid, now);
+        await db.get()('sessions').where({ sid }).update({ expires_at: new Date(sess.cookie.expires).getTime() });
+      }
+      cb && cb(null);
+    } catch (e) { cb && cb(e); }
+  }
+  static async cleanup() { try { await db.get()('sessions').where('expires_at', '<', Date.now()).del(); KnexStore._touched.clear(); } catch (_) { /* ignore */ } }
 }
 
+KnexStore._touched = new Map();
 function sessionMiddleware(cfg) {
-  const hours = settings.num('session_hours') || 8;
-  return session({
-    name: 'school.sid', secret: cfg.sessionSecret, store: new KnexStore(), resave: false, saveUninitialized: false,
-    cookie: { httpOnly: true, sameSite: 'lax', secure: cfg.secureCookies ? 'auto' : false, maxAge: hours * 3600 * 1000, path: cfg.basePath || '/' },
-  });
+  // مدت اعتبار نشست از تنظیمات خوانده می‌شود (برای ورودهای جدید بدون راه‌اندازی مجدد اعمال می‌شود)؛ نشست فعال تمدید می‌شود
+  const cookie = { httpOnly: true, sameSite: 'lax', secure: cfg.secureCookies ? 'auto' : false, maxAge: (settings.num('session_hours') || 8) * 3600 * 1000, path: cfg.basePath || '/' };
+  const mw = session({ name: 'school.sid', secret: cfg.sessionSecret, store: new KnexStore(), resave: false, saveUninitialized: false, rolling: true, cookie });
+  return (req, res, next) => { cookie.maxAge = (settings.num('session_hours') || 8) * 3600 * 1000; mw(req, res, next); };
 }
 
 /* ---------- کش کوتاه‌مدت برای شمارنده‌های نوار کناری ---------- */
@@ -85,7 +95,7 @@ function requireAuth(req, res, next) {
     if (req.user.must_change_password && !req.path.startsWith('/profile') && !req.path.startsWith('/logout')) return res.redirect('/profile/password?force=1');
     return next();
   }
-  if (req.session) req.session.returnTo = req.originalUrl.replace(config.load().basePath, '') || '/';
+  if (req.session && req.method === 'GET') { const back = req.originalUrl.replace(config.load().basePath, '') || '/'; if (back.startsWith('/') && !back.startsWith('//')) req.session.returnTo = back; }
   res.redirect('/login');
 }
 const requireRole = (...roles) => (req, res, next) => {
@@ -141,7 +151,7 @@ function uploader(kind, field, { maxMB = 5, images = false } = {}) {
 }
 const noPassNormalize = (body) => {
   const o = {};
-  for (const k of Object.keys(body)) o[k] = /password|pass$|_csrf/i.test(k) ? body[k] : normalizeInput(body[k]);
+  for (const k of Object.keys(body)) o[k] = /password|^current$|^pass|pass$|_csrf/i.test(k) ? body[k] : normalizeInput(body[k]);
   return nestKeys(o);
 };
 

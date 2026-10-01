@@ -7,12 +7,16 @@ const round2 = (n) => Math.round(n * 100) / 100;
  * میانگین درس = Σ(نمره/بیشینه × وزن) / Σ وزن × مقیاس کارنامه (فقط ارزشیابی‌هایی که نمره دارند)
  * معدل کل = میانگین وزنی دروس بر اساس ضریب درس
  */
-async function classResults(k, classroomId, { term = null, publishedOnly = false } = {}) {
+async function classResults(k, classroomId, { term = null, publishedOnly = false, onlyTeacherId = null } = {}) {
   const scale = settings.num('grade_scale') || 20; const pass = settings.num('pass_mark') || 10;
-  const cs = await k('class_subjects as cs').join('subjects as s', 's.id', 'cs.subject_id').leftJoin('teachers as t', 't.id', 'cs.teacher_id').leftJoin('users as u', 'u.id', 't.user_id').where('cs.classroom_id', classroomId).orderBy('s.name').select('cs.id', 's.name', 's.coefficient', 'u.full_name as teacher_name', 'cs.teacher_id');
+  const csQ = k('class_subjects as cs').join('subjects as s', 's.id', 'cs.subject_id').leftJoin('teachers as t', 't.id', 'cs.teacher_id').leftJoin('users as u', 'u.id', 't.user_id').where('cs.classroom_id', classroomId).orderBy('s.name').select('cs.id', 's.name', 's.coefficient', 'u.full_name as teacher_name', 'cs.teacher_id');
+  // معلم غیر راهنما فقط دروس خودش را می‌بیند (بدون معدل کل و رتبه)
+  if (onlyTeacherId) csQ.where('cs.teacher_id', onlyTeacherId);
+  const cs = await csQ;
   const students = await k('students').where({ classroom_id: classroomId }).where('status', 'active').orderBy('last_name').orderBy('first_name').select('id', 'first_name', 'last_name', 'student_code');
   const csIds = cs.map((x) => x.id);
-  const res = { scale, pass, subjects: cs, students: students.map((s) => ({ ...s, subjects: {}, overall: null, rank: null })), term };
+  const partial = !!onlyTeacherId;
+  const res = { scale, pass, subjects: cs, students: students.map((s) => ({ ...s, subjects: {}, overall: null, rank: null })), term, partial, rankedCount: 0 };
   if (!csIds.length || !students.length) return res;
   const aq = k('assessments').whereIn('class_subject_id', csIds);
   if (term) aq.where({ term });
@@ -33,7 +37,7 @@ async function classResults(k, classroomId, { term = null, publishedOnly = false
       const o = acc[s.id] && acc[s.id][c.id];
       if (o && o.den > 0) { const avg = round2((o.num / o.den) * scale); s.subjects[c.id] = { avg, count: o.count, passed: avg >= pass }; wsum += avg * (c.coefficient || 1); csum += c.coefficient || 1; }
     }
-    s.overall = csum ? round2(wsum / csum) : null;
+    s.overall = csum && !partial ? round2(wsum / csum) : null;
   }
   const ranked = res.students.filter((s) => s.overall !== null).sort((a, b) => b.overall - a.overall);
   let rank = 0; let prev = null; let i = 0;

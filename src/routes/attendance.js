@@ -13,8 +13,9 @@ router.use('/attendance', modules.guard('attendance'));
 const staff = requireRole('admin', 'deputy', 'teacher');
 const STATUSES = Object.keys(L.attendance);
 
-async function accessibleClasses(req) {
-  const ids = await svc.accessibleClassIds(req.user);
+/** forRecording: در حالت «روزانه» فقط معلم راهنما حق ثبت دارد؛ در حالت «به‌تفکیک زنگ» هر معلمِ کلاس */
+async function accessibleClasses(req, forRecording = false) {
+  const ids = forRecording && req.user.role === 'teacher' && settings.get('attendance_mode') !== 'periodic' ? await svc.homeroomClassIds(req.user) : await svc.accessibleClassIds(req.user);
   const q = db.get()('classrooms').orderBy('grade_level').orderBy('name').select('id', 'name', 'grade_level');
   if (ids) q.whereIn('id', ids.length ? ids : [0]);
   return q;
@@ -23,7 +24,7 @@ const parseDate = (s) => (s ? (J.parseJalali(s) || null) : null);
 
 router.get('/attendance', staff, async (req, res, next) => {
   try {
-    const k = db.get(); const classes = await accessibleClasses(req);
+    const k = db.get(); const classes = await accessibleClasses(req, true);
     const date = parseDate(req.query.date) || J.todayISO(); const mode = settings.get('attendance_mode'); const periods = settings.periods();
     const period = mode === 'periodic' ? Math.min(Math.max(parseInt(req.query.period, 10) || 1, 1), periods.length) : 0;
     const classId = Number(req.query.class_id) || (classes[0] && classes[0].id);
@@ -48,9 +49,9 @@ router.get('/attendance', staff, async (req, res, next) => {
 
 router.post('/attendance', staff, async (req, res, next) => {
   try {
-    const k = db.get(); const b = req.body; const classes = await accessibleClasses(req);
+    const k = db.get(); const b = req.body; const classes = await accessibleClasses(req, true);
     const cls = classes.find((c) => c.id === Number(b.class_id)); const date = parseDate(b.date);
-    const mode = settings.get('attendance_mode'); const period = mode === 'periodic' ? Math.min(Math.max(parseInt(b.period, 10) || 1, 1), 12) : 0;
+    const mode = settings.get('attendance_mode'); const period = mode === 'periodic' ? Math.min(Math.max(parseInt(b.period, 10) || 1, 1), settings.num('periods_count') || 12) : 0;
     const back = `/attendance?class_id=${b.class_id}&date=${encodeURIComponent(J.isoToJString(date || J.todayISO()))}${mode === 'periodic' ? '&period=' + period : ''}`;
     if (!cls || !date) { req.flash('error', 'کلاس یا تاریخ نامعتبر است.'); return res.redirect('/attendance'); }
     if (date > J.todayISO()) { req.flash('error', 'ثبت حضور و غیاب برای روزهای آینده ممکن نیست.'); return res.redirect(back); }
