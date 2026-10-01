@@ -12,19 +12,22 @@ const assert = require('assert');
 const J = require('../src/utils/jalali');
 
 const PORT = 3200 + Math.floor(Math.random() * 500);
-const BASE = `http://127.0.0.1:${PORT}`;
+const PREFIX = process.env.TEST_BASE_PATH || '';
+const BASE = `http://127.0.0.1:${PORT}${PREFIX}`;
+const strip = (u) => (PREFIX && (u.startsWith(PREFIX + '/') || u === PREFIX) ? u.slice(PREFIX.length) || '/' : u);
 const DATA = fs.mkdtempSync(path.join(os.tmpdir(), 'school-test-'));
 let server; let failures = 0; let passes = 0;
 
 class Client {
   constructor() { this.cookies = {}; }
   async req(method, url, form, { follow = true, query = '' } = {}) {
+    url = strip(url.replace(BASE, ''));
     const headers = { cookie: Object.entries(this.cookies).map(([k, v]) => `${k}=${v}`).join('; ') };
     let body;
     if (form) { headers['content-type'] = 'application/x-www-form-urlencoded'; body = new URLSearchParams(Object.entries(form).flatMap(([k, v]) => (Array.isArray(v) ? v.map((x) => [k, x]) : [[k, v]]))).toString(); }
     const res = await fetch(BASE + url + query, { method, headers, body, redirect: 'manual' });
     for (const c of res.headers.getSetCookie ? res.headers.getSetCookie() : []) { const [kv] = c.split(';'); const i = kv.indexOf('='); this.cookies[kv.slice(0, i)] = kv.slice(i + 1); }
-    if (follow && [301, 302, 303].includes(res.status)) { const loc = res.headers.get('location'); return this.req('GET', loc.replace(BASE, '')); }
+    if (follow && [301, 302, 303].includes(res.status)) { const loc = res.headers.get('location'); return this.req('GET', loc); }
     const text = await res.text();
     return { status: res.status, text, url, location: res.headers.get('location') };
   }
@@ -36,9 +39,9 @@ class Client {
   async mp(url, fields, file, token) {
     const fd = new FormData(); for (const [k, v] of Object.entries(fields)) fd.append(k, v);
     if (file) fd.append(file.field, new Blob([file.content]), file.name);
-    const res = await fetch(`${BASE}${url}?_csrf=${token}`, { method: 'POST', headers: { cookie: Object.entries(this.cookies).map(([k, v]) => `${k}=${v}`).join('; ') }, body: fd, redirect: 'manual' });
+    const res = await fetch(`${BASE}${strip(url)}?_csrf=${token}`, { method: 'POST', headers: { cookie: Object.entries(this.cookies).map(([k, v]) => `${k}=${v}`).join('; ') }, body: fd, redirect: 'manual' });
     for (const c of res.headers.getSetCookie()) { const [kv] = c.split(';'); const i = kv.indexOf('='); this.cookies[kv.slice(0, i)] = kv.slice(i + 1); }
-    if ([301, 302, 303].includes(res.status)) return this.req('GET', res.headers.get('location').replace(BASE, ''));
+    if ([301, 302, 303].includes(res.status)) return this.req('GET', res.headers.get('location'));
     return { status: res.status, text: await res.text(), url };
   }
   async get(url) { return this.req('GET', url); }
@@ -50,7 +53,7 @@ const ok = (r, msg) => { assert.ok(r.status === 200, `${msg || r.url} → HTTP $
 async function waitUp() { for (let i = 0; i < 80; i++) { try { const r = await fetch(BASE + '/healthz'); if (r.ok) return; } catch (_) { /* wait */ } await new Promise((r) => setTimeout(r, 250)); } throw new Error('server did not start'); }
 
 (async () => {
-  server = spawn(process.execPath, ['app.js'], { cwd: path.join(__dirname, '..'), env: { ...process.env, PORT, SCHOOL_DATA_DIR: DATA, NODE_ENV: 'test' }, stdio: ['ignore', 'pipe', 'pipe'] });
+  server = spawn(process.execPath, ['app.js'], { cwd: path.join(__dirname, '..'), env: { ...process.env, PORT, SCHOOL_DATA_DIR: DATA, NODE_ENV: 'test', BASE_PATH: PREFIX }, stdio: ['ignore', 'pipe', 'pipe'] });
   let log = ''; server.stdout.on('data', (d) => (log += d)); server.stderr.on('data', (d) => (log += d));
   await waitUp();
   console.log('\n● ویزارد نصب');
@@ -71,7 +74,7 @@ async function waitUp() { for (let i = 0; i < 80; i++) { try { const r = await f
   await t('محافظت CSRF', async () => { const c = new Client(); await c.get('/login'); const r = await c.req('POST', '/login', { username: 'admin', password: 'x' }); assert.equal(r.status, 403); });
   await t('دسترسی بدون ورود هدایت می‌شود', async () => { const r = await new Client().req('GET', '/students', null, { follow: false }); assert.equal(r.status, 302); });
 
-  const admin = (await login('admin', 'Admin#12345')).c;
+  let admin = (await login('admin', 'Admin#12345')).c;
   console.log('\n● مدیر');
   const adminPages = ['/', '/students', '/students?q=احمدی', '/students/1', '/students/1?tab=attendance', '/students/1?tab=grades', '/students/1?tab=behavior', '/students/1?tab=documents', '/students/1?tab=tickets', '/students/1?tab=finance', '/students/1?tab=notes', '/students/1/edit', '/students/new', '/students/import', '/students/1/print', '/students/1/card', '/students/export.csv',
     '/teachers', '/teachers/1', '/teachers/new', '/teachers/1/edit', '/classes', '/classes/1', '/classes/1/edit', '/classes/new', '/classes/1/print', '/subjects', '/subjects/new', '/academic-years',
@@ -81,13 +84,13 @@ async function waitUp() { for (let i = 0; i < 80; i++) { try { const r = await f
   for (const p of adminPages) await t(p, async () => ok(await admin.get(p)));
 
   console.log('\n● معلم');
-  const teacher = (await login('t.ahmadi', 'teacher123')).c;
+  let teacher = (await login('t.ahmadi', 'teacher123')).c;
   for (const p of ['/', '/students', '/classes', '/classes/1', '/attendance', '/attendance/report', '/tickets', '/tickets/new', '/grades', '/grades/cs/1', '/homework', '/homework/new', '/timetable', '/calendar', '/exams', '/announcements', '/announcements/new', '/discipline', '/discipline/new', '/meetings', '/library/books', '/library/loans', '/profile']) await t(p, async () => ok(await teacher.get(p)));
   await t('معلم به بخش مدیریتی دسترسی ندارد', async () => { for (const p of ['/users', '/settings', '/teachers', '/finance', '/backup', '/reports']) { const r = await teacher.get(p); assert.equal(r.status, 403, p + ' → ' + r.status); } });
   await t('معلم فقط دانش‌آموزان کلاس‌های خود را می‌بیند', async () => { const r = await teacher.get('/students/50'); assert.equal(r.status, 404); });
 
   console.log('\n● دانش‌آموز');
-  const student = (await login('14050001', 'student123')).c;
+  let student = (await login('14050001', 'student123')).c;
   for (const p of ['/', '/students/me', '/students/1', '/attendance/my', '/tickets', '/tickets/new', '/grades/my', '/homework', '/homework/1', '/timetable', '/calendar', '/exams', '/announcements', '/discipline', '/finance', '/library/books', '/library/loans', '/meetings', '/notifications']) await t(p, async () => ok(await student.get(p)));
   await t('دانش‌آموز به پرونده دیگران دسترسی ندارد', async () => { assert.equal((await student.get('/students/2')).status, 404); });
   await t('دانش‌آموز به مدیریت دسترسی ندارد', async () => { for (const p of ['/students', '/teachers', '/users', '/settings', '/attendance', '/reports', '/classes']) { const r = await student.get(p); assert.equal(r.status, 403, p + ' → ' + r.status); } });
@@ -235,7 +238,26 @@ async function waitUp() { for (let i = 0; i < 80; i++) { try { const r = await f
     let page = await admin.get('/backup'); const b = await admin.req('POST', '/backup/download', { _csrf: admin.csrf(page.text) });
     const bad = await admin.multipart('/backup/restore', { confirm: 'no' }, { field: 'file', name: 'b.json', content: b.text }); assert.ok(/RESTORE/.test(bad.text));
     const r = await admin.multipart('/backup/restore', { confirm: 'RESTORE' }, { field: 'file', name: 'b.json', content: b.text }); ok(r); assert.ok(/ورود به حساب/.test(r.text), 'پس از بازیابی باید به ورود برگردد');
-    const a2 = (await login('admin', 'Admin#12345')).c; ok(await a2.get('/students'));
+    admin = (await login('admin', 'Admin#12345')).c; ok(await admin.get('/students'));
+    teacher = (await login('t.ahmadi', 'teacher123')).c; student = (await login('14050001', 'NewPass123')).c;
+  });
+
+  await t('تب‌های پرونده برای دانش‌آموز و معلم', async () => {
+    for (const tab of ['overview', 'attendance', 'grades', 'behavior', 'tickets', 'finance']) ok(await student.get('/students/1?tab=' + tab), 'student tab ' + tab);
+    for (const tab of ['overview', 'attendance', 'grades', 'behavior', 'documents', 'tickets', 'notes']) ok(await teacher.get('/students/1?tab=' + tab), 'teacher tab ' + tab);
+    ok(await teacher.get('/grades/report-card/1')); ok(await teacher.get('/grades/class/1')); ok(await teacher.get('/students/1/print'));
+    assert.equal((await student.get('/students/1/print')).status, 403);
+  });
+  await t('خاموش‌کردن همه ماژول‌های اختیاری: هیچ صفحه‌ای از کار نمی‌افتد', async () => {
+    const opt = require('../src/modules').MODULES.filter((m) => !m.core).map((m) => m.key);
+    for (const k of opt) { const r = await admin.post(`/modules/${k}/toggle`, {}, '/modules'); ok(r); }
+    const shouldBe404 = ['/tickets', '/attendance', '/grades', '/homework', '/finance', '/library/books', '/reports', '/backup', '/audit', '/calendar', '/exams', '/discipline'];
+    for (const p of shouldBe404) { const r = await admin.get(p); assert.equal(r.status, 404, p + ' → ' + r.status); }
+    for (const c of [admin, teacher, student]) { ok(await c.get('/')); }
+    for (const tab of ['overview', 'notes']) ok(await admin.get('/students/1?tab=' + tab));
+    ok(await admin.get('/students/1')); ok(await admin.get('/classes/1')); ok(await admin.get('/teachers/1')); ok(await admin.get('/students')); ok(await admin.get('/students/new')); ok(await admin.get('/search?q=احمد')); ok(await teacher.get('/classes')); ok(await student.get('/students/me'));
+    for (const k of opt) { const r = await admin.post(`/modules/${k}/toggle`, {}, '/modules'); ok(r); }
+    ok(await admin.get('/tickets')); ok(await student.get('/finance'));
   });
   await t('قفل موقت پس از تلاش‌های ناموفق', async () => {
     let last; for (let i = 0; i < 6; i++) { const c = new Client(); const p = await c.get('/login'); last = await c.req('POST', '/login', { _csrf: c.csrf(p.text), username: 'deputy', password: 'wrong' + i }); }

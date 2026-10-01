@@ -60,8 +60,11 @@ async function createApp() {
 
   const root = express.Router();
   root.use(compression());
+  // ALLOW_FRAMING=true فقط برای پیش‌نمایش داخل iframe (پیش‌فرض: جلوگیری از clickjacking)
+  const framing = process.env.ALLOW_FRAMING === 'true';
   root.use(helmet({
-    contentSecurityPolicy: { directives: { defaultSrc: ["'self'"], scriptSrc: ["'self'"], styleSrc: ["'self'", "'unsafe-inline'"], imgSrc: ["'self'", 'data:'], fontSrc: ["'self'"], objectSrc: ["'none'"], baseUri: ["'self'"], formAction: ["'self'"], frameAncestors: ["'self'"], upgradeInsecureRequests: null } },
+    contentSecurityPolicy: { directives: { defaultSrc: ["'self'"], scriptSrc: ["'self'"], styleSrc: ["'self'", "'unsafe-inline'"], imgSrc: ["'self'", 'data:'], fontSrc: ["'self'"], objectSrc: ["'none'"], baseUri: ["'self'"], formAction: ["'self'"], frameAncestors: framing ? ['*'] : ["'self'"], upgradeInsecureRequests: null } },
+    frameguard: framing ? false : { action: 'sameorigin' },
     crossOriginEmbedderPolicy: false, crossOriginResourcePolicy: { policy: 'same-origin' }, hsts: false,
   }));
   root.use('/assets', express.static(path.join(config.ROOT, 'public'), { maxAge: '30d', index: false }));
