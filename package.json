@@ -12,7 +12,8 @@
     "start": "node app.js",
     "dev": "node --watch app.js",
     "test": "node test/smoke.test.js",
-    "demo": "node scripts/install-demo.js"
+    "demo": "node scripts/install-demo.js",
+    "build:assets": "node scripts/build-assets.js"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",

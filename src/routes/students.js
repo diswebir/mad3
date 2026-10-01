@@ -309,7 +309,7 @@ router.post('/students/:id(\\d+)/documents/:did/delete', requireRole('admin', 'd
 /* ---------- نمایش پرونده ---------- */
 router.get('/students/me', requireRole('student'), (req, res) => (req.user.student ? res.redirect('/students/' + req.user.student.id) : res.redirect('/')));
 
-function display(s) {
+function display(s, extra = {}) {
   const out = {};
   for (const f of allFields()) {
     let v = s[f.name];
@@ -318,6 +318,8 @@ function display(s) {
     else if (f.name === 'gender') v = L.gender[v]; else if (f.name === 'status') v = L.studentStatus[v];
     out[f.name] = v;
   }
+  out.classroom_id = s.class_name || '—';
+  out.route_id = extra.routeName || '—';
   return out;
 }
 router.get('/students/:id(\\d+)', async (req, res, next) => {
@@ -337,6 +339,7 @@ router.get('/students/:id(\\d+)', async (req, res, next) => {
     if (tab === 'overview') {
       data.homeroom = s.homeroom_teacher_id ? await k('teachers as t').join('users as u', 'u.id', 't.user_id').where('t.id', s.homeroom_teacher_id).first('u.full_name', 'u.phone') : null;
       data.route = M('transport') && s.route_id ? await k('bus_routes').where({ id: s.route_id }).first() : null;
+      data.disp = display(s, { routeName: data.route ? data.route.name : null });
     }
     if (tab === 'attendance') {
       const rows = await k('attendance').where({ student_id: s.id }).groupBy('status').select('status').count({ c: '*' });
@@ -367,7 +370,8 @@ router.get('/students/:id(\\d+)/print', requireRole('admin', 'deputy', 'teacher'
   try {
     const k = db.get(); const s = await getStudent(req, req.params.id); if (!s) return notFound(res);
     const attRows = await k('attendance').where({ student_id: s.id }).groupBy('status').select('status').count({ c: '*' });
-    res.view('students/print', { title: 'پرونده ' + s.first_name + ' ' + s.last_name, s, groups: fieldGroups(), disp: display(s), att: Object.fromEntries(attRows.map((r) => [r.status, Number(r.c)])) });
+    const route = M('transport') && s.route_id ? await k('bus_routes').where({ id: s.route_id }).first() : null;
+    res.view('students/print', { title: 'پرونده ' + s.first_name + ' ' + s.last_name, s, groups: fieldGroups(), disp: display(s, { routeName: route ? route.name : null }), att: Object.fromEntries(attRows.map((r) => [r.status, Number(r.c)])) });
   } catch (e) { next(e); }
 });
 router.get('/students/:id(\\d+)/card', requireRole('admin', 'deputy'), async (req, res, next) => {

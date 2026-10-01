@@ -6,6 +6,7 @@ const settings = require('./settings');
 const modulesReg = require('./modules');
 const J = require('./utils/jalali');
 const svc = require('./services');
+const { toFa } = require('./utils/fa');
 
 async function seedBase(k, { school, admin, modules }) {
   const vals = {};
@@ -118,7 +119,7 @@ async function seedDemo(k) {
   await bulk(k, 'users', userRows);
   const sUsers = await k('users').where({ role: 'student' }).select('id', 'username');
   const sUid = Object.fromEntries(sUsers.map((u) => [u.username, u.id]));
-  const byGrade = { هفتم: 1392, هشتم: 1391, نهم: 1390 };
+  const byGrade = { هفتم: 1391, هشتم: 1390, نهم: 1389 };
   const students = studentMeta.map((m, i) => {
     const fatherFirst = pick(maleFirst); const motherFirst = pick(femaleFirst);
     const mobileGuardian = phone(r);
@@ -319,8 +320,8 @@ async function seedDemo(k) {
     };
     const A = absences;
     const abs1 = A[0], abs2 = A[Math.min(7, A.length - 1)], abs3 = A[Math.min(15, A.length - 1)];
-    if (abs1) await mk({ subject: 'توجیه غیبت روز ' + J.isoToJString(abs1.date), category: 'absence', status: 'open', by: abs1.s.user_id, to: homeroomUser(abs1.s), student: abs1.s.id, related: abs1.date, ago: 300, priority: 'normal' }, [[abs1.s.user_id, 'سلام. بنده به دلیل بیماری (سرماخوردگی) در تاریخ مذکور نتوانستم در مدرسه حاضر شوم. گواهی پزشک را نیز پیوست می‌کنم. لطفاً غیبت را موجه کنید.']]);
-    if (abs2) await mk({ subject: 'توجیه غیبت روز ' + J.isoToJString(abs2.date), category: 'absence', status: 'closed', by: abs2.s.user_id, to: homeroomUser(abs2.s), student: abs2.s.id, related: abs2.date, ago: 2000, justified: 1, rating: 5, rc: 'سریع رسیدگی شد.' }, [[abs2.s.user_id, 'سلام، به دلیل مراجعه به پزشک غایب بودم.'], [homeroomUser(abs2.s), 'سلام. غیبت شما موجه ثبت شد. سلامت باشید.'], [abs2.s.user_id, 'ممنون از شما.']]);
+    if (abs1) await mk({ subject: 'توجیه غیبت روز ' + toFa(J.isoToJString(abs1.date)), category: 'absence', status: 'open', by: abs1.s.user_id, to: homeroomUser(abs1.s), student: abs1.s.id, related: abs1.date, ago: 300, priority: 'normal' }, [[abs1.s.user_id, 'سلام. بنده به دلیل بیماری (سرماخوردگی) در تاریخ مذکور نتوانستم در مدرسه حاضر شوم. گواهی پزشک را نیز پیوست می‌کنم. لطفاً غیبت را موجه کنید.']]);
+    if (abs2) await mk({ subject: 'توجیه غیبت روز ' + toFa(J.isoToJString(abs2.date)), category: 'absence', status: 'closed', by: abs2.s.user_id, to: homeroomUser(abs2.s), student: abs2.s.id, related: abs2.date, ago: 2000, justified: 1, rating: 5, rc: 'سریع رسیدگی شد.' }, [[abs2.s.user_id, 'سلام، به دلیل مراجعه به پزشک غایب بودم.'], [homeroomUser(abs2.s), 'سلام. غیبت شما موجه ثبت شد. سلامت باشید.'], [abs2.s.user_id, 'ممنون از شما.']]);
     if (abs3) await mk({ subject: 'سؤال درباره غیبت', category: 'absence', status: 'answered', by: abs3.s.user_id, role: 'admin', student: abs3.s.id, related: abs3.date, ago: 700 }, [[abs3.s.user_id, 'آیا غیبت اینجانب در تاریخ مذکور به‌عنوان غیرموجه ثبت شده است؟'], [adminId, 'سلام. بله، تا زمانی که مدرک ارائه نشود غیرموجه است. لطفاً گواهی را ارسال کنید.']]);
     const s0 = stuRows[0], s10 = stuRows[10], s30 = stuRows[30], s50 = stuRows[50];
     await mk({ subject: 'درخواست راهنمایی برای تکلیف ریاضی', category: 'academic', status: 'answered', by: s0.user_id, to: tUid['t.ahmadi'], student: s0.id, ago: 900 }, [[s0.user_id, 'سلام استاد. در تمرین شماره ۵ فصل اول مشکل دارم. می‌توانید راهنمایی کنید؟'], [tUid['t.ahmadi'], 'سلام. ابتدا قاعده جمع اعداد هم‌علامت را مرور کنید؛ در جلسه آینده نمونه مشابه را حل می‌کنم.']]);
