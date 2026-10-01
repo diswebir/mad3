@@ -1,0 +1,17 @@
+<div class="page-head"><span class="avatar lg"><%= initials(t.full_name) %></span><div><div class="crumbs"><a href="<%= u('/teachers') %>">معلمان</a></div><h1><%= t.full_name %> <%- pill(L.teacherStatus[t.status] || t.status, t.status === 'active' ? 'green' : 'amber') %></h1><div class="muted"><%= t.specialty || '' %> <%= t.degree ? '— ' + t.degree : '' %></div></div>
+<div class="actions"><a class="btn primary" href="<%= u('/teachers/' + t.id + '/edit') %>"><%- icon('pencil', 16) %> ویرایش</a></div></div>
+<div class="grid g4" style="margin-bottom:1rem">
+  <div class="card stat" style="margin:0"><div class="ico"><%- icon('school', 22) %></div><div><div class="v"><%= fa(homerooms.length) %></div><div class="l">کلاس راهنما</div></div></div>
+  <div class="card stat green" style="margin:0"><div class="ico"><%- icon('book-open', 22) %></div><div><div class="v"><%= fa(assigned.length) %></div><div class="l">درس تخصیص‌یافته</div></div></div>
+  <div class="card stat amber" style="margin:0"><div class="ico"><%- icon('clock', 22) %></div><div><div class="v"><%= fa(hours) %></div><div class="l">ساعت هفتگی</div></div></div>
+  <div class="card stat" style="margin:0"><div class="ico"><%- icon('graduation-cap', 22) %></div><div><div class="v"><%= fa(students) %></div><div class="l">دانش‌آموز کلاس راهنما</div></div></div>
+</div>
+<div class="grid g2">
+<div class="card"><h3><%- icon('user-round', 18) %> مشخصات</h3><dl class="kv"><dt>نام کاربری</dt><dd class="ltr"><%= t.username %></dd><dt>موبایل</dt><dd class="ltr"><%= fa(t.phone || '—') %></dd><dt>ایمیل</dt><dd class="ltr"><%= t.email || '—' %></dd>
+<% tfields.forEach(function(f){ if (f.type === 'textarea' && !t[f.name]) return; var v = t[f.name]; if (f.type === 'date') v = d(v); else if (f.name === 'gender') v = L.genderAdult[v]; else if (f.name === 'status') v = L.teacherStatus[v]; %><dt><%= f.label %></dt><dd><%= v || '—' %></dd><% }) %><dt>آخرین ورود</dt><dd><%= t.last_login ? dt(t.last_login) : '—' %></dd></dl>
+<div style="display:flex;gap:.5rem;margin-top:1rem;flex-wrap:wrap">
+<form method="post" action="<%= u('/teachers/' + t.id + '/reset-password') %>" data-confirm="رمز عبور بازنشانی شود؟"><input type="hidden" name="_csrf" value="<%= csrf %>"><button class="btn"><%- icon('key-round', 16) %> بازنشانی رمز</button></form>
+<form method="post" action="<%= u('/teachers/' + t.id + '/delete') %>" data-confirm="معلم حذف شود؟"><input type="hidden" name="_csrf" value="<%= csrf %>"><button class="btn danger"><%- icon('trash-2', 16) %> حذف</button></form></div></div>
+<div><div class="card"><h3><%- icon('school', 18) %> کلاس‌های راهنما</h3><% if (!homerooms.length) { %><div class="muted">کلاس راهنمایی ندارد. از صفحه ویرایش کلاس می‌توانید تعیین کنید.</div><% } %><ul class="list"><% homerooms.forEach(function(h){ %><li><a href="<%= u('/classes/' + h.id) %>"><b><%= h.name %></b></a></li><% }) %></ul></div>
+<div class="card flush"><div class="card-title"><%- icon('book-open', 18) %> دروس تدریس‌شده</div><% if (!assigned.length) { %><div class="empty">درسی اختصاص داده نشده است.</div><% } else { %><table class="t"><tbody><% assigned.forEach(function(a){ %><tr><td><%= a.subject_name %></td><td><a href="<%= u('/classes/' + a.classroom_id) %>"><%= a.class_name %></a></td><td><%= fa(a.weekly_hours) %> ساعت</td></tr><% }) %></tbody></table><% } %></div></div>
+</div>

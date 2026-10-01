@@ -1,0 +1,14 @@
+<div class="page-head"><div><div class="crumbs"><a href="<%= u('/tickets') %>">تیکت‌ها</a> / جدید</div><h1><%- icon('send', 24) %> ارسال تیکت جدید</h1></div></div>
+<form class="card" method="post" enctype="multipart/form-data" action="<%= u('/tickets/new') %>?_csrf=<%= csrf %>" autocomplete="off">
+  <% if (errors.length) { %><div class="alert error"><ul><% errors.forEach(function(e){ %><li><%= e %></li><% }) %></ul></div><% } %>
+  <div class="form-grid">
+    <div class="field"><label>گیرنده <span class="req">*</span></label><select name="recipient" required><option value="">— انتخاب کنید —</option><% groups.forEach(function(g){ %><optgroup label="<%= g.label %>"><% g.opts.forEach(function(o){ %><option value="<%= o[0] %>" <%= vals.recipient === o[0] ? 'selected' : '' %>><%= o[1] %></option><% }) %></optgroup><% }) %></select></div>
+    <div class="field"><label>دسته‌بندی</label><select name="category" id="cat"><% Object.keys(L.ticketCategory).forEach(function(k){ if (k === 'absence' && user.role !== 'student') return; %><option value="<%= k %>" <%= vals.category === k ? 'selected' : '' %>><%= L.ticketCategory[k] %></option><% }) %></select></div>
+    <div class="field full"><label>موضوع <span class="req">*</span></label><input type="text" name="subject" value="<%= vals.subject || '' %>" maxlength="200" required></div>
+    <div class="field"><label>اولویت</label><select name="priority"><% Object.keys(L.priority).forEach(function(k){ %><option value="<%= k %>" <%= vals.priority === k ? 'selected' : '' %>><%= L.priority[k] %></option><% }) %></select></div>
+    <div class="field"><label>تاریخ غیبت (فقط برای توجیه غیبت)</label><input class="jdate ltr" type="text" name="related_date" value="<%= vals.related_date || '' %>" placeholder="۱۴۰۵/۰۷/۰۹" autocomplete="off"><div class="hint">با تأیید معلم/مدیر، غیبت آن روز «موجه» می‌شود.</div></div>
+    <div class="field full"><label>متن پیام <span class="req">*</span></label><textarea name="body" required maxlength="5000"><%= vals.body || '' %></textarea></div>
+    <div class="field full"><label>پیوست (اختیاری — حداکثر ۵ مگابایت)</label><input type="file" name="attachment"></div>
+  </div>
+  <div class="form-actions"><button class="btn primary"><%- icon('send', 16) %> ارسال تیکت</button><a class="btn" href="<%= u('/tickets') %>">انصراف</a></div>
+</form>

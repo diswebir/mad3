@@ -1,0 +1,22 @@
+<div class="wizard">
+  <h1 class="center">اطلاعات مدرسه</h1>
+  <%- include('_steps') %>
+  <form method="post" class="card" autocomplete="off">
+    <input type="hidden" name="_csrf" value="<%= csrf %>">
+    <% if (typeof error !== 'undefined') { %><div class="alert error"><%= error %></div><% } %>
+    <div class="form-grid">
+      <div class="field"><label>نام مدرسه <span class="req">*</span></label><input type="text" name="school_name" value="<%= school.school_name || '' %>" required></div>
+      <div class="field"><label>مقطع</label><select name="school_type"><% types.forEach(function(t){ %><option <%= school.school_type === t ? 'selected' : '' %>><%= t %></option><% }) %></select></div>
+      <div class="field"><label>نام مدیر مدرسه</label><input type="text" name="school_principal" value="<%= school.school_principal || '' %>"></div>
+      <div class="field"><label>تلفن</label><input type="text" class="ltr" name="school_phone" value="<%= school.school_phone || '' %>"></div>
+      <div class="field full"><label>نشانی</label><input type="text" name="school_address" value="<%= school.school_address || '' %>"></div>
+      <div class="field"><label>تعداد زنگ‌های روزانه</label><input type="text" class="ltr digits" name="periods_count" value="<%= school.periods_count || 6 %>"></div>
+      <div class="field"><label>پیشوند شماره دانش‌آموزی</label><input type="text" class="ltr digits" name="student_code_prefix" value="<%= school.student_code_prefix || '1405' %>"></div>
+      <div class="field full"><label>روزهای فعال مدرسه</label>
+        <div style="display:flex;gap:1rem;flex-wrap:wrap">
+        <% var sel = String(school.week_days || '0,1,2,3,4').split(','); ['شنبه','یکشنبه','دوشنبه','سه‌شنبه','چهارشنبه','پنجشنبه','جمعه'].forEach(function(n, i){ %><label class="check"><input type="checkbox" name="week_days" value="<%= i %>" <%= sel.includes(String(i)) ? 'checked' : '' %>> <%= n %></label><% }) %>
+        </div></div>
+    </div>
+    <div class="form-actions"><button class="btn primary" type="submit">ادامه <%- icon('chevron-left', 16) %></button><a class="btn ghost" href="<%= u('/install/db') %>">بازگشت</a></div>
+  </form>
+</div>

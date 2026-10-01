@@ -1,0 +1,28 @@
+<div class="auth">
+  <div class="hero">
+    <div class="logo" style="width:64px;height:64px;border-radius:18px;background:rgba(255,255,255,.18);display:grid;place-items:center"><% if (S('logo')) { %><img src="<%= fileUrl('branding', S('logo')) %>" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:18px"><% } else { %><%- icon('school', 34) %><% } %></div>
+    <h1><%= S('school_name') %></h1>
+    <p>سامانه جامع مدیریت مدرسه — ارتباط یکپارچه مدیر، معلم و دانش‌آموز</p>
+    <ul>
+      <li>حضور و غیاب، نمرات و کارنامه آنلاین</li>
+      <li>پرونده کامل دانش‌آموزی و اطلاعات اولیا</li>
+      <li>ارتباط امن از طریق تیکت با معلم و مدیر</li>
+    </ul>
+  </div>
+  <div class="box"><div class="inner">
+    <h2>ورود به حساب کاربری</h2>
+    <p class="muted">برای ورود نام کاربری و رمز عبور خود را وارد کنید.</p>
+    <% if (error) { %><div class="alert error"><%- icon('circle-x', 18) %><div><%= error %></div></div><% } %>
+    <form method="post" action="<%= u('/login') %>" autocomplete="on">
+      <input type="hidden" name="_csrf" value="<%= csrf %>">
+      <div class="field" style="margin-bottom:.9rem"><label for="username">نام کاربری</label><input id="username" class="ltr" type="text" name="username" value="<%= username %>" required autofocus autocomplete="username"></div>
+      <div class="field" style="margin-bottom:1.1rem"><label for="password">رمز عبور</label><input id="password" class="ltr" type="password" name="password" required autocomplete="current-password"></div>
+      <button class="btn primary block" type="submit"><%- icon('log-in', 17) %> ورود</button>
+    </form>
+    <% if (demo) { %>
+    <div class="card demo-box"><b>حساب‌های نمونه (دمو)</b>
+      <table><% demo.forEach(function(d){ %><tr><td><%= d[0] %></td><td class="ltr"><%= d[1] %></td><td class="ltr"><%= d[2] %></td></tr><% }) %></table>
+    </div>
+    <% } %>
+  </div></div>
+</div>

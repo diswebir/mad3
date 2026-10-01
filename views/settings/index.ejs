@@ -1,0 +1,25 @@
+<div class="page-head"><h1><%- icon('settings', 24) %> تنظیمات سامانه</h1><div class="actions"><a class="btn" href="<%= u('/settings/system') %>"><%- icon('monitor-check', 16) %> وضعیت سامانه</a><a class="btn" href="<%= u('/modules') %>"><%- icon('puzzle', 16) %> ماژول‌ها</a></div></div>
+<% if (errors.length) { %><div class="alert error"><ul><% errors.forEach(function(e){ %><li><%= e %></li><% }) %></ul></div><% } %>
+<div class="card"><h3><%- icon('image', 18) %> لوگوی مدرسه</h3>
+<form method="post" enctype="multipart/form-data" action="<%= u('/settings/logo') %>?_csrf=<%= csrf %>" style="display:flex;gap:1rem;align-items:center;flex-wrap:wrap">
+  <span class="avatar lg" style="border-radius:16px"><% if (S('logo')) { %><img src="<%= fileUrl('branding', S('logo')) %>" alt=""><% } else { %><%- icon('school', 36) %><% } %></span>
+  <input type="file" name="logo" accept="image/*" style="max-width:280px"><button class="btn primary" type="submit">بارگذاری</button>
+</form>
+<% if (S('logo')) { %><form method="post" action="<%= u('/settings/logo/remove') %>" style="margin-top:.6rem"><input type="hidden" name="_csrf" value="<%= csrf %>"><button class="btn sm danger">حذف لوگو</button></form><% } %></div>
+<form method="post" action="<%= u('/settings') %>">
+<input type="hidden" name="_csrf" value="<%= csrf %>">
+<% Object.keys(groups).forEach(function(g){ var items = defs.filter(function(d){ return d.group === g; }); if (!items.length) return; %>
+<fieldset><legend><%= groups[g] %></legend><div class="form-grid">
+<% items.forEach(function(d){ var v = values[d.key]; if (v === undefined) v = d.def; %>
+  <div class="field <%= d.type === 'textarea' || d.type === 'days' ? 'full' : '' %>">
+  <% if (d.type === 'checkbox') { %><label class="check"><input type="checkbox" name="<%= d.key %>" value="1" <%= (v === '1' || v === 1) ? 'checked' : '' %>> <%= d.label %></label>
+  <% } else if (d.type === 'days') { var sel = String(v).split(','); %><label><%= d.label %></label><div style="display:flex;gap:1rem;flex-wrap:wrap"><% ['شنبه','یکشنبه','دوشنبه','سه‌شنبه','چهارشنبه','پنجشنبه','جمعه'].forEach(function(n, i){ %><label class="check"><input type="checkbox" name="<%= d.key %>" value="<%= i %>" <%= sel.includes(String(i)) ? 'checked' : '' %>> <%= n %></label><% }) %></div>
+  <% } else { %><label><%= d.label %></label>
+    <% if (d.type === 'select') { %><select name="<%= d.key %>"><% d.options.forEach(function(o){ var ov = Array.isArray(o) ? o[0] : o, ol = Array.isArray(o) ? o[1] : o; %><option value="<%= ov %>" <%= String(v) === String(ov) ? 'selected' : '' %>><%= ol %></option><% }) %></select>
+    <% } else if (d.type === 'textarea') { %><textarea name="<%= d.key %>" style="min-height:70px"><%= v %></textarea>
+    <% } else if (d.type === 'color') { %><input type="color" name="<%= d.key %>" value="<%= v %>">
+    <% } else { %><input type="text" name="<%= d.key %>" value="<%= v %>" <%= d.type === 'number' || d.type === 'time' ? 'class=ltr' : '' %>><% } %>
+  <% } %></div>
+<% }) %></div></fieldset><% }) %>
+<button class="btn primary" type="submit"><%- icon('save', 16) %> ذخیره تنظیمات</button>
+</form>

@@ -1,0 +1,7 @@
+<div class="page-head no-print"><h1>کارت شناسایی</h1><div class="actions"><button class="btn primary" data-print><%- icon('printer', 16) %> چاپ</button><a class="btn" href="<%= u('/students/' + s.id) %>">بازگشت</a></div></div>
+<div class="card" style="width:340px;margin:auto;text-align:center;border:2px solid var(--primary)">
+  <div style="color:var(--primary);font-weight:700"><%= S('school_name') %></div><div class="muted small">کارت شناسایی دانش‌آموز</div>
+  <span class="avatar lg" style="margin:.8rem auto"><% if (s.photo) { %><img src="<%= fileUrl('photos', s.photo) %>" alt=""><% } else { %><%= initials(s.first_name + ' ' + s.last_name) %><% } %></span>
+  <h2 style="margin:.2rem 0"><%= s.first_name %> <%= s.last_name %></h2>
+  <div>شماره دانش‌آموزی: <b class="num"><%= fa(s.student_code) %></b></div><div>کلاس: <b><%= s.class_name || '—' %></b></div><div class="muted small">سال تحصیلی <%= fa(year ? year.title : "") %></div>
+</div>

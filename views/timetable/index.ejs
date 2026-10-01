@@ -1,0 +1,17 @@
+<div class="page-head"><div><h1><%- icon('clock', 24) %> برنامه هفتگی <%= subject ? '— ' + subject : '' %></h1><div class="muted"><%= mode === 'teacher' ? 'برنامه تدریس معلم' : 'برنامه هفتگی کلاس' %></div></div>
+<div class="actions">
+<% if (user.role === 'teacher') { %><a class="btn <%= mode === 'teacher' ? 'primary' : '' %>" href="<%= u('/timetable') %>">برنامه من</a><% } %>
+<% if (isManager && mode === 'class' && cls && !edit) { %><a class="btn primary" href="<%= u('/timetable?class_id=' + cls.id + '&edit=1') %>"><%- icon('pencil', 16) %> ویرایش برنامه</a><% } %>
+<button class="btn" data-print><%- icon('printer', 16) %> چاپ</button></div></div>
+<% if (typeof classes !== 'undefined' && classes && classes.length > 1 && user.role !== 'student') { %><form class="card" method="get" style="display:flex;gap:.8rem;align-items:end"><div class="field"><label>کلاس</label><select name="class_id" data-autosubmit><% classes.forEach(function(c){ %><option value="<%= c.id %>" <%= typeof cls !== 'undefined' && cls && cls.id === c.id ? 'selected' : '' %>><%= c.name %></option><% }) %></select></div></form><% } %>
+<% if (mode === 'class' && typeof cls === 'undefined' || (mode === 'class' && !cls)) { %><div class="card empty">کلاسی برای نمایش وجود ندارد.</div><% } else { %>
+<% if (edit) { %><form method="post" action="<%= u('/timetable') %>"><input type="hidden" name="_csrf" value="<%= csrf %>"><input type="hidden" name="class_id" value="<%= cls.id %>"><% } %>
+<div class="card flush"><div class="table-wrap"><table class="t tt"><thead><tr><th style="width:110px">زنگ</th><% days.forEach(function(d){ %><th><%= WEEKDAYS[d] %></th><% }) %></tr></thead><tbody>
+<% periods.forEach(function(p){ %><tr><th><%= fa(p.n) %><div class="muted small" style="font-weight:400"><%= fa(p.start) %> - <%= fa(p.end) %></div></th>
+<% days.forEach(function(d){ var c = cells[d + '-' + p.n]; %><td class="cell">
+<% if (edit) { %><select name="cell[<%= d %>-<%= p.n %>]" style="font-size:.8rem;padding:.2rem"><option value="">—</option><% options.forEach(function(o){ %><option value="<%= o.id %>" <%= c && c.class_subject_id === o.id ? 'selected' : '' %>><%= o.name %><%= o.full_name ? ' (' + o.full_name + ')' : '' %></option><% }) %></select>
+<% } else if (c) { %><b><%= c.subject_name %></b><div class="muted small"><%= mode === 'teacher' ? c.class_name : (c.teacher_name || '') %></div><% } else { %><span class="muted">—</span><% } %></td><% }) %></tr><% }) %>
+</tbody></table></div></div>
+<% if (edit) { %><div style="display:flex;gap:.6rem"><button class="btn primary"><%- icon('save', 16) %> ذخیره برنامه</button><a class="btn" href="<%= u('/timetable?class_id=' + cls.id) %>">انصراف</a></div></form><% } %>
+<% if (mode === 'class' && typeof hours !== 'undefined') { %><div class="card" style="margin-top:1rem"><h3>جمع ساعات دروس</h3><div style="display:flex;gap:.6rem;flex-wrap:wrap"><% hours.forEach(function(h){ var p = placed[h.id] || 0; %><span class="badge <%= p === h.weekly_hours ? 'green' : (p > h.weekly_hours ? 'red' : 'amber') %>"><%= h.name %>: <%= fa(p) %> از <%= fa(h.weekly_hours) %></span><% }) %></div></div><% } %>
+<% } %>

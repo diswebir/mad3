@@ -1,0 +1,13 @@
+<div class="page-head"><div><h1><%- icon('school', 24) %> کلاس‌ها</h1><div class="muted small"><%= fa(rows.length) %> کلاس</div></div><div class="actions">
+<% if (grades.length > 1) { %><form method="get"><select name="grade" data-autosubmit style="width:auto"><option value="">همه پایه‌ها</option><% grades.forEach(function(g){ %><option <%= g === grade ? 'selected' : '' %>><%= g %></option><% }) %></select></form><% } %>
+<% if (isManager) { %><a class="btn primary" href="<%= u('/classes/new') %>"><%- icon('plus', 16) %> افزودن کلاس</a><% } %></div></div>
+<% if (!rows.length) { %><div class="card empty"><%- icon('school', 42) %><div>کلاسی وجود ندارد.</div></div><% } %>
+<div class="grid g3">
+<% rows.forEach(function(c){ var pct = c.capacity ? Math.min(100, Math.round(c.student_count * 100 / c.capacity)) : 0; %>
+<div class="card" style="margin:0"><h3><a href="<%= u('/classes/' + c.id) %>"><%= c.name %></a> <span class="badge blue"><%= c.grade_level || '' %></span></h3>
+<div class="muted small"><%- icon('briefcase', 14) %> معلم راهنما: <b><%= c.homeroom_name || 'تعیین نشده' %></b></div>
+<div class="muted small"><%- icon('house', 14) %> اتاق <%= fa(c.room_no || '—') %> — <%= fa(c.subject_count) %> درس</div>
+<div style="margin:.7rem 0 .2rem;display:flex;justify-content:space-between" class="small"><span>دانش‌آموزان</span><span class="num"><%= fa(c.student_count) %> / <%= fa(c.capacity) %></span></div>
+<div class="progress <%= pct >= 100 ? 'red' : pct >= 85 ? 'amber' : '' %>"><i style="width:<%= pct %>%"></i></div>
+<div style="margin-top:.8rem;display:flex;gap:.4rem;flex-wrap:wrap"><a class="btn sm" href="<%= u('/classes/' + c.id) %>">مشاهده</a><% if (enabled('attendance')) { %><a class="btn sm ghost" href="<%= u('/attendance?class_id=' + c.id) %>">حضور و غیاب</a><% } %><% if (isManager) { %><a class="btn sm ghost" href="<%= u('/classes/' + c.id + '/edit') %>"><%- icon('pencil', 14) %></a><% } %></div></div>
+<% }) %></div>

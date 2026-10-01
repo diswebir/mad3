@@ -1,0 +1,19 @@
+<div class="wizard">
+  <h1 class="center">انتخاب ماژول‌ها</h1>
+  <p class="center muted">هر ماژول را می‌توانید بعداً از بخش «ماژول‌ها» روشن یا خاموش کنید.</p>
+  <%- include('_steps') %>
+  <form method="post" autocomplete="off">
+    <input type="hidden" name="_csrf" value="<%= csrf %>">
+    <div class="mod-grid">
+      <% mods.forEach(function(m){ %>
+      <div class="mod">
+        <span class="ico"><%- icon(m.icon, 20) %></span>
+        <div><b><%= m.title %></b> <% if (m.core) { %><span class="badge blue">پایه</span><% } %><div class="muted small"><%= m.desc %></div></div>
+        <label class="switch"><input type="checkbox" name="modules" value="<%= m.key %>" <%= (m.core || chosen.includes(m.key)) ? 'checked' : '' %> <%= m.core ? 'disabled' : '' %>><span></span></label>
+      </div>
+      <% }) %>
+    </div>
+    <div class="card" style="margin-top:1rem"><label class="check"><input type="checkbox" name="demo" value="1" <%= demo ? 'checked' : '' %>> <b>نصب داده‌های نمونه (دمو)</b> — ۱۰ معلم، ۶ کلاس، ۷۲ دانش‌آموز با حضور و غیاب، نمرات، تیکت و ...</label><div class="muted small" style="margin-right:1.7rem">برای آشنایی با سامانه توصیه می‌شود. بعداً با پایگاه داده خالی هم می‌توانید نصب تازه انجام دهید.</div></div>
+    <div class="form-actions" style="border:0"><button class="btn primary" type="submit">ادامه <%- icon('chevron-left', 16) %></button><a class="btn ghost" href="<%= u('/install/admin') %>">بازگشت</a></div>
+  </form>
+</div>

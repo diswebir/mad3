@@ -1,0 +1,14 @@
+<div class="page-head"><h1><%= title %></h1></div>
+<form method="post" class="card" style="max-width:720px" action="<%= u('/users/' + (row ? row.id + '/edit' : 'new')) %>" autocomplete="off">
+  <input type="hidden" name="_csrf" value="<%= csrf %>">
+  <% if (errors.length) { %><div class="alert error"><ul><% errors.forEach(function(e){ %><li><%= e %></li><% }) %></ul></div><% } %>
+  <div class="form-grid">
+    <div class="field"><label>نام و نام خانوادگی *</label><input type="text" name="full_name" value="<%= vals.full_name || '' %>" required></div>
+    <div class="field"><label>نام کاربری *</label><input type="text" class="ltr" name="username" value="<%= vals.username || '' %>" <%= row ? 'readonly' : 'required' %>></div>
+    <div class="field"><label>نقش</label><select name="role" <%= row && !['admin','deputy'].includes(row.role) ? 'disabled' : '' %>><% ['admin', 'deputy'].forEach(function(r){ %><option value="<%= r %>" <%= vals.role === r ? 'selected' : '' %>><%= L.roles[r] %></option><% }) %><% if (row && !['admin','deputy'].includes(row.role)) { %><option selected><%= L.roles[row.role] %></option><% } %></select></div>
+    <div class="field"><label>تلفن</label><input type="text" class="ltr" name="phone" value="<%= vals.phone || '' %>"></div>
+    <div class="field full"><label>ایمیل</label><input type="text" class="ltr" name="email" value="<%= vals.email || '' %>"></div>
+    <% if (!row) { %><div class="field"><label>رمز عبور *</label><input type="password" class="ltr" name="password" required minlength="8" autocomplete="new-password"></div><div class="field"><label class="check" style="margin-top:1.8rem"><input type="checkbox" name="must_change" value="1" checked> تغییر رمز در اولین ورود الزامی باشد</label></div><% } %>
+  </div>
+  <div class="form-actions"><button class="btn primary"><%- icon('save', 16) %> ذخیره</button><a class="btn" href="<%= u('/users') %>">انصراف</a></div>
+</form>
