@@ -1,6 +1,7 @@
 <div class="page-head"><div><h1><%- icon('clock', 24) %> برنامه هفتگی <%= subject ? '— ' + subject : '' %></h1><div class="muted"><%= mode === 'teacher' ? 'برنامه تدریس معلم' : 'برنامه هفتگی کلاس' %></div></div>
 <div class="actions">
 <% if (user.role === 'teacher') { %><a class="btn <%= mode === 'teacher' ? 'primary' : '' %>" href="<%= u('/timetable') %>">برنامه من</a><% } %>
+<% if (isManager) { %><a class="btn" href="<%= u('/timetable/auto') %>"><%- icon('shuffle', 16) %> تولید خودکار</a><a class="btn" href="<%= u('/timetable/substitutes') %>"><%- icon('user-check', 16) %> جانشین</a><a class="btn" href="<%= u('/timetable/availability') %>"><%- icon('user-cog', 16) %> ساعت‌های غیرمجاز</a><% } %>
 <% if (isManager && mode === 'class' && cls && !edit) { %><a class="btn primary" href="<%= u('/timetable?class_id=' + cls.id + '&edit=1') %>"><%- icon('pencil', 16) %> ویرایش برنامه</a><% } %>
 <button class="btn" data-print><%- icon('printer', 16) %> چاپ</button></div></div>
 <% if (typeof classes !== 'undefined' && classes && classes.length > 1 && user.role !== 'student') { %><form class="card" method="get" style="display:flex;gap:.8rem;align-items:end"><div class="field"><label>کلاس</label><select name="class_id" data-autosubmit><% classes.forEach(function(c){ %><option value="<%= c.id %>" <%= typeof cls !== 'undefined' && cls && cls.id === c.id ? 'selected' : '' %>><%= c.name %></option><% }) %></select></div></form><% } %>
@@ -15,3 +16,5 @@
 <% if (edit) { %><div style="display:flex;gap:.6rem"><button class="btn primary"><%- icon('save', 16) %> ذخیره برنامه</button><a class="btn" href="<%= u('/timetable?class_id=' + cls.id) %>">انصراف</a></div></form><% } %>
 <% if (mode === 'class' && typeof hours !== 'undefined') { %><div class="card" style="margin-top:1rem"><h3>جمع ساعات دروس</h3><div style="display:flex;gap:.6rem;flex-wrap:wrap"><% hours.forEach(function(h){ var p = placed[h.id] || 0; %><span class="badge <%= p === h.weekly_hours ? 'green' : (p > h.weekly_hours ? 'red' : 'amber') %>"><%= h.name %>: <%= fa(p) %> از <%= fa(h.weekly_hours) %></span><% }) %></div></div><% } %>
 <% } %>
+
+<% if (typeof subs !== 'undefined' && subs && subs.length) { %><div class="card" style="margin-top:1rem"><h3><%- icon('user-check', 18) %> جانشینی‌های پیش‌رو</h3><ul class="list"><% subs.forEach(function(x){ %><li>زنگ <%= fa(x.period) %> کلاس <%= x.class_name %> — <%= ld(x.date) %></li><% }) %></ul></div><% } %>

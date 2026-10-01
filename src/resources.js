@@ -26,7 +26,7 @@ function defs(db) {
   const studentBase = (table) => (k) => k(table + ' as t').join('students as s', 's.id', 't.student_id').leftJoin('classrooms as c', 'c.id', 's.classroom_id').select('t.*', concat(k), 'c.name as class_name');
   const classOptions = async (k, req) => {
     const ids = await svc.accessibleClassIds(req.user);
-    const q = k('classrooms').orderBy('name').select('id', 'name'); if (ids) q.whereIn('id', ids.length ? ids : [0]);
+    const q = k('classrooms').where('status', '<>', 'archived').orderBy('name').select('id', 'name'); if (ids) q.whereIn('id', ids.length ? ids : [0]);
     return (await q).map((c) => [c.id, c.name]);
   };
 
@@ -106,8 +106,8 @@ function defs(db) {
       base: (k) => k('exam_schedule as t').join('subjects as s', 's.id', 't.subject_id').join('classrooms as c', 'c.id', 't.classroom_id').select('t.*', 's.name as subject_name', 'c.name as class_name'),
       scope: async (req, qb) => { const ids = await svc.accessibleClassIds(req.user); if (ids) qb.whereIn('t.classroom_id', ids.length ? ids : [0]); },
       orderBy: [['t.exam_date', 'asc']], sortable: ['t.exam_date'], search: ['s.name', 'c.name'],
-      filters: [{ name: 'classroom_id', label: 'کلاس', column: 't.classroom_id', optionsFn: async (k, req) => (await k('classrooms').orderBy('name').select('id', 'name')).map((c) => [c.id, c.name]) }, { name: 'type', label: 'نوع', column: 't.type', options: pairs(L.examType) }],
-      fields: [{ name: 'classroom_id', label: 'کلاس', type: 'select', required: true, optionsFn: async (k) => (await k('classrooms').orderBy('name').select('id', 'name')).map((c) => [c.id, c.name]) },
+      filters: [{ name: 'classroom_id', label: 'کلاس', column: 't.classroom_id', optionsFn: async (k, req) => (await k('classrooms').where('status', '<>', 'archived').orderBy('name').select('id', 'name')).map((c) => [c.id, c.name]) }, { name: 'type', label: 'نوع', column: 't.type', options: pairs(L.examType) }],
+      fields: [{ name: 'classroom_id', label: 'کلاس', type: 'select', required: true, optionsFn: async (k) => (await k('classrooms').where('status', '<>', 'archived').orderBy('name').select('id', 'name')).map((c) => [c.id, c.name]) },
         { name: 'subject_id', label: 'درس', type: 'select', required: true, optionsFn: async (k) => (await k('subjects').orderBy('name').select('id', 'name')).map((c) => [c.id, c.name]) },
         { name: 'exam_date', label: 'تاریخ امتحان', type: 'date', required: true }, { name: 'start_time', label: 'ساعت شروع', type: 'time' }, { name: 'duration', label: 'مدت (دقیقه)', type: 'number', min: 5, max: 300 },
         { name: 'type', label: 'نوع', type: 'select', required: true, options: pairs(L.examType) }, { name: 'location', label: 'مکان', type: 'text' }, { name: 'notes', label: 'توضیحات', type: 'textarea' }],

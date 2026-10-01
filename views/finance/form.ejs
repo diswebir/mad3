@@ -10,5 +10,8 @@
   <div class="field"><label>مبلغ (<%= S('currency_label') %>) *</label><input type="text" class="digits ltr" name="amount" value="<%= vals.amount || '' %>" required></div>
   <div class="field"><label>تخفیف</label><input type="text" class="digits ltr" name="discount" value="<%= vals.discount || 0 %>"></div>
   <div class="field"><label>سررسید</label><input class="jdate ltr" type="text" name="due_date" value="<%= vals.due_date || '' %>" autocomplete="off"></div>
+  <div class="field"><label>تعداد اقساط</label><input type="number" class="ltr" name="installments" min="1" max="24" value="<%= vals.installments || 1 %>"></div>
+  <div class="field"><label>فاصله‌ی اقساط (ماه)</label><input type="number" class="ltr" name="installment_step" min="1" max="12" value="<%= vals.installment_step || 1 %>"></div>
+  <% if (Number(S('sibling_discount_percent')) > 0) { %><div class="field full"><label class="check"><input type="checkbox" name="sibling" value="1" <%= vals.sibling !== undefined || !vals.title ? 'checked' : '' %>> اعمال تخفیف فرزند دوم به بعد (<%= fa(S('sibling_discount_percent')) %>٪؛ فقط برای دسته‌ی «شهریه»، خانواده‌ها بر اساس کد ملی/موبایل پدر شناسایی می‌شوند)</label></div><% } %>
   <div class="field full"><label>توضیحات</label><textarea name="notes" style="min-height:60px"><%= vals.notes || '' %></textarea></div></div>
 <div class="form-actions"><button class="btn primary"><%- icon('save', 16) %> ثبت</button><a class="btn" href="<%= u('/finance') %>">انصراف</a></div></form>

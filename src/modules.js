@@ -51,7 +51,8 @@ const MODULES = [
   { key: 'health', title: 'بهداشت و سلامت', icon: 'stethoscope', desc: 'سوابق مراجعه به بهداشت مدرسه', nav: [
     { label: 'بهداشت و سلامت', href: '/health', icon: 'heart-pulse', roles: STAFF, section: 'services' , perm: 'health' }] },
   { key: 'finance', title: 'امور مالی', icon: 'wallet', desc: 'شهریه، پرداخت‌ها، بدهکاران و رسید', nav: [
-    { label: 'امور مالی', href: '/finance', icon: 'wallet', roles: ['admin', 'deputy', 'student'], section: 'services' , perm: 'finance' }] },
+    { label: 'امور مالی', href: '/finance', icon: 'wallet', roles: ['admin', 'deputy', 'student'], section: 'services' , perm: 'finance' },
+    { label: 'گزارش درآمد', href: '/finance/income', icon: 'banknote', roles: ['admin', 'deputy'], section: 'services', perm: 'finance' }] },
   { key: 'library', title: 'کتابخانه', icon: 'library-big', desc: 'فهرست کتاب، امانت و بازگشت، دیرکرد', nav: [
     { label: 'کتابخانه', href: '/library', icon: 'library-big', roles: ALL, section: 'services' , perm: 'library' }] },
   { key: 'transport', title: 'سرویس مدرسه', icon: 'bus', desc: 'مسیرهای سرویس و تخصیص دانش‌آموز', nav: [

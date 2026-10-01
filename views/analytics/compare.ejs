@@ -1,0 +1,7 @@
+<div class="page-head"><div><h1><%- icon('chart-bar', 24) %> مقایسه‌ی کلاس‌ها</h1></div><div class="actions"><a class="btn" href="<%= u('/reports/compare?format=xlsx') %>"><%- icon('download', 16) %> اکسل</a><button class="btn" data-print><%- icon('printer', 16) %> چاپ</button></div></div>
+<%- include('_nav', { active: 'compare' }) %>
+<% if (chart) { %><div class="card"><h3>میانگین کل کلاس‌ها (از ۲۰)</h3><%- chart %></div><% } %>
+<div class="card flush"><div class="table-wrap"><table class="t"><thead><tr><th>کلاس</th><th>پایه</th><th>دانش‌آموز</th><th>میانگین</th><th>قبولی٪</th><th>حضور٪</th><th>مانده بدهی٪</th></tr></thead><tbody>
+<% if (!rows.length) { %><tr><td colspan="7" class="muted" style="text-align:center;padding:2rem">کلاسی وجود ندارد.</td></tr><% } %>
+<% rows.forEach(function(r){ %><tr><td><a href="<%= u('/classes/' + r.id) %>"><%= r.name %></a></td><td><%= r.grade === null || r.grade === undefined ? '—' : fa(r.grade) %></td><td><%= fa(r.students) %></td><td><%= r.avg === null ? '—' : fa(r.avg) %></td><td><%= r.passRate === null ? '—' : fa(r.passRate) %></td><td><%= r.attendance === null ? '—' : fa(r.attendance) %></td><td><%= r.due === null ? '—' : fa(r.due) %></td></tr><% }) %>
+</tbody></table></div></div>

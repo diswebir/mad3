@@ -11,7 +11,7 @@ router.use('/timetable', modules.guard('timetable'));
 
 async function classList(req) {
   const ids = await svc.accessibleClassIds(req.user);
-  const q = db.get()('classrooms').orderBy('name').select('id', 'name'); if (ids) q.whereIn('id', ids.length ? ids : [0]); return q;
+  const q = db.get()('classrooms').where('status', '<>', 'archived').orderBy('name').select('id', 'name'); if (ids) q.whereIn('id', ids.length ? ids : [0]); return q;
 }
 const cellQuery = (k) => k('timetable as tt').join('class_subjects as cs', 'cs.id', 'tt.class_subject_id').join('subjects as s', 's.id', 'cs.subject_id').join('classrooms as c', 'c.id', 'tt.classroom_id').leftJoin('teachers as t', 't.id', 'cs.teacher_id').leftJoin('users as u', 'u.id', 't.user_id')
   .select('tt.*', 's.name as subject_name', 'c.name as class_name', 'u.full_name as teacher_name', 'cs.teacher_id');
@@ -23,7 +23,9 @@ router.get('/timetable', async (req, res, next) => {
     if (u.role === 'teacher' && req.query.mode !== 'class' && !req.query.class_id) {
       data.mode = 'teacher'; data.subject = u.full_name;
       const rows = await cellQuery(k).where('cs.teacher_id', u.teacher ? u.teacher.id : 0);
-      rows.forEach((r) => { data.cells[r.day + '-' + r.period] = r; }); data.classes = await classList(req); return res.view('timetable/index', data);
+      rows.forEach((r) => { data.cells[r.day + '-' + r.period] = r; }); data.classes = await classList(req);
+      data.subs = await k('substitutions as s').join('classrooms as c', 'c.id', 's.classroom_id').where('s.substitute_teacher_id', u.teacher ? u.teacher.id : 0).where('s.date', '>=', J.todayISO()).orderBy('s.date').orderBy('s.period').select('s.date', 's.period', 'c.name as class_name');
+      return res.view('timetable/index', data);
     }
     if (isManager(u) && req.query.teacher_id) {
       data.mode = 'teacher'; const t = await k('teachers as t').join('users as x', 'x.id', 't.user_id').where('t.id', req.query.teacher_id).first('t.id', 'x.full_name');
@@ -56,8 +58,10 @@ router.post('/timetable', requireRole('admin', 'deputy'), async (req, res, next)
       if (!csMap[v]) { errors.push('درس انتخاب‌شده متعلق به این کلاس نیست.'); continue; }
       rows.push({ classroom_id: cid, day: d, period: p.n, class_subject_id: Number(v), _t: csMap[v].teacher_id });
     }
+    const unav = await k('teacher_unavailability').select('teacher_id', 'day', 'period');
     for (const r of rows) {
       if (!r._t) continue;
+      if (unav.some((u) => u.teacher_id === r._t && u.day === r.day && u.period === r.period)) errors.push(`معلم این درس در ${J.WEEKDAYS[r.day]} زنگ ${r.period} حضور ندارد (ساعت غیرمجاز).`);
       const clash = await k('timetable as tt').join('class_subjects as cs', 'cs.id', 'tt.class_subject_id').join('classrooms as c', 'c.id', 'tt.classroom_id').where({ 'cs.teacher_id': r._t, 'tt.day': r.day, 'tt.period': r.period }).whereNot('tt.classroom_id', cid).first('c.name');
       if (clash) errors.push(`تداخل: معلم این درس در ${J.WEEKDAYS[r.day]} زنگ ${r.period} در کلاس «${clash.name}» حضور دارد.`);
       const dup = rows.filter((x) => x._t === r._t && x.day === r.day && x.period === r.period).length; if (dup > 1) errors.push('یک معلم نمی‌تواند هم‌زمان دو درس داشته باشد.');

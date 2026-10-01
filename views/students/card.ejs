@@ -1,7 +1,13 @@
-<div class="page-head no-print"><h1>کارت شناسایی</h1><div class="actions"><button class="btn primary" data-print><%- icon('printer', 16) %> چاپ</button><a class="btn" href="<%= u('/students/' + s.id) %>">بازگشت</a></div></div>
-<div class="card" style="width:340px;margin:auto;text-align:center;border:2px solid var(--primary)">
-  <div style="color:var(--primary);font-weight:700"><%= S('school_name') %></div><div class="muted small">کارت شناسایی دانش‌آموز</div>
-  <span class="avatar lg" style="margin:.8rem auto"><% if (s.photo) { %><img src="<%= fileUrl('photos', s.photo) %>" alt=""><% } else { %><%= initials(s.first_name + ' ' + s.last_name) %><% } %></span>
-  <h2 style="margin:.2rem 0"><%= s.first_name %> <%= s.last_name %></h2>
-  <div>شماره دانش‌آموزی: <b class="num"><%= fa(s.student_code) %></b></div><div>کلاس: <b><%= s.class_name || '—' %></b></div><div class="muted small">سال تحصیلی <%= fa(year ? year.title : "") %></div>
+<div class="page-head no-print"><h1><%= title %></h1><div class="actions"><button class="btn primary" data-print><%- icon('printer', 16) %> چاپ</button><a class="btn" href="<%= s ? u('/students/' + s.id) : u('/classes/' + cls.id) %>">بازگشت</a></div></div>
+<div class="id-cards" style="display:flex;flex-wrap:wrap;gap:12px;justify-content:center">
+<% cards.forEach(function(c){ %>
+<div class="card" style="width:340px;margin:0;break-inside:avoid;text-align:center;border:2px solid var(--primary)">
+  <div style="color:var(--primary);font-weight:700"><%= S('school_name') %></div><div class="muted small">کارت شناسایی دانش‌آموز — سال <%= year ? fa(year.title) : '' %></div>
+  <div style="display:flex;align-items:center;justify-content:center;gap:1rem;margin:.6rem 0">
+    <span class="avatar lg"><% if (c.s.photo) { %><img src="<%= fileUrl('photos', c.s.photo) %>" alt=""><% } else { %><%= initials(c.s.first_name + ' ' + c.s.last_name) %><% } %></span>
+    <div style="width:104px;height:104px;background:#fff;padding:2px;border-radius:6px" aria-label="QR"><%- c.qr %></div></div>
+  <h2 style="margin:.2rem 0"><%= c.s.first_name %> <%= c.s.last_name %></h2>
+  <div>شماره دانش‌آموزی: <b class="num"><%= fa(c.s.student_code) %></b></div><div>کلاس: <b><%= c.s.class_name || '—' %></b></div>
+  <div class="muted small" style="margin-top:.3rem">برای ثبت ورود، QR را اسکن کنید.</div>
 </div>
+<% }) %></div>

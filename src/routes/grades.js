@@ -9,6 +9,8 @@ const { toCSV } = require('../utils/csv');
 const { L } = require('../labels');
 const { requireRole, isManager } = require('../middleware');
 const { classResults } = require('../lib/gradesCalc');
+const reportcard = require('../lib/reportcard');
+const sms = require('../lib/sms');
 const router = express.Router();
 router.use('/grades', modules.guard('grades'));
 const staff = requireRole('admin', 'deputy', 'teacher');
@@ -31,11 +33,11 @@ async function loadAssessment(req, id) {
 router.get('/grades', staff, async (req, res, next) => {
   try {
     const k = db.get(); const u = req.user;
-    const q = k('class_subjects as cs').join('subjects as s', 's.id', 'cs.subject_id').join('classrooms as c', 'c.id', 'cs.classroom_id').leftJoin('teachers as t', 't.id', 'cs.teacher_id').leftJoin('users as x', 'x.id', 't.user_id')
+    const q = k('class_subjects as cs').join('subjects as s', 's.id', 'cs.subject_id').join('classrooms as c', 'c.id', 'cs.classroom_id').where('c.status', '<>', 'archived').leftJoin('teachers as t', 't.id', 'cs.teacher_id').leftJoin('users as x', 'x.id', 't.user_id')
       .orderBy('c.name').orderBy('s.name').select('cs.id', 's.name as subject_name', 'c.id as classroom_id', 'c.name as class_name', 'x.full_name as teacher_name', k.raw('(select count(*) from assessments a where a.class_subject_id = cs.id) as a_count'));
     if (u.role === 'teacher') q.where('cs.teacher_id', u.teacher ? u.teacher.id : 0);
     if (req.query.class_id) q.where('cs.classroom_id', req.query.class_id);
-    const classes = await k('classrooms').orderBy('name').select('id', 'name');
+    const classes = await k('classrooms').where('status', '<>', 'archived').orderBy('name').select('id', 'name');
     res.view('grades/index', { title: 'نمرات', rows: await q, classes, classId: req.query.class_id || '' });
   } catch (e) { next(e); }
 });
@@ -115,7 +117,12 @@ router.post('/grades/assessments/:id(\\d+)/publish', staff, async (req, res, nex
     const k = db.get(); const r = await loadAssessment(req, req.params.id); if (!r) return nf(res); const pub = r.a.published ? 0 : 1;
     await k('assessments').where({ id: r.a.id }).update({ published: pub });
     const already = pub ? await k('notifications').where({ title: `نمره ${r.cs.subject_name} منتشر شد`, body: r.a.title, link: '/grades/my' }).first() : null; // انتشار مجدد، اعلان تکراری نمی‌سازد
-    if (pub && !already) { const us = await k('students').where({ classroom_id: r.cs.classroom_id, status: 'active' }).select('user_id'); await svc.notify(us.map((x) => x.user_id), `نمره ${r.cs.subject_name} منتشر شد`, r.a.title, '/grades/my', 'success'); }
+    if (pub && !already) { const us = await k('students').where({ classroom_id: r.cs.classroom_id, status: 'active' }).select('user_id'); await svc.notify(us.map((x) => x.user_id), `نمره ${r.cs.subject_name} منتشر شد`, r.a.title, '/grades/my', 'success');
+      if (sms.eventOn('grades')) { // پیامک نمره به اولیا (فقط دانش‌آموزانی که نمره دارند)
+        const sc = await k('scores as sc').join('students as s', 's.id', 'sc.student_id').where('sc.assessment_id', r.a.id).whereNotNull('sc.score').select('s.id', 's.first_name', 's.last_name', 's.father_phone', 's.mother_phone', 's.guardian_phone', 'sc.score');
+        const byId = Object.fromEntries(sc.map((x) => [x.id, x]));
+        await sms.notifyParents(sc, (x) => sms.render('اولیای گرامی، نمره‌ی «{title}» درس {subject} برای {student}: {score} از {max} ثبت شد. {school}', { title: r.a.title, subject: r.cs.subject_name, student: `${x.first_name} ${x.last_name}`, score: Number(byId[x.id].score), max: Number(r.a.max_score) }), 'grades', req.user.id);
+      } }
     await svc.audit(req, pub ? 'publish' : 'unpublish', 'assessments', r.a.id, r.a.title);
     req.flash('success', pub ? 'نمرات برای دانش‌آموزان منتشر شد.' : 'انتشار نمرات لغو شد.'); res.redirect('/grades/assessments/' + r.a.id);
   } catch (e) { next(e); }
@@ -145,21 +152,74 @@ router.get('/grades/class/:id(\\d+)', staff, async (req, res, next) => {
 
 /* کارنامه دانش‌آموز */
 router.get('/grades/my', requireRole('student'), (req, res) => (req.user.student ? res.redirect('/grades/report-card/' + req.user.student.id) : res.redirect('/')));
+/** داده‌های یک کارنامه. r (نتایج کلاس) برای چاپ گروهی یک‌بار محاسبه و پاس داده می‌شود */
+async function cardData(k, u, s, term, r, att) {
+  const publishedOnly = u.role === 'student';
+  if (r === undefined) r = s.classroom_id ? await classResults(k, s.classroom_id, { term, publishedOnly, ...(await svc.gradeScope(u, s.classroom_id)) }) : null;
+  const me = r ? r.students.find((x) => x.id === s.id) : null;
+  const cfg = reportcard.config();
+  const data = { s, r, me, term, terms: settings.num('terms_count') || 2, year: await k('academic_years').where({ is_current: 1 }).first(), cfg, describe: reportcard.describe, showRank: u.role !== 'student' || settings.bool('show_rank_to_students') };
+  const cm = await k('report_comments').where({ student_id: s.id, term: term || 0 }).first(); data.comment = cm ? cm.comment : '';
+  if (modules.isEnabled('attendance')) { const rows = await k('attendance').where({ student_id: s.id }).groupBy('status').select('status').count({ c: '*' }); data.att = Object.fromEntries(rows.map((x) => [x.status, Number(x.c)])); }
+  if (modules.isEnabled('discipline')) { const d = await k('discipline_records').where({ student_id: s.id }).sum({ p: 'points' }).first(); data.behavior = Math.max(0, Math.min(20, 20 + (Number(d.p) || 0))); }
+  data.classAvg = null; data.subjectAvg = {};
+  if (r && me) { const v = r.students.filter((x) => x.overall !== null); data.classAvg = v.length ? round2(v.reduce((a, b) => a + b.overall, 0) / v.length) : null; for (const c of r.subjects) { const xs = r.students.map((st) => st.subjects[c.id]).filter(Boolean); data.subjectAvg[c.id] = xs.length ? round2(xs.reduce((a, b) => a + b.avg, 0) / xs.length) : null; } }
+  return data;
+}
+const studentRow = (k, id) => k('students as s').leftJoin('classrooms as c', 'c.id', 's.classroom_id').leftJoin('teachers as t', 't.id', 'c.homeroom_teacher_id').leftJoin('users as x', 'x.id', 't.user_id').where('s.id', id).first('s.*', 'c.name as class_name', 'x.full_name as homeroom_name');
 router.get('/grades/report-card/:sid(\\d+)', async (req, res, next) => {
   try {
-    const k = db.get(); const u = req.user;
-    const s = await k('students as s').leftJoin('classrooms as c', 'c.id', 's.classroom_id').leftJoin('teachers as t', 't.id', 'c.homeroom_teacher_id').leftJoin('users as x', 'x.id', 't.user_id').where('s.id', req.params.sid).first('s.*', 'c.name as class_name', 'x.full_name as homeroom_name');
+    const k = db.get(); const u = req.user; const s = await studentRow(k, req.params.sid);
     if (!s) return nf(res);
-    if (u.role === 'student' && s.user_id !== u.id) return nf(res);
+    if (u.role === 'student' && !(u.student && u.student.id === s.id)) return nf(res); // دانش‌آموز یا اولیای او (فرزند انتخاب‌شده)
     if (u.role === 'teacher') { const ids = await svc.accessibleClassIds(u); if (!ids.includes(s.classroom_id)) return nf(res); }
-    const term = parseInt(req.query.term, 10) || null; const publishedOnly = u.role === 'student';
-    const r = s.classroom_id ? await classResults(k, s.classroom_id, { term, publishedOnly, ...(await svc.gradeScope(u, s.classroom_id)) }) : null;
-    const me = r ? r.students.find((x) => x.id === s.id) : null;
-    const data = { title: 'کارنامه ' + s.first_name + ' ' + s.last_name, s, r, me, term, terms: settings.num('terms_count') || 2, year: await k('academic_years').where({ is_current: 1 }).first() };
-    if (modules.isEnabled('attendance')) { const rows = await k('attendance').where({ student_id: s.id }).groupBy('status').select('status').count({ c: '*' }); data.att = Object.fromEntries(rows.map((x) => [x.status, Number(x.c)])); }
-    if (modules.isEnabled('discipline')) { const d = await k('discipline_records').where({ student_id: s.id }).sum({ p: 'points' }).first(); data.behavior = Math.max(0, Math.min(20, 20 + (Number(d.p) || 0))); }
-    if (r && me) { const v = r.students.filter((x) => x.overall !== null); data.classAvg = v.length ? round2(v.reduce((a, b) => a + b.overall, 0) / v.length) : null; data.showRank = u.role !== 'student' || settings.bool('show_rank_to_students'); data.subjectAvg = {}; for (const c of r.subjects) { const xs = r.students.map((st) => st.subjects[c.id]).filter(Boolean); data.subjectAvg[c.id] = xs.length ? round2(xs.reduce((a, b) => a + b.avg, 0) / xs.length) : null; } }
-    res.view('grades/report-card', data);
+    const term = parseInt(req.query.term, 10) || null;
+    res.view('grades/report-card', { title: 'کارنامه ' + s.first_name + ' ' + s.last_name, ...(await cardData(k, u, s, term)) });
+  } catch (e) { next(e); }
+});
+
+/** چاپ گروهی کارنامه‌ی یک کلاس (مدیر/معاون یا معلم راهنما) */
+async function classForCards(req, id) {
+  const k = db.get(); const c = await k('classrooms').where({ id }).first(); if (!c) return null;
+  if (isManager(req.user)) return c;
+  return req.user.role === 'teacher' && (await svc.homeroomClassIds(req.user)).includes(c.id) ? c : null;
+}
+router.get('/grades/class/:id(\\d+)/cards', staff, async (req, res, next) => {
+  try {
+    const k = db.get(); const c = await classForCards(req, req.params.id); if (!c) return nf(res);
+    const term = parseInt(req.query.term, 10) || null; const r = await classResults(k, c.id, { term });
+    const studs = await k('students as s').leftJoin('classrooms as c', 'c.id', 's.classroom_id').leftJoin('teachers as t', 't.id', 'c.homeroom_teacher_id').leftJoin('users as x', 'x.id', 't.user_id').where({ 's.classroom_id': c.id, 's.status': 'active' }).orderBy('s.last_name').orderBy('s.first_name').select('s.*', 'c.name as class_name', 'x.full_name as homeroom_name');
+    const cards = []; for (const s of studs) cards.push(await cardData(k, req.user, s, term, r));
+    res.view('grades/cards', { title: 'کارنامه‌های کلاس ' + c.name, c, term, terms: settings.num('terms_count') || 2, cards });
+  } catch (e) { next(e); }
+});
+
+/** توصیف معلم راهنما برای کارنامه */
+router.get('/grades/class/:id(\\d+)/comments', staff, async (req, res, next) => {
+  try {
+    const k = db.get(); const c = await classForCards(req, req.params.id); if (!c) return nf(res);
+    const term = parseInt(req.query.term, 10) || 0;
+    const students = await k('students').where({ classroom_id: c.id, status: 'active' }).orderBy('last_name').orderBy('first_name').select('id', 'first_name', 'last_name', 'student_code');
+    const cm = Object.fromEntries((await k('report_comments').where({ term }).whereIn('student_id', students.map((s) => s.id).concat([0]))).map((x) => [x.student_id, x.comment]));
+    res.view('grades/comments', { title: 'توصیف کارنامه — ' + c.name, c, term, terms: settings.num('terms_count') || 2, students, cm });
+  } catch (e) { next(e); }
+});
+router.post('/grades/class/:id(\\d+)/comments', staff, async (req, res, next) => {
+  try {
+    const k = db.get(); const c = await classForCards(req, req.params.id); if (!c) return nf(res);
+    const term = Math.max(0, Math.min(settings.num('terms_count') || 2, parseInt(req.body.term, 10) || 0));
+    const ids = new Set((await k('students').where({ classroom_id: c.id }).select('id')).map((s) => s.id)); const cm = req.body.comment || {}; let n = 0;
+    await k.transaction(async (t) => {
+      for (const [sid, text] of Object.entries(cm)) {
+        const id = Number(sid); if (!ids.has(id)) continue; const val = String(text || '').trim().slice(0, 600);
+        const ex = await t('report_comments').where({ student_id: id, term }).first();
+        if (!val) { if (ex) { await t('report_comments').where({ id: ex.id }).del(); n++; } continue; }
+        if (ex) { if (ex.comment !== val) { await t('report_comments').where({ id: ex.id }).update({ comment: val, author_id: req.user.id }); n++; } } else { await t('report_comments').insert({ student_id: id, term, comment: val, author_id: req.user.id }); n++; }
+      }
+    });
+    await svc.audit(req, 'update', 'report_comments', c.id, `${c.name}: ${n} توصیف`);
+    req.flash('success', 'توصیف‌ها ذخیره شد.'); res.redirect(`/grades/class/${c.id}/comments?term=${term}`);
   } catch (e) { next(e); }
 });
 module.exports = router;
+module.exports.loadAssessment = loadAssessment;

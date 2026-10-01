@@ -43,7 +43,7 @@ router.get('/', async (req, res, next) => {
       data.counts = {
         students: Number((await k('students').where({ status: 'active' }).count({ c: '*' }).first()).c),
         teachers: Number((await k('teachers').where({ status: 'active' }).count({ c: '*' }).first()).c),
-        classes: Number((await k('classrooms').count({ c: '*' }).first()).c),
+        classes: Number((await k('classrooms').where('status', '<>', 'archived').count({ c: '*' }).first()).c),
         subjects: Number((await k('subjects').count({ c: '*' }).first()).c),
       };
       if (M('attendance')) {
@@ -66,7 +66,7 @@ router.get('/', async (req, res, next) => {
       }
       if (M('finance')) {
         const billed = await k('fees').sum({ a: k.raw('amount - coalesce(discount,0)') }).first();
-        const paid = await k('payments').sum({ a: 'amount' }).first();
+        const paid = await k('payments').where('voided', 0).sum({ a: 'amount' }).first();
         data.fin = { billed: Number(billed.a) || 0, paid: Number(paid.a) || 0 };
       }
       if (M('library')) data.overdueLoans = Number((await k('book_loans').whereNull('returned_at').where('due_date', '<', today).count({ c: '*' }).first()).c);
@@ -75,7 +75,7 @@ router.get('/', async (req, res, next) => {
 
     if (u.role === 'teacher') {
       const t = u.teacher;
-      data.classes = classIds.length ? await k('classrooms as c').whereIn('c.id', classIds).orderBy('c.name').select('c.*', k.raw('(select count(*) from students s where s.classroom_id = c.id and s.status = ?) as student_count', ['active'])) : [];
+      data.classes = classIds.length ? await k('classrooms as c').where('c.status', '<>', 'archived').whereIn('c.id', classIds).orderBy('c.name').select('c.*', k.raw('(select count(*) from students s where s.classroom_id = c.id and s.status = ?) as student_count', ['active'])) : [];
       if (t) data.homeroomIds = (await svc.homeroomClassIds(u));
       if (M('timetable') && isSchoolDay && t) {
         data.schedule = await k('timetable as tt').join('class_subjects as cs', 'cs.id', 'tt.class_subject_id').join('subjects as s', 's.id', 'cs.subject_id').join('classrooms as c', 'c.id', 'tt.classroom_id').where({ 'cs.teacher_id': t.id, 'tt.day': dow }).orderBy('tt.period').select('tt.period', 's.name as subject_name', 'c.name as class_name', 'c.id as classroom_id');
@@ -117,7 +117,7 @@ router.get('/', async (req, res, next) => {
       if (M('tickets')) data.tickets = await k('tickets').where({ created_by: u.id }).whereNot('status', 'closed').orderBy('id', 'desc').limit(4);
       if (M('finance')) {
         const f = await k('fees').where({ student_id: s.id }).sum({ a: k.raw('amount - coalesce(discount,0)') }).first();
-        const p = await k('payments as p').join('fees as f', 'f.id', 'p.fee_id').where('f.student_id', s.id).sum({ a: 'p.amount' }).first();
+        const p = await k('payments as p').join('fees as f', 'f.id', 'p.fee_id').where('p.voided', 0).where('f.student_id', s.id).sum({ a: 'p.amount' }).first();
         data.debt = Math.max(0, (Number(f.a) || 0) - (Number(p.a) || 0));
       }
       if (M('library')) data.loans = await k('book_loans as l').join('books as b', 'b.id', 'l.book_id').where({ 'l.student_id': s.id }).whereNull('l.returned_at').select('l.*', 'b.title');

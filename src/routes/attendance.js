@@ -19,7 +19,7 @@ const STATUSES = Object.keys(L.attendance);
 /** forRecording: در حالت «روزانه» فقط معلم راهنما حق ثبت دارد؛ در حالت «به‌تفکیک زنگ» هر معلمِ کلاس */
 async function accessibleClasses(req, forRecording = false) {
   const ids = forRecording && req.user.role === 'teacher' && settings.get('attendance_mode') !== 'periodic' ? await svc.homeroomClassIds(req.user) : await svc.accessibleClassIds(req.user);
-  const q = db.get()('classrooms').orderBy('grade_level').orderBy('name').select('id', 'name', 'grade_level');
+  const q = db.get()('classrooms').where('status', '<>', 'archived').orderBy('grade_level').orderBy('name').select('id', 'name', 'grade_level');
   if (ids) q.whereIn('id', ids.length ? ids : [0]);
   return q;
 }

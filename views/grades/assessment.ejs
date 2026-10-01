@@ -8,6 +8,10 @@
 <% if (!students.length) { %><tr><td colspan="4" class="empty">دانش‌آموزی در کلاس نیست.</td></tr><% } %></tbody></table></div></div>
 <button class="btn primary"><%- icon('save', 16) %> ذخیره نمرات</button><span class="muted small"> خانه خالی = نمره‌ای ثبت نمی‌شود (در میانگین لحاظ نخواهد شد).</span></form></div>
 <div>
+<div class="card"><h3><%- icon('file-down', 18) %> درون‌ریزی از Excel / CSV</h3>
+<p class="muted small">فایل نمونه را دانلود کنید، نمره‌ها را در ستون سوم بنویسید و بارگذاری کنید. پیش از ثبت، پیش‌نمایش و خطاها نمایش داده می‌شود.</p>
+<div style="display:flex;gap:.4rem;flex-wrap:wrap;margin-bottom:.6rem"><a class="btn sm" href="<%= u('/grades/assessments/' + a.id + '/template.xlsx') %>">نمونه‌ی Excel</a><a class="btn sm" href="<%= u('/grades/assessments/' + a.id + '/template.csv') %>">نمونه‌ی CSV</a></div>
+<form method="post" enctype="multipart/form-data" action="<%= u('/grades/assessments/' + a.id + '/import') %>?_csrf=<%= csrf %>"><input type="file" name="file" accept=".xlsx,.csv" required><button class="btn primary sm" style="margin-top:.5rem">پیش‌نمایش</button></form></div>
 <% if (stats) { %><div class="card"><h3><%- icon('chart-bar', 18) %> آمار</h3><dl class="kv" style="grid-template-columns:100px 1fr"><dt>تعداد نمره</dt><dd><%= fa(stats.n) %></dd><dt>میانگین</dt><dd><b><%= fa(stats.avg) %></b></dd><dt>بیشترین</dt><dd><%= fa(stats.max) %></dd><dt>کمترین</dt><dd><%= fa(stats.min) %></dd><dt>قبولی</dt><dd><%= fa(stats.passed) %> از <%= fa(stats.n) %></dd></dl>
 <h4 style="margin-top:1rem">توزیع نمرات</h4><div class="bars"><% ['۰ تا ۲۵٪', '۲۵ تا ۵۰٪', '۵۰ تا ۷۵٪', '۷۵ تا ۱۰۰٪'].forEach(function(l, i){ %><div class="row" style="grid-template-columns:80px 1fr 30px"><span class="small"><%= l %></span><div class="progress"><i style="width:<%= Math.round(stats.bins[i] * 100 / stats.n) %>%"></i></div><span><%= fa(stats.bins[i]) %></span></div><% }) %></div></div><% } %>
 <form class="card" method="post" action="<%= u('/grades/assessments/' + a.id + '/update') %>"><input type="hidden" name="_csrf" value="<%= csrf %>"><h3><%- icon('pencil', 18) %> ویرایش مشخصات</h3>

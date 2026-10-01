@@ -15,6 +15,9 @@ const { normalizeInput } = require('../utils/fa');
 const { L } = require('../labels');
 const { requireRole, uploader, isManager } = require('../middleware');
 const { classResults } = require('../lib/gradesCalc');
+const { diffAndLog } = require('../lib/studentChanges');
+const charts = require('../lib/charts');
+const qr = require('../lib/qr');
 const router = express.Router();
 const M = modules.isEnabled;
 const mgr = requireRole('admin', 'deputy');
@@ -49,7 +52,7 @@ function fieldGroups() {
 }
 async function formOptions(k) {
   return {
-    classrooms: (await k('classrooms').orderBy('name').select('id', 'name')).map((c) => [c.id, c.name]),
+    classrooms: (await k('classrooms').where('status', '<>', 'archived').orderBy('name').select('id', 'name')).map((c) => [c.id, c.name]),
     routes: M('transport') ? (await k('bus_routes').orderBy('name').select('id', 'name')).map((c) => [c.id, c.name]) : [],
   };
 }
@@ -60,7 +63,7 @@ async function getStudent(req, id) {
   const s = await k('students as s').leftJoin('classrooms as c', 'c.id', 's.classroom_id').where('s.id', id).first('s.*', 'c.name as class_name', 'c.homeroom_teacher_id');
   if (!s) return null;
   if (isManager(u)) return s;
-  if (u.role === 'student') return s.user_id === u.id ? s : null;
+  if (u.role === 'student') return u.student && u.student.id === s.id ? s : null; // اولیا: نقش مؤثر student با فرزند انتخاب‌شده
   const ids = await svc.accessibleClassIds(u);
   return ids && ids.includes(s.classroom_id) ? s : null;
 }
@@ -90,7 +93,7 @@ router.get('/students', requireRole('admin', 'deputy', 'teacher'), async (req, r
     const dir = req.query.dir === 'desc' ? 'desc' : 'asc';
     const sortCol = { code: 's.student_code', name: 's.last_name', class: 'c.name' }[req.query.sort] || 's.last_name';
     const rows = await qb.orderBy(sortCol, dir).orderBy('s.first_name').limit(per).offset((page - 1) * per).select('s.id', 's.first_name', 's.last_name', 's.student_code', 's.gender', 's.status', 's.father_phone', 's.mother_phone', 's.father_name', 's.photo', 'c.name as class_name');
-    const classes = await k('classrooms').orderBy('name').select('id', 'name');
+    const classes = await k('classrooms').where('status', '<>', 'archived').orderBy('name').select('id', 'name');
     res.view('students/index', { title: 'دانش‌آموزان', rows, classes, total, page, pages: Math.max(1, Math.ceil(total / per)), q: req.query.q || '', f: req.query, sort: req.query.sort || 'name', dir });
   } catch (e) { next(e); }
 });
@@ -138,7 +141,7 @@ router.post('/students/import', mgr, (req, res, next) => {
       if (err || !req.file) { req.flash('error', err ? err.message : 'فایل CSV را انتخاب کنید.'); return res.redirect('/students/import'); }
       const token = req.query._csrf; if (!token || token !== req.session.csrf) return res.status(403).view('error', { code: 403, title: 'درخواست نامعتبر', message: 'نشانه امنیتی نامعتبر است.' });
       const k = db.get(); const rows = parseCSV(req.file.buffer.toString('utf8')); rows.shift();
-      const classRows = await k('classrooms').select('id', 'name', 'capacity');
+      const classRows = await k('classrooms').where('status', '<>', 'archived').select('id', 'name', 'capacity');
       const classes = Object.fromEntries(classRows.map((c) => [c.name, c.id]));
       const room = {}; // ظرفیت باقی‌مانده هر کلاس
       for (const c of classRows) { const n = Number((await k('students').where({ classroom_id: c.id, status: 'active' }).count({ c: '*' }).first()).c); room[c.id] = c.capacity ? c.capacity - n : Infinity; }
@@ -189,7 +192,7 @@ async function renderForm(req, res, row, errors, vals) {
 router.get('/students/new', mgr, (req, res, next) => renderForm(req, res, null).catch(next));
 async function collect(req, k, existing) {
   const errors = []; const data = {}; const b = req.body;
-  const clsIds = (await k('classrooms').select('id')).map((c) => String(c.id));
+  const clsIds = (await k('classrooms').where('status', '<>', 'archived').select('id')).map((c) => String(c.id));
   const routeIds = M('transport') ? (await k('bus_routes').select('id')).map((c) => String(c.id)) : [];
   for (const f of allFields()) {
     if (f.name === 'route_id' && !M('transport')) continue;
@@ -244,6 +247,7 @@ router.post('/students/:id(\\d+)/edit', mgr, uploader('photos', 'photo', { image
     if (errors.length) { if (req.file) fs.unlink(req.file.path, () => {}); return renderForm(req, res, s, errors, { ...req.body }); }
     if (!data.student_code) data.student_code = s.student_code;
     if (req.file) { if (s.photo) fs.unlink(path.join(config.UPLOAD_DIR, 'photos', s.photo), () => {}); data.photo = req.file.filename; }
+    await diffAndLog(k, s, data, req.user);
     await k('students').where({ id: s.id }).update(data);
     const upd = { full_name: `${data.first_name} ${data.last_name}`, active: data.status === 'active' ? 1 : 0 };
     const u = await k('users').where({ id: s.user_id }).first();
@@ -293,6 +297,7 @@ router.post('/students/:id(\\d+)/reset-password', mgr, async (req, res, next) =>
 router.post('/students/:id(\\d+)/status', mgr, async (req, res, next) => {
   try {
     const k = db.get(); const s = await getStudent(req, req.params.id); if (!s || !L.studentStatus[req.body.status]) return notFound(res);
+    await diffAndLog(k, s, { status: req.body.status }, req.user);
     await k('students').where({ id: s.id }).update({ status: req.body.status });
     await k('users').where({ id: s.user_id }).update({ active: req.body.status === 'active' ? 1 : 0 });
     await svc.audit(req, 'status', 'students', s.id, req.body.status);
@@ -365,6 +370,9 @@ router.get('/students/:id(\\d+)', async (req, res, next) => {
     if (M('documents') && u.role !== 'student') tabs.push(['documents', 'مدارک']);
     if (M('tickets')) tabs.push(['tickets', 'تیکت‌ها']);
     if (M('finance') && (mgrFlag || u.role === 'student')) tabs.push(['finance', 'مالی']);
+    tabs.push(['history', 'سوابق تحصیلی']);
+    if (u.role !== 'student') tabs.push(['guardians', 'اولیای مجاز و خروج']);
+    if (mgrFlag) tabs.push(['changes', 'تاریخچه تغییرات']);
     if (u.role !== 'student') tabs.push(['notes', 'یادداشت‌ها']);
     let tab = req.query.tab; if (!tabs.find((t) => t[0] === tab)) tab = 'overview';
     const data = { title: `${s.first_name} ${s.last_name}`, s, tabs, tab, groups: fieldGroups(), disp: display(s), age: J.ageFrom(s.birth_date), mgrFlag, canNote: u.role !== 'student' };
@@ -390,10 +398,21 @@ router.get('/students/:id(\\d+)', async (req, res, next) => {
       if (M('health') && mgrFlag) data.health = await k('health_records').where({ student_id: s.id }).orderBy('record_date', 'desc');
       if (M('meetings')) data.meetings = await k('meetings').where({ student_id: s.id }).orderBy('meeting_date', 'desc');
     }
+    if (tab === 'history') {
+      data.records = await k('student_year_records').where({ student_id: s.id }).orderBy('academic_year_id');
+      data.chart = charts.lineChart(data.records.map((r) => ({ label: r.year_title, value: r.overall === null ? null : Number(r.overall) })), { max: settings.num('grade_scale') || 20 });
+      data.absChart = charts.barChart(data.records.map((r) => ({ label: r.year_title, value: r.absent_days || 0, color: '#dc2626' })), { unit: ' روز' });
+    }
+    if (tab === 'guardians') {
+      data.guardians = await k('student_guardians').where({ student_id: s.id }).orderBy('id');
+      if (M('exits')) data.exits = await k('exit_permits').where({ student_id: s.id }).orderBy('id', 'desc').limit(30);
+    }
+    if (tab === 'changes') data.fieldLabels = Object.fromEntries(allFields().map((f) => [f.name, f.label]));
+    if (tab === 'changes') data.changes = await k('student_changes').where({ student_id: s.id }).orderBy('id', 'desc').limit(200);
     if (tab === 'documents') data.docs = await k('student_documents').where({ student_id: s.id }).orderBy('id', 'desc');
     if (tab === 'tickets') data.tickets = await k('tickets').where({ student_id: s.id }).modify((q) => { if (!mgrFlag) q.where((b) => b.where('created_by', u.id).orWhere('recipient_user_id', u.id)); }).orderBy('id', 'desc');
     if (tab === 'finance') {
-      data.fees = await k('fees as f').leftJoin(k('payments').select('fee_id').sum({ paid: 'amount' }).groupBy('fee_id').as('p'), 'p.fee_id', 'f.id').where('f.student_id', s.id).orderBy('f.due_date').select('f.*', k.raw('coalesce(p.paid,0) as paid'));
+      data.fees = await k('fees as f').leftJoin(require('../lib/finance').paidSub(k), 'p.fee_id', 'f.id').where('f.student_id', s.id).orderBy('f.due_date').select('f.*', k.raw('coalesce(p.paid,0) as paid'));
     }
     if (tab === 'notes') data.notes = await k('student_notes as n').leftJoin('users as u', 'u.id', 'n.author_id').where('n.student_id', s.id).modify((q) => { if (!mgrFlag) q.where('n.author_id', u.id); }).orderBy('n.id', 'desc').select('n.*', 'u.full_name as author');
     res.view('students/show', data);
@@ -408,6 +427,20 @@ router.get('/students/:id(\\d+)/print', requireRole('admin', 'deputy', 'teacher'
   } catch (e) { next(e); }
 });
 router.get('/students/:id(\\d+)/card', requireRole('admin', 'deputy'), async (req, res, next) => {
-  try { const s = await getStudent(req, req.params.id); if (!s) return notFound(res); const year = await db.get()('academic_years').where({ is_current: 1 }).first(); res.view('students/card', { title: 'کارت شناسایی', s, year }); } catch (e) { next(e); }
+  try {
+    const s = await getStudent(req, req.params.id); if (!s) return notFound(res);
+    const year = await db.get()('academic_years').where({ is_current: 1 }).first();
+    res.view('students/card', { title: 'کارت شناسایی', s, year, cards: [{ s, qr: await qr.svg(qr.payload(s.student_code), { width: 120 }) }] });
+  } catch (e) { next(e); }
+});
+/** چاپ گروهی کارت‌های یک کلاس (۸ کارت در هر صفحه‌ی A4) */
+router.get('/classes/:id(\\d+)/cards', requireRole('admin', 'deputy'), async (req, res, next) => {
+  try {
+    const k = db.get(); const c = await k('classrooms').where({ id: req.params.id }).first(); if (!c) return notFound(res);
+    const students = await k('students as s').leftJoin('classrooms as c', 'c.id', 's.classroom_id').where({ 's.classroom_id': c.id, 's.status': 'active' }).orderBy('s.last_name').select('s.*', 'c.name as class_name');
+    const year = await k('academic_years').where({ is_current: 1 }).first();
+    const cards = []; for (const s of students) cards.push({ s, qr: await qr.svg(qr.payload(s.student_code), { width: 120 }) });
+    res.view('students/card', { title: 'کارت‌های کلاس ' + c.name, s: null, year, cards, cls: c });
+  } catch (e) { next(e); }
 });
 module.exports = router;

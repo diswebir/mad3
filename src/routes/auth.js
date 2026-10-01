@@ -34,6 +34,7 @@ module.exports = function (r) {
       if (req.user) return res.redirect('/');
       let demo = null;
       if (settings.bool('show_demo_logins')) demo = [['معاون', 'deputy', 'deputy123'], ['معلم', 't.ahmadi', 'teacher123'], ['دانش‌آموز', '14050001', 'student123']];
+      if (demo) { const pu = await db.get()('users as u').join('parent_students as ps', 'ps.user_id', 'u.id').join('students as s', 's.id', 'ps.student_id').where({ 's.student_code': '14050001', 'u.role': 'parent' }).first('u.username'); if (pu) demo.push(['ولی', pu.username, 'parent123']); }
       res.view('auth/login', { title: 'ورود', demo, error: null, username: '' }, 'bare');
     } catch (e) { next(e); }
   });

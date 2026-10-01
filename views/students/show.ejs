@@ -81,3 +81,36 @@
 <form class="card" method="post" action="<%= u('/students/' + s.id + '/notes') %>"><input type="hidden" name="_csrf" value="<%= csrf %>"><h3>افزودن یادداشت محرمانه</h3><textarea name="body" required placeholder="یادداشت فقط برای مدیر، معاون و معلمان قابل مشاهده است..." style="min-height:80px"></textarea><div class="form-actions" style="border:0;margin-top:.5rem"><button class="btn primary"><%- icon('plus', 16) %> ثبت یادداشت</button></div></form>
 <div class="card flush"><% if (!notes.length) { %><div class="empty">یادداشتی ثبت نشده است.</div><% } else { %><ul class="list" style="padding:0 1.2rem"><% notes.forEach(function(n){ %><li><div class="grow"><div style="white-space:pre-wrap"><%= n.body %></div><div class="muted small"><%= n.author || '—' %> — <%= dt(n.created_at) %></div></div><% if (mgrFlag || n.author_id === user.id) { %><form method="post" action="<%= u('/students/' + s.id + '/notes/' + n.id + '/delete') %>" data-confirm="حذف شود؟"><input type="hidden" name="_csrf" value="<%= csrf %>"><button class="btn sm ghost" style="color:var(--red)"><%- icon('trash-2', 15) %></button></form><% } %></li><% }) %></ul><% } %></div>
 <% } %>
+
+<% if (tab === 'history') { %>
+<div class="card flush"><h3 style="padding:1rem 1rem 0"><%- icon('trending-up', 18) %> سوابق تحصیلی سال‌های گذشته</h3>
+<% if (!records.length) { %><div class="empty"><%- icon('layers', 38) %><div>هنوز سابقه‌ای بایگانی نشده است. سوابق پس از «پایان سال تحصیلی» اینجا ثبت می‌شود.</div></div><% } else { %>
+<div class="table-wrap"><table class="t"><thead><tr><th>سال</th><th>پایه / کلاس</th><th>معدل</th><th>رتبه</th><th>غیبت</th><th>تأخیر</th><th>نتیجه</th></tr></thead><tbody>
+<% records.forEach(function(r){ %><tr><td><b><%= r.year_title %></b></td><td><%= r.grade_level || '' %> — <%= r.classroom_name %></td><td><%= r.overall === null ? '—' : fa(r.overall) %></td><td><%= r.rank_no ? fa(r.rank_no) + ' از ' + fa(r.ranked_count) : '—' %></td><td><%= fa(r.absent_days || 0) %></td><td><%= fa(r.late_count || 0) %></td><td><%- pill(({promoted:'ارتقا',retained:'تکرار پایه',graduated:'فارغ‌التحصیل'})[r.result] || r.result, ({promoted:'green',retained:'amber',graduated:'blue'})[r.result]) %></td></tr><% }) %></tbody></table></div><% } %></div>
+<% if (records.length) { %><div class="grid g2"><div class="card"><h3>روند معدل</h3><%- chart %></div><div class="card"><h3>روند غیبت</h3><%- absChart %></div></div><% } %>
+<% } %>
+
+<% if (tab === 'guardians') { %>
+<div class="card flush"><h3 style="padding:1rem 1rem 0"><%- icon('handshake', 18) %> اولیا و افراد مجاز به تحویل گرفتن دانش‌آموز</h3>
+<div class="table-wrap"><table class="t"><thead><tr><th>نام</th><th>نسبت</th><th>تلفن</th><th>کد ملی</th><th>مجاز به تحویل</th><th>قیم قانونی</th><th></th></tr></thead><tbody>
+<% if (!guardians.length) { %><tr><td colspan="7" class="muted" style="text-align:center">فردی ثبت نشده است. پدر و مادر در تب «مشخصات» هستند؛ اینجا افراد دیگر (مثلاً راننده یا عمو) را ثبت کنید.</td></tr><% } %>
+<% guardians.forEach(function(g){ %><tr><td><b><%= g.name %></b></td><td><%= g.relation || '—' %></td><td class="ltr num"><%= g.phone ? fa(g.phone) : '—' %></td><td class="ltr num"><%= g.national_id ? fa(g.national_id) : '—' %></td><td><%- g.can_pickup ? pill('مجاز', 'green') : pill('غیرمجاز', 'red') %></td><td><%= g.is_legal ? 'بله' : '—' %></td>
+<td><% if (mgrFlag) { %><form method="post" action="<%= u('/students/' + s.id + '/guardians/' + g.id + '/delete') %>" data-confirm="حذف شود؟"><input type="hidden" name="_csrf" value="<%= csrf %>"><button class="btn sm ghost" style="color:var(--red)"><%- icon('trash-2', 15) %></button></form><% } %></td></tr><% }) %></tbody></table></div></div>
+<% if (mgrFlag) { %><form method="post" class="card" action="<%= u('/students/' + s.id + '/guardians') %>"><input type="hidden" name="_csrf" value="<%= csrf %>"><h3>افزودن فرد مجاز</h3><div class="form-grid">
+<div class="field"><label>نام و نام خانوادگی *</label><input type="text" name="name" required maxlength="120"></div><div class="field"><label>نسبت</label><input type="text" name="relation" maxlength="40" placeholder="عمو، مادربزرگ، راننده…"></div>
+<div class="field"><label>تلفن</label><input type="text" class="ltr" name="phone" maxlength="20"></div><div class="field"><label>کد ملی</label><input type="text" class="ltr" name="national_id" maxlength="10"></div>
+<div class="field"><label class="check"><input type="checkbox" name="can_pickup" value="1" checked> مجاز به تحویل گرفتن دانش‌آموز</label></div><div class="field"><label class="check"><input type="checkbox" name="is_legal" value="1"> قیم/سرپرست قانونی</label></div>
+<div class="field full"><label>توضیحات</label><input type="text" name="notes" maxlength="250"></div></div><div class="form-actions"><button class="btn primary"><%- icon('plus', 16) %> افزودن</button></div></form><% } %>
+<% if (typeof exits !== 'undefined') { %>
+<div class="card flush"><h3 style="padding:1rem 1rem 0"><%- icon('door-open', 18) %> برگه‌های خروج و دیرکرد<% if (mgrFlag) { %> <a class="btn sm primary" style="float:left" href="<%= u('/exits?student_id=' + s.id) %>">صدور برگه</a><% } %></h3>
+<div class="table-wrap"><table class="t"><thead><tr><th>تاریخ</th><th>ساعت</th><th>نوع</th><th>علت</th><th>تحویل‌گیرنده</th><th>صادرکننده</th></tr></thead><tbody>
+<% if (!exits.length) { %><tr><td colspan="6" class="muted" style="text-align:center">برگه‌ای صادر نشده است.</td></tr><% } %>
+<% exits.forEach(function(e){ %><tr><td><%= ld(e.permit_date) %></td><td class="num"><%= e.permit_time ? fa(e.permit_time) : '—' %></td><td><%= e.kind === 'exit' ? 'خروج زودهنگام' : 'ورود با تأخیر' %></td><td><%= e.reason || '—' %></td><td><%= e.picked_up_by || '—' %></td><td><%= e.approved_name || '—' %></td></tr><% }) %></tbody></table></div></div><% } %>
+<% } %>
+
+<% if (tab === 'changes') { %>
+<div class="card flush"><h3 style="padding:1rem 1rem 0"><%- icon('history', 18) %> تاریخچه‌ی تغییرات پرونده</h3>
+<div class="table-wrap"><table class="t"><thead><tr><th>زمان</th><th>فیلد</th><th>مقدار قبلی</th><th>مقدار جدید</th><th>توسط</th></tr></thead><tbody>
+<% if (!changes.length) { %><tr><td colspan="5" class="muted" style="text-align:center">تغییری ثبت نشده است.</td></tr><% } %>
+<% changes.forEach(function(c){ var f = fieldLabels[c.field] || (c.field === 'classroom' ? 'کلاس' : c.field); %><tr><td class="muted small"><%= dt(c.created_at) %></td><td><b><%= f %></b></td><td><%= c.old_value || '—' %></td><td><%= c.new_value || '—' %></td><td><%= c.user_name || '—' %></td></tr><% }) %></tbody></table></div></div>
+<% } %>

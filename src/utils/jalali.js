@@ -28,7 +28,7 @@ function jToIso(jy, jm, jd) {
 /** ورودی شمسی مانند 1405/07/09 را به ISO میلادی تبدیل می‌کند؛ خروجی null یعنی نامعتبر */
 function parseJalali(str) {
   if (!str) return null;
-  str = String(str).trim();
+  str = String(str).trim().replace(/[۰-۹]/g, (d) => '۰۱۲۳۴۵۶۷۸۹'.indexOf(d)).replace(/[٠-٩]/g, (d) => '٠١٢٣٤٥٦٧٨٩'.indexOf(d)); // ارقام فارسی/عربی
   if (/^\d{4}-\d{2}-\d{2}$/.test(str) && +str.slice(0, 4) > 1700) return str; // میلادی
   const m = /^(\d{4})[\/\-.](\d{1,2})[\/\-.](\d{1,2})$/.exec(str);
   if (!m) return null;

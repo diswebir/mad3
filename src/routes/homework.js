@@ -15,7 +15,7 @@ const nf = (res) => res.status(404).view('error', { code: 404, title: 'یافت 
 
 async function csOptions(req) {
   const k = db.get();
-  const q = k('class_subjects as cs').join('subjects as s', 's.id', 'cs.subject_id').join('classrooms as c', 'c.id', 'cs.classroom_id').orderBy('c.name').orderBy('s.name').select('cs.id', 's.name as sname', 'c.name as cname');
+  const q = k('class_subjects as cs').join('subjects as s', 's.id', 'cs.subject_id').join('classrooms as c', 'c.id', 'cs.classroom_id').where('c.status', '<>', 'archived').orderBy('c.name').orderBy('s.name').select('cs.id', 's.name as sname', 'c.name as cname');
   if (req.user.role === 'teacher') q.where('cs.teacher_id', req.user.teacher ? req.user.teacher.id : 0);
   return (await q).map((x) => [x.id, `${x.cname} — ${x.sname}`]);
 }
@@ -32,7 +32,7 @@ const canEdit = (req, h) => isManager(req.user) || (req.user.role === 'teacher' 
 router.get('/homework', async (req, res, next) => {
   try {
     const k = db.get(); const u = req.user; const today = J.todayISO();
-    const q = k('homework as h').join('class_subjects as cs', 'cs.id', 'h.class_subject_id').join('subjects as s', 's.id', 'cs.subject_id').join('classrooms as c', 'c.id', 'cs.classroom_id')
+    const q = k('homework as h').join('class_subjects as cs', 'cs.id', 'h.class_subject_id').join('subjects as s', 's.id', 'cs.subject_id').join('classrooms as c', 'c.id', 'cs.classroom_id').where('c.status', '<>', 'archived')
       .orderBy('h.due_date', 'desc').orderBy('h.id', 'desc').limit(100).select('h.*', 's.name as subject_name', 'c.name as class_name');
     if (u.role === 'teacher') q.where('cs.teacher_id', u.teacher ? u.teacher.id : 0);
     if (u.role === 'student') {
@@ -41,7 +41,7 @@ router.get('/homework', async (req, res, next) => {
       q.select(k.raw('(select count(*) from homework_submissions x where x.homework_id = h.id) as sub_count'), k.raw("(select count(*) from students st where st.classroom_id = cs.classroom_id and st.status = 'active') as stu_count"));
       if (req.query.class_id) q.where('cs.classroom_id', req.query.class_id);
     }
-    const classes = u.role === 'student' ? [] : await k('classrooms').orderBy('name').select('id', 'name');
+    const classes = u.role === 'student' ? [] : await k('classrooms').where('status', '<>', 'archived').orderBy('name').select('id', 'name');
     res.view('homework/index', { title: 'تکالیف', rows: await q, today, classes, classId: req.query.class_id || '' });
   } catch (e) { next(e); }
 });

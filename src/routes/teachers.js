@@ -129,7 +129,7 @@ router.get('/teachers/:id(\\d+)', async (req, res, next) => {
   try {
     const k = db.get(); const t = await load(req.params.id); if (!t) return nf(res);
     const homerooms = await k('classrooms').where({ homeroom_teacher_id: t.id }).select('id', 'name');
-    const assigned = await k('class_subjects as cs').join('classrooms as c', 'c.id', 'cs.classroom_id').join('subjects as s', 's.id', 'cs.subject_id').where('cs.teacher_id', t.id).orderBy('c.name').select('cs.id', 'cs.weekly_hours', 'c.id as classroom_id', 'c.name as class_name', 's.name as subject_name');
+    const assigned = await k('class_subjects as cs').join('classrooms as c', 'c.id', 'cs.classroom_id').join('subjects as s', 's.id', 'cs.subject_id').where('cs.teacher_id', t.id).where('c.status', '<>', 'archived').orderBy('c.name').select('cs.id', 'cs.weekly_hours', 'c.id as classroom_id', 'c.name as class_name', 's.name as subject_name');
     const students = homerooms.length ? Number((await k('students').whereIn('classroom_id', homerooms.map((h) => h.id)).where({ status: 'active' }).count({ c: '*' }).first()).c) : 0;
     let tickets = 0; if (modules.isEnabled('tickets')) tickets = Number((await k('tickets').where({ recipient_user_id: t.user_id }).whereIn('status', ['open', 'pending']).count({ c: '*' }).first()).c);
     res.view('teachers/show', { title: t.full_name, t, homerooms, assigned, hours: assigned.reduce((a, b) => a + (b.weekly_hours || 0), 0), students, tickets, tfields: TFIELDS });

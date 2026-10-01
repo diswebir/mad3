@@ -54,8 +54,8 @@ async function accessibleClassIds(user) {
   const k = db.get();
   if (user.role === 'student') return user.student && user.student.classroom_id ? [user.student.classroom_id] : [];
   if (user.role === 'teacher' && user.teacher) {
-    const a = await k('classrooms').where({ homeroom_teacher_id: user.teacher.id }).select('id');
-    const b = await k('class_subjects').where({ teacher_id: user.teacher.id }).distinct('classroom_id as id');
+    const a = await k('classrooms').where({ homeroom_teacher_id: user.teacher.id }).where('status', '<>', 'archived').select('id');
+    const b = await k('class_subjects as cs').join('classrooms as c', 'c.id', 'cs.classroom_id').where({ 'cs.teacher_id': user.teacher.id }).where('c.status', '<>', 'archived').distinct('cs.classroom_id as id');
     return [...new Set([...a, ...b].map((r) => r.id))];
   }
   return [];

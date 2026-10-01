@@ -41,9 +41,10 @@ router.get('/classes', requireRole('admin', 'deputy', 'teacher'), async (req, re
     const k = db.get(); const ids = await svc.accessibleClassIds(req.user);
     const qb = k('classrooms as c').leftJoin('teachers as t', 't.id', 'c.homeroom_teacher_id').leftJoin('users as u', 'u.id', 't.user_id');
     if (ids) qb.whereIn('c.id', ids.length ? ids : [0]);
+    if (!(req.query.archived === '1' && ['admin', 'deputy'].includes(req.user.role))) qb.where('c.status', '<>', 'archived');
     if (req.query.grade) qb.where('c.grade_level', req.query.grade);
     const rows = await qb.orderBy('c.grade_level').orderBy('c.name').select('c.*', 'u.full_name as homeroom_name', k.raw("(select count(*) from students s where s.classroom_id = c.id and s.status = 'active') as student_count"), k.raw('(select count(*) from class_subjects cs where cs.classroom_id = c.id) as subject_count'));
-    const grades = (await k('classrooms').distinct('grade_level').whereNotNull('grade_level')).map((x) => x.grade_level);
+    const grades = (await k('classrooms').where('status', '<>', 'archived').distinct('grade_level').whereNotNull('grade_level')).map((x) => x.grade_level);
     res.view('classes/index', { title: 'کلاس‌ها', rows, grades, grade: req.query.grade || '' });
   } catch (e) { next(e); }
 });

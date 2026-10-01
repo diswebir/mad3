@@ -184,7 +184,7 @@ async function createSchema(db) {
   await addCol('classrooms', 'status', (t) => t.string('status', 12).notNullable().defaultTo('active'));
   await addCol('attendance', 'arrival_time', (t) => t.string('arrival_time', 5));
   await addCol('tickets', 'escalated_at', (t) => t.string('escalated_at', 30));
-  await addCol('payments', 'doc_no', (t) => t.integer('doc_no'));
+  await addCol('payments', 'doc_no', (t) => t.string('doc_no', 20).index());
   await addCol('payments', 'voided', (t) => t.boolean('voided').notNullable().defaultTo(false));
   await addCol('payments', 'void_reason', (t) => t.string('void_reason', 250));
   await addCol('fees', 'discount_note', (t) => t.string('discount_note', 150));

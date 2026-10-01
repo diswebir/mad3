@@ -8,6 +8,7 @@ const svc = require('../services');
 const settings = require('../settings');
 const modules = require('../modules');
 const J = require('../utils/jalali');
+const sla = require('../lib/sla');
 const { L } = require('../labels');
 const { uploader, isManager, invalidateBadges } = require('../middleware');
 const router = express.Router();
@@ -80,6 +81,9 @@ router.get('/tickets', async (req, res, next) => {
     if (!isManager(u)) qb.where((b) => b.where('t.created_by', u.id).orWhere('t.recipient_user_id', u.id));
     const q = (req.query.q || '').trim(); if (q) qb.where((b) => b.where('t.subject', 'like', `%${q}%`).orWhere('c.full_name', 'like', `%${q}%`));
     for (const f of ['status', 'category', 'priority']) if (req.query[f]) qb.where('t.' + f, req.query[f]);
+    const slaBase = settings.num('ticket_sla_hours');
+    const overdueWhere = (b) => { for (const [p, f] of Object.entries(sla.PRIORITY_FACTOR)) { const cut = sla.fmtUTC(Date.now() - sla.limitHours(p, slaBase) * 3600000); b.orWhere((c) => (p === 'normal' ? c.where((x) => x.where('t.priority', 'normal').orWhereNotIn('t.priority', ['urgent', 'high', 'low'])) : c.where('t.priority', p)).where('t.updated_at', '<', cut)); } };
+    if (req.query.view === 'overdue' && slaBase > 0) qb.whereIn('t.status', ['open', 'pending']).where(overdueWhere);
     if (req.query.view === 'mine') qb.where((b) => b.where('t.created_by', u.id));
     if (req.query.view === 'todo') {
       if (isManager(u)) qb.whereIn('t.status', ['open', 'pending']).where((b) => b.where('t.recipient_role', 'admin').orWhere('t.recipient_user_id', u.id));
@@ -88,7 +92,9 @@ router.get('/tickets', async (req, res, next) => {
     const total = Number((await qb.clone().count({ c: '*' }).first()).c);
     const rows = await qb.orderByRaw("case t.status when 'closed' then 1 else 0 end").orderBy('t.updated_at', 'desc').orderBy('t.id', 'desc').limit(per).offset((page - 1) * per)
       .select('t.*', 'c.full_name as creator_name', 'r.full_name as recipient_name', k.raw(`(select count(*) from ticket_messages m where m.ticket_id = t.id${staffLike(u) ? '' : ' and m.internal = 0'}) as msg_count`));
-    res.view('tickets/index', { title: 'تیکت‌ها', rows, total, page, pages: Math.max(1, Math.ceil(total / per)), f: req.query, uid: u.id });
+    rows.forEach((t) => { t.sla = sla.status(t, slaBase); });
+    let overdueCount = 0; if (slaBase > 0 && isManager(u)) overdueCount = Number((await k('tickets as t').whereIn('t.status', ['open', 'pending']).where(overdueWhere).count({ c: '*' }).first()).c);
+    res.view('tickets/index', { title: 'تیکت‌ها', slaBase, overdueCount, rows, total, page, pages: Math.max(1, Math.ceil(total / per)), f: req.query, uid: u.id });
   } catch (e) { next(e); }
 });
 
@@ -107,6 +113,12 @@ router.post('/tickets/new', uploader('tickets', 'attachment', { maxMB: 5 }), asy
     if (!L.priority[b.priority]) b.priority = 'normal';
     const rec = await resolveRecipient(req, b.recipient || '');
     if (!rec) errors.push('گیرنده را انتخاب کنید.');
+    if (rec && u.role !== 'student' && b.student_id) { // پیوند دادن تیکت به یک دانش‌آموز (معلم → مدیر یا هر مخاطب دیگر)
+      const sid = Number(b.student_id); const st = sid ? await k('students').where({ id: sid }).first() : null;
+      if (!st) errors.push('دانش‌آموز انتخاب‌شده یافت نشد.');
+      else if (u.role === 'teacher' && !(await svc.accessibleClassIds(u)).includes(st.classroom_id)) errors.push('این دانش‌آموز در کلاس‌های شما نیست.');
+      else if (!rec.student) rec.student = st.id;
+    }
     let related = null;
     if (b.category === 'absence') {
       related = J.parseJalali(b.related_date);
@@ -140,7 +152,7 @@ router.get('/tickets/:id(\\d+)', async (req, res, next) => {
     if (t.category === 'absence' && t.related_date && t.student_id) att = await k('attendance').where({ student_id: t.student_id, date: t.related_date }).select('status', 'period').first();
     let reassign = [];
     if (isManager(u)) reassign = await k('users').whereIn('role', ['teacher', 'deputy', 'admin']).where({ active: 1 }).orderBy('role').orderBy('full_name').select('id', 'full_name', 'role');
-    res.view('tickets/show', { title: t.subject, t, msgs, canManage, att, reassign, isCreator: t.created_by === u.id, canReply: t.status !== 'closed' });
+    res.view('tickets/show', { title: t.subject, slaInfo: sla.status(t, settings.num('ticket_sla_hours')), t, msgs, canManage, att, reassign, isCreator: t.created_by === u.id, canReply: t.status !== 'closed' });
   } catch (e) { next(e); }
 });
 
@@ -153,9 +165,9 @@ router.post('/tickets/:id(\\d+)/reply', uploader('tickets', 'attachment', { maxM
     await k('ticket_messages').insert({ ticket_id: t.id, user_id: u.id, body: req.body.body.slice(0, 5000), attachment: req.file ? req.file.filename : null, attachment_name: req.file ? req.file.originalname.slice(0, 200) : null, internal });
     if (!internal) {
       const status = u.id === t.created_by ? 'pending' : 'answered';
-      await k('tickets').where({ id: t.id }).update(stamp({ status }));
+      await k('tickets').where({ id: t.id }).update(stamp({ status, escalated_at: null }));
       await notifyOther(t, req, 'پاسخ جدید در تیکت');
-    } else await k('tickets').where({ id: t.id }).update(stamp());
+    } // یادداشت داخلی، ساعت مهلت پاسخ (SLA) را تغییر نمی‌دهد
     invalidateBadges();
     req.flash('success', internal ? 'یادداشت داخلی ثبت شد.' : 'پیام ارسال شد.'); res.redirect('/tickets/' + t.id + '#last');
   } catch (e) { next(e); }

@@ -1,0 +1,12 @@
+<div class="page-head"><div><h1><%- icon('calendar-x', 24) %> مرخصی معلمان</h1></div><div class="actions"><a class="btn primary" href="<%= u('/hr/leaves/new') %>"><%- icon('plus', 16) %> <%= isM ? 'ثبت مرخصی' : 'درخواست مرخصی' %></a></div></div>
+<%- include('_nav', { active: 'leaves' }) %>
+<form class="filters" method="get"><select name="status" data-autosubmit><option value="">همه‌ی وضعیت‌ها</option><% Object.keys(LS).forEach(function(s){ %><option value="<%= s %>" <%= status === s ? 'selected' : '' %>><%= LS[s] %></option><% }) %></select></form>
+<div class="card flush"><div class="table-wrap"><table class="t"><thead><tr><% if (isM) { %><th>معلم</th><% } %><th>نوع</th><th>از</th><th>تا</th><th>روز</th><th>دلیل</th><th>وضعیت</th><th></th></tr></thead><tbody>
+<% if (!rows.length) { %><tr><td colspan="8" class="muted" style="text-align:center;padding:2rem">مرخصی‌ای ثبت نشده است.</td></tr><% } %>
+<% rows.forEach(function(l){ %><tr><% if (isM) { %><td><a href="<%= u('/hr/teacher/' + l.teacher_id) %>"><%= l.full_name %></a></td><% } %><td><%= LK[l.kind] || l.kind %></td><td><%= d(l.start_date) %></td><td><%= d(l.end_date) %></td><td class="num"><%= fa(l.days) %></td><td><%= l.reason || '—' %></td>
+<td><%- pill(LS[l.status] || l.status, l.status === 'approved' ? 'green' : l.status === 'rejected' ? 'red' : 'amber') %><% if (l.decision_note) { %><div class="muted small"><%= l.decision_note %></div><% } %></td>
+<td style="white-space:nowrap"><% if (isM && l.status === 'pending') { %>
+<form method="post" action="<%= u('/hr/leaves/' + l.id + '/decide') %>" style="display:inline-flex;gap:.3rem"><input type="hidden" name="_csrf" value="<%= csrf %>"><input type="text" name="note" placeholder="توضیح (برای رد الزامی)" maxlength="250" style="width:150px"><button class="btn sm primary" name="decision" value="approve">تأیید</button><button class="btn sm" name="decision" value="reject" style="color:var(--red)">رد</button></form>
+<% } else if (l.status === 'approved' && isM && enabled('timetable')) { %><a class="btn sm ghost" href="<%= u('/timetable/substitutes?date=' + J.isoToJString(l.start_date)) %>">جانشین</a><% } %>
+<% if (l.status === 'pending' || (isM && user.role === 'admin')) { %><form method="post" action="<%= u('/hr/leaves/' + l.id + '/delete') %>" data-confirm="حذف شود؟" style="display:inline"><input type="hidden" name="_csrf" value="<%= csrf %>"><button class="btn sm ghost" style="color:var(--red)"><%- icon('trash-2', 15) %></button></form><% } %></td></tr><% }) %>
+</tbody></table></div></div>

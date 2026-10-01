@@ -2,5 +2,8 @@
 const db = require('./db');
 const { createSchema } = require('./schema');
 /** ایجاد جدول‌های جاافتاده هنگام بروزرسانی نسخه (idempotent) */
-async function run() { await createSchema(db.get()); }
+async function run() {
+  await createSchema(db.get());
+  await require('./lib/finance').backfillDocNos(db.get()); // شماره‌گذاری پرداخت‌های قدیمی
+}
 module.exports = { run };

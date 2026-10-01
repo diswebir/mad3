@@ -14,7 +14,7 @@ const M = modules.isEnabled;
 router.get('/reports', async (req, res, next) => {
   try {
     const k = db.get(); const d = { title: 'گزارش‌ها و آمار' };
-    d.classes = await k('classrooms as c').leftJoin('teachers as t', 't.id', 'c.homeroom_teacher_id').leftJoin('users as u', 'u.id', 't.user_id').orderBy('c.name').select('c.id', 'c.name', 'c.capacity', 'u.full_name as homeroom', k.raw("(select count(*) from students s where s.classroom_id = c.id and s.status = 'active') as cnt"));
+    d.classes = await k('classrooms as c').where('c.status', '<>', 'archived').leftJoin('teachers as t', 't.id', 'c.homeroom_teacher_id').leftJoin('users as u', 'u.id', 't.user_id').orderBy('c.name').select('c.id', 'c.name', 'c.capacity', 'u.full_name as homeroom', k.raw("(select count(*) from students s where s.classroom_id = c.id and s.status = 'active') as cnt"));
     d.gender = Object.fromEntries((await k('students').where({ status: 'active' }).groupBy('gender').select('gender').count({ c: '*' })).map((x) => [x.gender || '-', Number(x.c)]));
     d.status = Object.fromEntries((await k('students').groupBy('status').select('status').count({ c: '*' })).map((x) => [x.status, Number(x.c)]));
     d.workload = await k('teachers as t').join('users as u', 'u.id', 't.user_id').where('t.status', 'active').orderBy('u.full_name').select('u.full_name', k.raw('(select coalesce(sum(weekly_hours),0) from class_subjects cs where cs.teacher_id = t.id) as hours'), k.raw('(select count(distinct classroom_id) from class_subjects cs where cs.teacher_id = t.id) as classes'));
@@ -39,7 +39,7 @@ router.get('/reports', async (req, res, next) => {
     }
     if (M('finance')) {
       d.fin = await k('fees as f').join('students as s', 's.id', 'f.student_id').leftJoin('classrooms as c', 'c.id', 's.classroom_id').groupBy('c.name').orderBy('c.name').select('c.name').sum({ billed: k.raw('f.amount - coalesce(f.discount,0)') });
-      const paid = await k('payments as p').join('fees as f', 'f.id', 'p.fee_id').join('students as s', 's.id', 'f.student_id').leftJoin('classrooms as c', 'c.id', 's.classroom_id').groupBy('c.name').select('c.name').sum({ paid: 'p.amount' });
+      const paid = await k('payments as p').where('p.voided', 0).join('fees as f', 'f.id', 'p.fee_id').join('students as s', 's.id', 'f.student_id').leftJoin('classrooms as c', 'c.id', 's.classroom_id').groupBy('c.name').select('c.name').sum({ paid: 'p.amount' });
       const pm = Object.fromEntries(paid.map((x) => [x.name, Number(x.paid)])); d.fin = d.fin.map((x) => ({ name: x.name || 'بدون کلاس', billed: Number(x.billed), paid: pm[x.name] || 0 }));
     }
     res.view('reports/index', d);
@@ -47,7 +47,7 @@ router.get('/reports', async (req, res, next) => {
 });
 router.get('/reports/students.csv', async (req, res, next) => {
   try {
-    const rows = await db.get()('classrooms as c').leftJoin('students as s', function () { this.on('s.classroom_id', 'c.id').andOn('s.status', db.get().raw('?', ['active'])); }).groupBy('c.id', 'c.name', 'c.capacity').orderBy('c.name').select('c.name', 'c.capacity').count({ n: 's.id' });
+    const rows = await db.get()('classrooms as c').where('c.status', '<>', 'archived').leftJoin('students as s', function () { this.on('s.classroom_id', 'c.id').andOn('s.status', db.get().raw('?', ['active'])); }).groupBy('c.id', 'c.name', 'c.capacity').orderBy('c.name').select('c.name', 'c.capacity').count({ n: 's.id' });
     res.set('Content-Type', 'text/csv; charset=utf-8').set('Content-Disposition', 'attachment; filename="class-summary.csv"').send(toCSV(['کلاس', 'ظرفیت', 'تعداد دانش‌آموز'], rows.map((r) => [r.name, r.capacity, r.n])));
   } catch (e) { next(e); }
 });
