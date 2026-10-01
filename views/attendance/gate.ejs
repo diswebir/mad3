@@ -1,0 +1,8 @@
+<div class="page-head"><div><h1><%- icon('qr-code', 24) %> ثبت ورود با QR</h1><div class="muted">ساعت شروع: <b><%= fa(startTime) %></b> — مهلت: <b><%= fa(grace) %></b> دقیقه — امروز <b><%= fa(count) %></b> ورود ثبت شده</div></div></div>
+<div class="grid g2"><div class="card"><h3>اسکن کارت</h3>
+<p class="muted small">مکان‌نما را در کادر زیر بگذارید و کارت را با اسکنر USB بخوانید (یا کد دانش‌آموزی را تایپ کنید). اگر مرورگر از دوربین پشتیبانی کند، دکمه‌ی دوربین هم فعال است.</p>
+<form method="post" action="<%= u('/attendance/gate') %>" id="gate-form"><input type="hidden" name="_csrf" value="<%= csrf %>"><div class="field"><input type="text" class="ltr" name="code" id="gate-code" autofocus autocomplete="off" placeholder="MAD:..." style="font-size:1.3rem"></div><button class="btn primary">ثبت ورود</button> <button type="button" class="btn" id="gate-cam" hidden><%- icon('camera', 16) %> دوربین</button></form>
+<div id="gate-result" class="alert info" style="margin-top:1rem" hidden></div><video id="gate-video" playsinline muted style="width:100%;margin-top:.8rem;border-radius:10px" hidden></video></div>
+<div class="card flush"><h3 style="padding:1rem 1rem 0">آخرین ورودها</h3><div class="table-wrap"><table class="t"><thead><tr><th>ساعت</th><th>دانش‌آموز</th><th>کلاس</th><th>وضعیت</th></tr></thead><tbody id="gate-recent">
+<% if (!recent.length) { %><tr><td colspan="4" class="muted" style="text-align:center">هنوز ورودی ثبت نشده است.</td></tr><% } %>
+<% recent.forEach(function(r){ %><tr><td class="num"><%= fa(r.arrival_time) %></td><td><%= r.first_name %> <%= r.last_name %></td><td><%= r.class_name %></td><td><%- pill(L.attendance[r.status], badges_map.attendance[r.status]) %></td></tr><% }) %></tbody></table></div></div></div>

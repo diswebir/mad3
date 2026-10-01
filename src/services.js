@@ -26,8 +26,13 @@ async function audit(req, action, entity, entityId, details) {
   } catch (_) { /* لاگ نباید جریان اصلی را مختل کند */ }
 }
 async function notify(userIds, title, body, link, type = 'info') {
-  const ids = [...new Set([].concat(userIds).filter(Boolean))];
+  let ids = [...new Set([].concat(userIds).filter(Boolean))];
   if (!ids.length) return;
+  // اعلان‌های دانش‌آموز برای اولیای متصل به او هم ارسال می‌شود
+  try {
+    const parents = await db.get()('parent_students as ps').join('students as s', 's.id', 'ps.student_id').whereIn('s.user_id', ids).select('ps.user_id');
+    if (parents.length) ids = [...new Set([...ids, ...parents.map((p) => p.user_id)])];
+  } catch (_) { /* جدول در نصب‌های خیلی قدیمی ممکن است نباشد */ }
   await db.get()('notifications').insert(ids.map((user_id) => ({ user_id, title: String(title).slice(0, 200), body: body ? String(body).slice(0, 1000) : null, link: link || null, type })));
   ids.forEach(invalidateBadges);
 }

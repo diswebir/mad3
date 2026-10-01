@@ -36,6 +36,7 @@
     var c = e.target.closest('[data-check-all]');
     if (c) { $$(c.getAttribute('data-check-all')).forEach(function (x) { x.checked = c.checked; }); }
   });
+  $$('[data-preset]').forEach(function (sel) { sel.addEventListener('change', function () { var o = sel.options[sel.selectedIndex]; if (!o || !o.dataset.perms) return; var list = JSON.parse(o.dataset.perms); $$('input[name=perm]').forEach(function (c) { c.checked = list.indexOf(c.value) >= 0; }); }); });
   $$('[data-autosubmit]').forEach(function (el) { el.addEventListener('change', function () { el.form.submit(); }); });
 
   /* ورودی‌های ارقام: تبدیل ارقام فارسی به لاتین هنگام تایپ */
@@ -114,4 +115,35 @@
       i.style.borderColor = (!isNaN(v) && (v < 0 || v > max)) ? 'var(--red)' : '';
     });
   });
+})();
+/* پر کردن عنوان و متن پیام از قالب انتخاب‌شده */
+document.addEventListener('change', function (e) {
+  var t = e.target; if (!t || !t.matches || !t.matches('[data-template]')) return;
+  var o = t.options[t.selectedIndex]; if (!o || !o.dataset.body) return;
+  var f = t.form; if (f.elements.title) f.elements.title.value = o.dataset.title || ''; if (f.elements.body) f.elements.body.value = o.dataset.body;
+});
+/* صفحه‌ی ثبت ورود با QR: ارسال بدون بارگذاری مجدد + اسکن با دوربین (در صورت پشتیبانی مرورگر) */
+(function () {
+  var form = document.getElementById('gate-form'); if (!form) return;
+  var input = document.getElementById('gate-code'), box = document.getElementById('gate-result'), busy = false;
+  function show(ok, msg) { box.hidden = false; box.className = 'alert ' + (ok ? 'success' : 'error'); box.textContent = msg; }
+  function send(code) {
+    if (busy || !code) return; busy = true;
+    var fd = new URLSearchParams(); fd.set('code', code); fd.set('_csrf', form.querySelector('[name=_csrf]').value);
+    fetch(form.action, { method: 'POST', headers: { Accept: 'application/json', 'Content-Type': 'application/x-www-form-urlencoded' }, body: fd, credentials: 'same-origin' })
+      .then(function (r) { return r.json(); }).then(function (j) {
+        show(j.ok, j.message);
+        if (j.ok && !j.duplicate) { var tb = document.getElementById('gate-recent'); var tr = document.createElement('tr'); [j.time, j.student, j.class || '', j.status === 'late' ? 'تأخیر' : 'حاضر'].forEach(function (t) { var td = document.createElement('td'); td.textContent = t; tr.appendChild(td); }); if (tb.rows.length === 1 && tb.rows[0].cells.length === 1) tb.innerHTML = ''; tb.insertBefore(tr, tb.firstChild); }
+      }).catch(function () { show(false, 'ارتباط با سرور برقرار نشد.'); }).then(function () { busy = false; input.value = ''; input.focus(); });
+  }
+  form.addEventListener('submit', function (e) { e.preventDefault(); send(input.value.trim()); });
+  if ('BarcodeDetector' in window && navigator.mediaDevices) {
+    var cam = document.getElementById('gate-cam'), video = document.getElementById('gate-video'); cam.hidden = false;
+    cam.addEventListener('click', function () {
+      navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } }).then(function (stream) {
+        video.srcObject = stream; video.hidden = false; video.play(); var det = new window.BarcodeDetector({ formats: ['qr_code'] }); var last = '';
+        (function tick() { det.detect(video).then(function (codes) { if (codes[0] && codes[0].rawValue !== last) { last = codes[0].rawValue; send(last); setTimeout(function () { last = ''; }, 4000); } }).catch(function () {}).then(function () { setTimeout(tick, 400); }); })();
+      }).catch(function () { show(false, 'دسترسی به دوربین ممکن نشد.'); });
+    });
+  }
 })();

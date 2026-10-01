@@ -32,6 +32,13 @@ function defs(db) {
 
   return [
     {
+      key: 'message-templates', module: 'sms', table: 'message_templates', title: 'قالب‌های پیام', singular: 'قالب پیام', icon: 'copy', read: STAFF, write: STAFF, labelField: 'title', csv: false,
+      search: ['t.title', 't.body'], orderBy: [['t.title', 'asc']], sortable: ['t.title'],
+      fields: [{ name: 'title', label: 'عنوان قالب', type: 'text', required: true, maxlength: 120 }, { name: 'category', label: 'دسته', type: 'select', options: [['general', 'عمومی'], ['absence', 'غیبت و تأخیر'], ['finance', 'مالی'], ['meeting', 'جلسه و رویداد'], ['academic', 'آموزشی']] },
+        { name: 'body', label: 'متن پیام (متغیرها: {student} {class} {school} {date} {amount})', type: 'textarea', required: true, maxlength: 600 }],
+      columns: [{ key: 'title', label: 'عنوان', sortKey: 't.title' }, { key: 'category', label: 'دسته' }, { key: 'body', label: 'متن' }],
+    },
+    {
       key: 'subjects', module: 'classes', table: 'subjects', title: 'دروس', singular: 'درس', icon: 'book-open', read: STAFF, write: STAFF,
       search: ['t.name', 't.code'], orderBy: [['t.name', 'asc']], sortable: ['t.name', 't.weekly_hours'],
       fields: [{ name: 'name', label: 'نام درس', type: 'text', required: true, maxlength: 100 }, { name: 'code', label: 'کد درس', type: 'text', ltr: true }, { name: 'grade_level', label: 'مقطع/پایه', type: 'text' }, { name: 'weekly_hours', label: 'ساعت هفتگی پیش‌فرض', type: 'number', min: 1, max: 20 }, { name: 'coefficient', label: 'ضریب درس (برای معدل)', type: 'number', min: 1, max: 10 }, { name: 'description', label: 'توضیحات', type: 'textarea' }],

@@ -21,30 +21,63 @@ const DEFS = [
   { key: 'pass_mark', group: 'academic', label: 'حدنصاب قبولی', type: 'number', def: '10', min: 1, max: 100 },
   { key: 'show_rank_to_students', group: 'academic', label: 'نمایش رتبه و میانگین کلاس به دانش‌آموز در کارنامه', type: 'checkbox', def: '1' },
   { key: 'terms_count', group: 'academic', label: 'تعداد نوبت‌های ارزشیابی', type: 'number', def: '2', min: 1, max: 4 },
+  { key: 'term_weights', group: 'academic', label: 'ضریب نوبت‌ها در معدل سالانه (مثلاً ۱,۲ ؛ خالی = ادغام ساده)', type: 'text', def: '' },
+  // کارنامه
+  { key: 'rc_title', group: 'reportcard', label: 'عنوان کارنامه', type: 'text', def: 'کارنامه تحصیلی' },
+  { key: 'rc_ministry_line', group: 'reportcard', label: 'سطر بالای کارنامه', type: 'text', def: 'جمهوری اسلامی ایران — وزارت آموزش و پرورش' },
+  { key: 'rc_region', group: 'reportcard', label: 'نام اداره/ناحیه (زیر عنوان)', type: 'text', def: '' },
+  { key: 'rc_layout', group: 'reportcard', label: 'نوع نمایش نمرات', type: 'select', def: 'numeric', options: [['numeric', 'عددی'], ['descriptive', 'توصیفی (عالی/خوب/...)'], ['both', 'عددی و توصیفی']] },
+  { key: 'rc_levels', group: 'reportcard', label: 'سطوح توصیفی (هر سطر: حداقل درصد|عنوان)', type: 'textarea', def: '90|عالی\n75|خیلی خوب\n60|خوب\n50|قابل قبول\n0|نیاز به تلاش بیشتر' },
+  { key: 'rc_show_attendance', group: 'reportcard', label: 'نمایش غیبت و تأخیر در کارنامه', type: 'checkbox', def: '1' },
+  { key: 'rc_show_behavior', group: 'reportcard', label: 'نمایش نمره رفتار در کارنامه', type: 'checkbox', def: '1' },
+  { key: 'rc_show_rank', group: 'reportcard', label: 'نمایش رتبه و معدل کلاس در کارنامه چاپی', type: 'checkbox', def: '1' },
+  { key: 'rc_show_comment', group: 'reportcard', label: 'نمایش توصیف معلم راهنما در کارنامه', type: 'checkbox', def: '1' },
+  { key: 'rc_sign_left', group: 'reportcard', label: 'عنوان امضای سمت راست', type: 'text', def: 'امضای معلم راهنما' },
+  { key: 'rc_sign_right', group: 'reportcard', label: 'عنوان امضای سمت چپ', type: 'text', def: 'مهر و امضای مدیر' },
+  { key: 'rc_footer_note', group: 'reportcard', label: 'یادداشت پایین کارنامه', type: 'textarea', def: '' },
   // حضور و غیاب
   { key: 'attendance_mode', group: 'attendance', label: 'نوع ثبت حضور و غیاب', type: 'select', def: 'daily', options: [['daily', 'روزانه (یک‌بار در روز)'], ['periodic', 'به‌تفکیک زنگ']] },
   { key: 'absence_alert_threshold', group: 'attendance', label: 'آستانه هشدار غیبت (روز)', type: 'number', def: '5', min: 1, max: 60 },
   { key: 'notify_on_absence', group: 'attendance', label: 'ارسال اعلان غیبت به دانش‌آموز', type: 'checkbox', def: '1' },
+  { key: 'attendance_lock_days', group: 'attendance', label: 'قفل ویرایش حضور و غیاب پس از (روز، ۰ = بدون قفل؛ مدیر همیشه می‌تواند)', type: 'number', def: '7', min: 0, max: 365 },
+  { key: 'attendance_enforce_schedule', group: 'attendance', label: 'در حالت زنگ‌به‌زنگ فقط معلمِ برنامه (یا جانشین) آن زنگ حق ثبت داشته باشد', type: 'checkbox', def: '0' },
+  { key: 'school_start_time', group: 'attendance', label: 'ساعت شروع مدرسه (برای ثبت ورود با کارت/QR)', type: 'time', def: '07:30' },
+  { key: 'late_after_minutes', group: 'attendance', label: 'ورود پس از چند دقیقه «تأخیر» محسوب شود', type: 'number', def: '10', min: 0, max: 120 },
   // تیکت
   { key: 'ticket_student_to_teacher', group: 'tickets', label: 'اجازه ارسال تیکت دانش‌آموز به معلم', type: 'checkbox', def: '1' },
   { key: 'ticket_auto_close_days', group: 'tickets', label: 'بستن خودکار تیکت پاسخ‌داده‌شده بعد از (روز، ۰ = غیرفعال)', type: 'number', def: '7', min: 0, max: 90 },
+  { key: 'ticket_sla_hours', group: 'tickets', label: 'مهلت پاسخ‌گویی به تیکت (ساعت، ۰ = غیرفعال)', type: 'number', def: '48', min: 0, max: 720 },
+  { key: 'ticket_escalate', group: 'tickets', label: 'در صورت تأخیر، تیکتِ بی‌پاسخ به مدیر ارجاع/یادآوری شود', type: 'checkbox', def: '1' },
   // دانش‌آموز
   { key: 'student_code_prefix', group: 'students', label: 'پیشوند شماره دانش‌آموزی', type: 'text', def: '1405' },
   { key: 'student_password_mode', group: 'students', label: 'رمز اولیه دانش‌آموز', type: 'select', def: 'national_id', options: [['national_id', 'کد ملی (در نبود آن رمز تصادفی)'], ['random', 'همیشه رمز تصادفی']] },
   { key: 'show_birthdays', group: 'students', label: 'نمایش تولدهای امروز در داشبورد', type: 'checkbox', def: '1' },
   // مالی
   { key: 'currency_label', group: 'finance', label: 'واحد پول', type: 'select', def: 'تومان', options: ['تومان', 'ریال'] },
+  { key: 'sibling_discount_percent', group: 'finance', label: 'تخفیف برادر/خواهر (درصد برای فرزند دوم به بعد، ۰ = غیرفعال)', type: 'number', def: '0', min: 0, max: 100 },
+  { key: 'hr_annual_leave_days', group: 'hr', label: 'سقف مرخصی استحقاقی سالانه معلم (روز)', type: 'number', def: '26', min: 0, max: 100 },
   // امنیت
   { key: 'session_hours', group: 'security', label: 'مدت اعتبار نشست (ساعت)', type: 'number', def: '8', min: 1, max: 168 },
   { key: 'min_password_length', group: 'security', label: 'حداقل طول رمز عبور', type: 'number', def: '6', min: 4, max: 32 },
   { key: 'max_login_attempts', group: 'security', label: 'حداکثر تلاش ناموفق ورود', type: 'number', def: '5', min: 3, max: 20 },
   { key: 'lockout_minutes', group: 'security', label: 'مدت قفل موقت ورود (دقیقه)', type: 'number', def: '10', min: 1, max: 1440 },
+  // پیامک (ippanel)
+  { key: 'sms_enabled', group: 'sms', label: 'فعال‌سازی ارسال پیامک', type: 'checkbox', def: '0' },
+  { key: 'sms_provider', group: 'sms', label: 'سرویس‌دهنده پیامک', type: 'select', def: 'log', options: [['log', 'آزمایشی (فقط ثبت در گزارش، بدون ارسال)'], ['ippanel', 'ippanel (edge.ippanel.com)']] },
+  { key: 'sms_api_key', group: 'sms', label: 'کلید API (Access Key پنل ippanel)', type: 'secret', def: '' },
+  { key: 'sms_from_number', group: 'sms', label: 'شماره ارسال‌کننده (مثلاً +983000505)', type: 'text', def: '' },
+  { key: 'sms_base_url', group: 'sms', label: 'نشانی پایه API (معمولاً تغییر ندهید)', type: 'text', def: 'https://edge.ippanel.com/v1' },
+  { key: 'sms_on_absence', group: 'sms', label: 'پیامک غیبت به اولیا هنگام ثبت غیبت', type: 'checkbox', def: '1' },
+  { key: 'sms_on_late', group: 'sms', label: 'پیامک تأخیر ورود به اولیا', type: 'checkbox', def: '0' },
+  { key: 'sms_on_exit', group: 'sms', label: 'پیامک صدور برگه خروج/دیرکرد به اولیا', type: 'checkbox', def: '1' },
+  { key: 'sms_on_grades', group: 'sms', label: 'پیامک انتشار نمره به اولیا', type: 'checkbox', def: '0' },
+  { key: 'sms_on_credentials', group: 'sms', label: 'ارسال نام کاربری/رمز حساب اولیا با پیامک', type: 'checkbox', def: '1' },
   // ظاهر
   { key: 'primary_color', group: 'appearance', label: 'رنگ اصلی سامانه', type: 'color', def: '#2563eb' },
   { key: 'show_demo_logins', group: 'appearance', label: 'نمایش حساب‌های دمو در صفحه ورود', type: 'checkbox', def: '0' },
   { key: 'logo', group: 'appearance', label: 'لوگو', type: 'hidden', def: '' },
 ];
-const GROUPS = { general: 'اطلاعات مدرسه', academic: 'تنظیمات آموزشی', attendance: 'حضور و غیاب', tickets: 'تیکت‌ها', students: 'دانش‌آموزان', finance: 'مالی', security: 'امنیت', appearance: 'ظاهر' };
+const GROUPS = { general: 'اطلاعات مدرسه', academic: 'تنظیمات آموزشی', reportcard: 'کارنامه و قالب چاپ', attendance: 'حضور و غیاب', tickets: 'تیکت‌ها', students: 'دانش‌آموزان', finance: 'مالی', hr: 'منابع انسانی', sms: 'پیامک (ippanel)', security: 'امنیت', appearance: 'ظاهر' };
 
 let cache = null;
 async function load() {

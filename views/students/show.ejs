@@ -23,6 +23,7 @@
   <div class="card"><h3><%- icon('heart-pulse', 18) %> سلامت و بیمه</h3><dl class="kv"><%- include('_kv', { g: groups[4], disp: disp }) %></dl><% if (disp.blood_type !== '—') { %><div class="muted small" style="margin-top:.5rem">گروه خونی: <span class="ltr"><%= s.blood_type %></span></div><% } %></div>
   <% if (s.notes) { %><div class="card"><h3><%- icon('notebook-pen', 18) %> توضیحات</h3><p style="white-space:pre-wrap"><%= s.notes %></p></div><% } %>
 </div>
+<% if (typeof parentAccounts !== 'undefined') { %><%- include('_parents_card') %><% } %>
 <% if (mgrFlag) { %>
 <div class="card"><h3><%- icon('settings', 18) %> عملیات مدیریتی</h3>
   <div style="display:flex;gap:.6rem;flex-wrap:wrap">

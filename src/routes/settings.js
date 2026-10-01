@@ -22,6 +22,11 @@ router.post('/settings', async (req, res, next) => {
       if (d.type === 'checkbox') v = v === '1' ? '1' : '0';
       else if (d.type === 'days') v = [].concat(v || []).join(',');
       else if (v === undefined) continue;
+      if (d.type === 'secret' && !v) continue; // خالی = بدون تغییر
+      if (d.key === 'sms_from_number' && v && !/^\+?\d{3,15}$/.test(v)) { errors.push('«شماره ارسال‌کننده» نامعتبر است (مثل +983000505).'); continue; }
+      if (d.key === 'sms_base_url' && v && !/^https?:\/\/[^\s]+$/.test(v)) { errors.push('«نشانی پایه API» باید با http:// یا https:// شروع شود.'); continue; }
+      if (d.key === 'term_weights' && v && !/^\d+(\.\d+)?(\s*[,،]\s*\d+(\.\d+)?)*$/.test(v)) { errors.push('«ضریب نوبت‌ها» باید مثل ۱,۲ باشد.'); continue; }
+      if (d.key === 'rc_levels' && v && !v.split(/\r?\n/).filter(Boolean).every((l) => /^\d{1,3}\s*\|\s*\S+/.test(l.trim()))) { errors.push('«سطوح توصیفی» باید سطر به سطر به‌شکل «۹۰|عالی» باشد.'); continue; }
       if (d.type === 'number') { const n = Number(v); if (isNaN(n) || (d.min !== undefined && n < d.min) || (d.max !== undefined && n > d.max)) { errors.push(`«${d.label}» باید عددی بین ${d.min} و ${d.max} باشد.`); continue; } v = String(n); }
       if (d.type === 'time' && !svc.validTime(v)) { errors.push(`«${d.label}» نامعتبر است.`); continue; }
       if (d.type === 'color' && !/^#[0-9a-fA-F]{6}$/.test(v)) { errors.push('رنگ نامعتبر است.'); continue; }

@@ -10,6 +10,7 @@
 <% if (cls) { %>
 <% if (future) { %><div class="alert error"><%- icon('circle-x', 18) %><div>تاریخ انتخاب‌شده در آینده است و امکان ثبت وجود ندارد.</div></div><% } %>
 <% if (offDay) { %><div class="alert warn"><%- icon('triangle-alert', 18) %><div>این روز جزو روزهای فعال مدرسه نیست.</div></div><% } %>
+<% if (typeof blocked !== 'undefined' && blocked) { %><div class="alert error"><%- icon('lock', 18) %><div><%= blocked %></div></div><% } %>
 <% if (recorded) { %><div class="alert info"><%- icon('info', 18) %><div>حضور و غیاب این روز قبلاً ثبت شده است؛ می‌توانید آن را اصلاح کنید.</div></div><% } %>
 <% if (!students.length) { %><div class="card empty">در این کلاس دانش‌آموز فعالی وجود ندارد.</div><% } else { %>
 <form method="post" action="<%= u('/attendance') %>" id="att-form">
@@ -23,6 +24,6 @@
     <td><input type="text" name="note[<%= s.id %>]" value="<%= existing[s.id] && existing[s.id].note ? existing[s.id].note : '' %>" maxlength="250" placeholder="اختیاری" style="min-width:150px"></td></tr>
   <% }) %></tbody></table></div>
 </div>
-<button class="btn primary" type="submit" <%= future ? 'disabled' : '' %>><%- icon('save', 17) %> ذخیره حضور و غیاب</button>
+<button class="btn primary" type="submit" <%= future || (typeof blocked !== 'undefined' && blocked) ? 'disabled' : '' %>><%- icon('save', 17) %> ذخیره حضور و غیاب</button>
 </form>
 <% } %><% } %><% } %>

@@ -17,8 +17,9 @@
   <% } else { %><label><%= d.label %></label>
     <% if (d.type === 'select') { %><select name="<%= d.key %>"><% d.options.forEach(function(o){ var ov = Array.isArray(o) ? o[0] : o, ol = Array.isArray(o) ? o[1] : o; %><option value="<%= ov %>" <%= String(v) === String(ov) ? 'selected' : '' %>><%= ol %></option><% }) %></select>
     <% } else if (d.type === 'textarea') { %><textarea name="<%= d.key %>" style="min-height:70px"><%= v %></textarea>
+    <% } else if (d.type === 'secret') { %><input type="password" name="<%= d.key %>" value="" autocomplete="new-password" class="ltr" placeholder="<%= v ? '•••••••• (ثبت شده — برای تغییر مقدار جدید بنویسید)' : '' %>">
     <% } else if (d.type === 'color') { %><input type="color" name="<%= d.key %>" value="<%= v %>">
-    <% } else { %><input type="text" name="<%= d.key %>" value="<%= v %>" <%= d.type === 'number' || d.type === 'time' ? 'class=ltr' : '' %>><% } %>
+    <% } else { %><input type="text" name="<%= d.key %>" value="<%= v %>" <%= d.type === 'number' || d.type === 'time' || /key|url|number|weights/.test(d.key) ? 'class=ltr' : '' %>><% } %>
   <% } %></div>
 <% }) %></div></fieldset><% }) %>
 <button class="btn primary" type="submit"><%- icon('save', 16) %> ذخیره تنظیمات</button>

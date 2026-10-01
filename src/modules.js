@@ -22,20 +22,22 @@ const MODULES = [
     { label: 'دروس', href: '/subjects', icon: 'book-open', roles: STAFF, section: 'main' },
     { label: 'سال‌های تحصیلی', href: '/academic-years', icon: 'calendar-days', roles: STAFF, section: 'main' }] },
   { key: 'attendance', title: 'حضور و غیاب', icon: 'calendar-check', desc: 'ثبت روزانه/به‌تفکیک زنگ، گزارش ماهانه، هشدار غیبت، توجیه غیبت از طریق تیکت', nav: [
-    { label: 'ثبت حضور و غیاب', href: '/attendance', icon: 'calendar-check', roles: STAFF_T, section: 'edu' },
-    { label: 'گزارش حضور و غیاب', href: '/attendance/report', icon: 'list-checks', roles: STAFF_T, section: 'edu' },
+    { label: 'ثبت حضور و غیاب', href: '/attendance', icon: 'calendar-check', roles: STAFF_T, section: 'edu' , perm: 'attendance' },
+    { label: 'گزارش حضور و غیاب', href: '/attendance/report', icon: 'list-checks', roles: STAFF_T, section: 'edu' , perm: 'attendance' },
+    { label: 'گزارش تأخیرها', href: '/attendance/late', icon: 'clock', roles: STAFF_T, section: 'edu', perm: 'attendance' },
+    { label: 'ثبت ورود با QR', href: '/attendance/gate', icon: 'qr-code', roles: ['admin', 'deputy'], section: 'edu', perm: 'attendance' },
     { label: 'حضور و غیاب من', href: '/attendance/my', icon: 'calendar-check', roles: ['student'], section: 'edu' }] },
   { key: 'timetable', title: 'برنامه هفتگی', icon: 'clock', desc: 'برنامه هفتگی کلاس‌ها با تشخیص تداخل معلم', nav: [
     { label: 'برنامه هفتگی', href: '/timetable', icon: 'clock', roles: ALL, section: 'edu' }] },
   { key: 'grades', title: 'نمرات و کارنامه', icon: 'award', desc: 'ارزشیابی‌ها، ثبت نمره، کارنامه، رتبه‌بندی و انتشار نمرات', nav: [
-    { label: 'نمرات', href: '/grades', icon: 'award', roles: STAFF_T, section: 'edu' },
+    { label: 'نمرات', href: '/grades', icon: 'award', roles: STAFF_T, section: 'edu' , perm: 'grades' },
     { label: 'کارنامه من', href: '/grades/my', icon: 'award', roles: ['student'], section: 'edu' }] },
   { key: 'homework', title: 'تکالیف', icon: 'notebook-pen', desc: 'تعریف تکلیف، تحویل آنلاین با فایل، نمره‌دهی و بازخورد', nav: [
     { label: 'تکالیف', href: '/homework', icon: 'notebook-pen', roles: ALL, section: 'edu' }] },
   { key: 'exams', title: 'برنامه امتحانات', icon: 'clipboard-list', desc: 'زمان‌بندی امتحانات هر کلاس', nav: [
-    { label: 'برنامه امتحانات', href: '/exams', icon: 'clipboard-list', roles: ALL, section: 'edu' }] },
+    { label: 'برنامه امتحانات', href: '/exams', icon: 'clipboard-list', roles: ALL, section: 'edu' , perm: 'exams' }] },
   { key: 'discipline', title: 'انضباطی و رفتار', icon: 'gavel', desc: 'ثبت موارد تشویقی/انضباطی و نمره رفتار', nav: [
-    { label: 'انضباطی و رفتار', href: '/discipline', icon: 'gavel', roles: ALL, section: 'edu' }] },
+    { label: 'انضباطی و رفتار', href: '/discipline', icon: 'gavel', roles: ALL, section: 'edu' , perm: 'discipline' }] },
   { key: 'tickets', title: 'تیکت و ارتباطات', icon: 'life-buoy', desc: 'ارتباط دانش‌آموز، معلم و مدیر از طریق تیکت، پیوست، رتبه‌دهی و توجیه غیبت', nav: [
     { label: 'تیکت‌ها', href: '/tickets', icon: 'life-buoy', roles: ALL, section: 'comm', badge: 'tickets' }] },
   { key: 'announcements', title: 'اطلاعیه‌ها', icon: 'megaphone', desc: 'اطلاعیه برای همه، معلمان، دانش‌آموزان یا یک کلاس', nav: [
@@ -47,15 +49,30 @@ const MODULES = [
     { label: 'جلسات اولیا', href: '/meetings', icon: 'users-round', roles: ALL, section: 'comm' }] },
   { key: 'documents', title: 'مدارک و فایل‌های پرونده', icon: 'folder-open', desc: 'بارگذاری مدارک در پرونده دانش‌آموز (شناسنامه، عکس، ...)', nav: [] },
   { key: 'health', title: 'بهداشت و سلامت', icon: 'stethoscope', desc: 'سوابق مراجعه به بهداشت مدرسه', nav: [
-    { label: 'بهداشت و سلامت', href: '/health', icon: 'heart-pulse', roles: STAFF, section: 'services' }] },
+    { label: 'بهداشت و سلامت', href: '/health', icon: 'heart-pulse', roles: STAFF, section: 'services' , perm: 'health' }] },
   { key: 'finance', title: 'امور مالی', icon: 'wallet', desc: 'شهریه، پرداخت‌ها، بدهکاران و رسید', nav: [
-    { label: 'امور مالی', href: '/finance', icon: 'wallet', roles: ['admin', 'deputy', 'student'], section: 'services' }] },
+    { label: 'امور مالی', href: '/finance', icon: 'wallet', roles: ['admin', 'deputy', 'student'], section: 'services' , perm: 'finance' }] },
   { key: 'library', title: 'کتابخانه', icon: 'library-big', desc: 'فهرست کتاب، امانت و بازگشت، دیرکرد', nav: [
-    { label: 'کتابخانه', href: '/library', icon: 'library-big', roles: ALL, section: 'services' }] },
+    { label: 'کتابخانه', href: '/library', icon: 'library-big', roles: ALL, section: 'services' , perm: 'library' }] },
   { key: 'transport', title: 'سرویس مدرسه', icon: 'bus', desc: 'مسیرهای سرویس و تخصیص دانش‌آموز', nav: [
-    { label: 'سرویس مدرسه', href: '/transport', icon: 'bus', roles: STAFF, section: 'services' }] },
+    { label: 'سرویس مدرسه', href: '/transport', icon: 'bus', roles: STAFF, section: 'services' , perm: 'transport' }] },
+  { key: 'parents', title: 'پورتال اولیا', icon: 'baby', desc: 'حساب کاربری برای والدین؛ مشاهده حضور و غیاب، نمرات، تکالیف، مالی و مکاتبه با مدرسه برای هر فرزند', nav: [
+    { label: 'فرزندان من', href: '/parent/children', icon: 'baby', roles: ['student'], parentOnly: true, section: 'main' },
+    { label: 'حساب‌های اولیا', href: '/parents', icon: 'users-round', roles: STAFF, section: 'main', perm: 'parents' }] },
+  { key: 'sms', title: 'پیامک و پیام گروهی', icon: 'send', desc: 'ارسال پیامک (ippanel)، پیام گروهی به اولیا/کلاس/معلمان، قالب پیام و گزارش ارسال', nav: [
+    { label: 'پیام گروهی', href: '/messages', icon: 'send', roles: STAFF, section: 'comm', perm: 'messaging' },
+    { label: 'گزارش پیامک‌ها', href: '/sms/log', icon: 'smartphone', roles: STAFF, section: 'comm', perm: 'messaging' }] },
+  { key: 'promotion', title: 'ارتقای پایان سال', icon: 'trending-up', desc: 'جادوگر پایان سال: ارتقا/مردودی/فارغ‌التحصیلی، ساخت کلاس‌های سال جدید و بایگانی سوابق', nav: [
+    { label: 'ارتقای پایان سال', href: '/promotion', icon: 'trending-up', roles: STAFF, section: 'main', perm: 'promotion' }] },
+  { key: 'exits', title: 'خروج و دیرکرد', icon: 'door-open', desc: 'برگه خروج دانش‌آموز، ورود با تأخیر و تحویل به اولیای مجاز', nav: [
+    { label: 'خروج و دیرکرد', href: '/exits', icon: 'door-open', roles: ['admin', 'deputy', 'teacher'], section: 'edu', perm: 'exits' }] },
+  { key: 'questionbank', title: 'بانک سؤال و برگه امتحانی', icon: 'clipboard-pen', desc: 'بانک سؤال هر درس، ساخت برگه امتحانی قابل چاپ', nav: [
+    { label: 'بانک سؤال', href: '/questions', icon: 'circle-help', roles: STAFF_T, section: 'edu', perm: 'exams' },
+    { label: 'برگه‌های امتحانی', href: '/papers', icon: 'clipboard-pen', roles: STAFF_T, section: 'edu', perm: 'exams' }] },
+  { key: 'hr', title: 'منابع انسانی معلمان', icon: 'user-cog', desc: 'مرخصی، موظفی (بار تدریس)، ارزشیابی معلمان و جانشینی', nav: [
+    { label: 'منابع انسانی', href: '/hr', icon: 'user-cog', roles: ['admin', 'deputy', 'teacher'], section: 'main', perm: 'hr' }] },
   { key: 'reports', title: 'گزارش‌ها و آمار', icon: 'chart-bar', desc: 'آمار کلی، حضور و غیاب، نمرات، تیکت‌ها و مالی', nav: [
-    { label: 'گزارش‌ها', href: '/reports', icon: 'chart-bar', roles: STAFF, section: 'system' }] },
+    { label: 'گزارش‌ها', href: '/reports', icon: 'chart-bar', roles: STAFF, section: 'system' , perm: 'reports' }] },
   { key: 'audit', title: 'گزارش فعالیت‌ها', icon: 'history', desc: 'ثبت تمام تغییرات مهم و ورودها', nav: [
     { label: 'گزارش فعالیت‌ها', href: '/audit', icon: 'history', roles: ['admin'], section: 'system' }] },
   { key: 'backup', title: 'پشتیبان‌گیری', icon: 'database-backup', desc: 'خروجی کامل داده‌ها و فایل پایگاه داده', nav: [
@@ -89,12 +106,15 @@ async function setEnabled(key, enabled) {
   state[key] = !!enabled;
   return true;
 }
-function navFor(role, badges = {}) {
+function navFor(role, badges = {}, user = null) {
   const sections = {};
+  const perms = require('./permissions');
   for (const m of MODULES) {
     if (!state[m.key]) continue;
     for (const n of m.nav) {
       if (!n.roles.includes(role)) continue;
+      if (n.parentOnly && !(user && user.realRole === 'parent')) continue;
+      if (n.perm && user && user.role === 'deputy' && !perms.can(user, n.perm)) continue;
       (sections[n.section] = sections[n.section] || []).push({ ...n, badgeCount: n.badge ? badges[n.badge] || 0 : 0 });
     }
   }

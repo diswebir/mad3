@@ -6,6 +6,7 @@ const multer = require('multer');
 const db = require('../db');
 const config = require('../config');
 const settings = require('../settings');
+const permissions = require('../permissions');
 const modules = require('../modules');
 const svc = require('../services');
 const J = require('../utils/jalali');
@@ -371,6 +372,7 @@ router.get('/students/:id(\\d+)', async (req, res, next) => {
       data.homeroom = s.homeroom_teacher_id ? await k('teachers as t').join('users as u', 'u.id', 't.user_id').where('t.id', s.homeroom_teacher_id).first('u.full_name', 'u.phone') : null;
       data.route = M('transport') && s.route_id ? await k('bus_routes').where({ id: s.route_id }).first() : null;
       data.disp = display(s, { routeName: data.route ? data.route.name : null });
+      if (mgrFlag && M('parents') && permissions.can(u, 'parents')) data.parentAccounts = await k('parent_students as ps').join('users as p', 'p.id', 'ps.user_id').where('ps.student_id', s.id).select('p.id', 'p.username', 'p.full_name', 'p.active', 'ps.relation');
     }
     if (tab === 'attendance') {
       const rows = await k('attendance').where({ student_id: s.id }).groupBy('status').select('status').count({ c: '*' });

@@ -84,6 +84,13 @@ async function loadUser(req, res, next) {
       req.user = u;
       if (u.role === 'teacher') req.user.teacher = await db.get()('teachers').where({ user_id: u.id }).first();
       if (u.role === 'student') req.user.student = await db.get()('students').where({ user_id: u.id }).first();
+      if (u.role === 'parent') {
+        // اولیا: همان تجربه «فقط‌خواندنی» دانش‌آموز برای فرزند انتخاب‌شده (نقش مؤثر = student)
+        const kids = await db.get()('parent_students as ps').join('students as s', 's.id', 'ps.student_id').where('ps.user_id', u.id).orderBy('s.id').select('s.*', 'ps.relation');
+        const want = Number(req.session.childId) || 0;
+        const pick = kids.find((x) => x.id === want) || kids.find((x) => x.status === 'active') || kids[0] || null;
+        req.user.realRole = 'parent'; req.user.children = kids; req.user.student = pick; req.user.role = 'student';
+      }
     } else if (req.session) { delete req.session.uid; }
   }
   res.locals.user = req.user;
@@ -151,7 +158,7 @@ function uploader(kind, field, { maxMB = 5, images = false } = {}) {
 }
 const noPassNormalize = (body) => {
   const o = {};
-  for (const k of Object.keys(body)) o[k] = /password|^current$|^pass|pass$|_csrf/i.test(k) ? body[k] : normalizeInput(body[k]);
+  for (const k of Object.keys(body)) o[k] = /password|^current$|^pass|pass$|_csrf|_key$/i.test(k) ? body[k] : normalizeInput(body[k]);
   return nestKeys(o);
 };
 

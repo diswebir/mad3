@@ -25,6 +25,7 @@ module.exports = function localsMiddleware(req, res, next) {
   l.asset = (p) => `${base}/assets/${p}?v=${ver(p)}`;
   l.fa = F.toFa; l.money = F.money; l.num = F.number; l.esc = F.esc;
   l.d = (v) => F.toFa(J.isoToJString(v)); l.ld = (v) => F.toFa(J.longDate(v)); l.dt = (v) => F.toFa(J.dateTimeString(v));
+  l.PERMS_LIB = require('./permissions'); l.can = (perm) => require('./permissions').can(req.user, perm); l.APP_VERSION = require('./version').VERSION;
   l.icon = icon; l.L = L; l.badges_map = badge; l.J = J;
   l.S = (k) => settings.get(k); l.settingsAll = settings.all();
   l.enabled = (k) => modules.isEnabled(k);
@@ -57,7 +58,7 @@ module.exports = function localsMiddleware(req, res, next) {
       if (req.user && layout === 'layout') {
         const { badgesFor } = require('./middleware');
         const b = await badgesFor(req.user);
-        const nav = modules.navFor(req.user.role, b);
+        const nav = modules.navFor(req.user.role, b, req.user);
         let best = null;
         for (const s of nav) for (const it of s.items) {
           const hit = it.href === '/' ? req.path === '/' : (req.path === it.href || req.path.startsWith(it.href + '/'));

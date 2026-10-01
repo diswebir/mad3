@@ -177,9 +177,85 @@ async function createSchema(db) {
     t.increments('id'); t.integer('user_id').index(); t.string('user_name', 150); t.string('action', 40).notNullable(); t.string('entity', 40);
     t.string('entity_id', 30); t.text('details'); t.string('ip', 60); ts(t); t.index(['created_at']);
   });
+  /* ===== نسخه ۲: ستون‌ها و جدول‌های تازه (idempotent؛ برای نصب‌های قدیمی هم اجرا می‌شود) ===== */
+  const addCol = async (table, col, cb) => { if (!(await db.schema.hasColumn(table, col))) await db.schema.alterTable(table, (t) => cb(t)); };
+  await addCol('users', 'permissions', (t) => t.text('permissions'));
+  await addCol('users', 'title', (t) => t.string('title', 80));
+  await addCol('classrooms', 'status', (t) => t.string('status', 12).notNullable().defaultTo('active'));
+  await addCol('attendance', 'arrival_time', (t) => t.string('arrival_time', 5));
+  await addCol('tickets', 'escalated_at', (t) => t.string('escalated_at', 30));
+  await addCol('payments', 'doc_no', (t) => t.integer('doc_no'));
+  await addCol('payments', 'voided', (t) => t.boolean('voided').notNullable().defaultTo(false));
+  await addCol('payments', 'void_reason', (t) => t.string('void_reason', 250));
+  await addCol('fees', 'discount_note', (t) => t.string('discount_note', 150));
+  await addCol('teachers', 'weekly_load', (t) => t.integer('weekly_load'));
+
+  await make('parent_students', (t) => {
+    t.increments('id'); t.integer('user_id').notNullable().index(); t.integer('student_id').notNullable().index(); t.string('relation', 20).defaultTo('father'); ts(t);
+    t.unique(['user_id', 'student_id']);
+  });
+  await make('sms_log', (t) => {
+    t.increments('id'); t.string('to_number', 30).notNullable(); t.text('message').notNullable(); t.string('event', 30); t.string('status', 12).notNullable().defaultTo('queued').index();
+    t.string('provider_ref', 60); t.string('error', 250); t.integer('student_id'); t.integer('created_by'); ts(t);
+  });
+  await make('message_templates', (t) => { t.increments('id'); t.string('title', 120).notNullable(); t.text('body').notNullable(); t.string('category', 30).defaultTo('general'); ts(t); });
+  await make('group_messages', (t) => {
+    t.increments('id'); t.string('title', 200).notNullable(); t.text('body').notNullable(); t.string('audience', 30).notNullable(); t.string('audience_label', 150);
+    t.string('channels', 20).notNullable().defaultTo('app'); t.integer('recipients').defaultTo(0); t.integer('sms_count').defaultTo(0); t.integer('sent_by'); ts(t);
+  });
+  await make('student_year_records', (t) => {
+    t.increments('id'); t.integer('student_id').notNullable().index(); t.integer('academic_year_id'); t.string('year_title', 60); t.string('classroom_name', 100); t.string('grade_level', 40);
+    t.decimal('overall', 6, 2); t.integer('rank_no'); t.integer('ranked_count'); t.string('result', 20).notNullable().defaultTo('promoted');
+    t.integer('absent_days').defaultTo(0); t.integer('late_count').defaultTo(0); t.integer('behavior_score'); t.text('notes'); ts(t);
+    t.unique(['student_id', 'academic_year_id']);
+  });
+  await make('report_comments', (t) => {
+    t.increments('id'); t.integer('student_id').notNullable(); t.integer('term').notNullable().defaultTo(0); t.text('comment'); t.integer('author_id'); ts(t);
+    t.unique(['student_id', 'term']);
+  });
+  await make('fee_installments', (t) => {
+    t.increments('id'); t.integer('fee_id').notNullable().index(); t.integer('seq').notNullable(); t.string('due_date', 10); t.bigInteger('amount').notNullable();
+  });
+  await make('teacher_unavailability', (t) => {
+    t.increments('id'); t.integer('teacher_id').notNullable().index(); t.integer('day').notNullable(); t.integer('period').notNullable(); t.string('note', 150);
+    t.unique(['teacher_id', 'day', 'period']);
+  });
+  await make('substitutions', (t) => {
+    t.increments('id'); t.string('date', 10).notNullable().index(); t.integer('classroom_id').notNullable(); t.integer('period').notNullable(); t.integer('class_subject_id');
+    t.integer('absent_teacher_id'); t.integer('substitute_teacher_id').notNullable(); t.string('note', 200); t.integer('created_by'); ts(t);
+    t.unique(['date', 'classroom_id', 'period']);
+  });
+  await make('questions', (t) => {
+    t.increments('id'); t.integer('subject_id').notNullable().index(); t.string('grade_level', 40); t.string('type', 12).notNullable().defaultTo('descriptive');
+    t.text('text').notNullable(); t.text('options'); t.text('answer'); t.integer('difficulty').defaultTo(2); t.decimal('score', 6, 2).defaultTo(1); t.integer('created_by'); ts(t);
+  });
+  await make('exam_papers', (t) => {
+    t.increments('id'); t.string('title', 200).notNullable(); t.integer('class_subject_id').notNullable().index(); t.string('exam_date', 10); t.integer('duration').defaultTo(60);
+    t.text('instructions'); t.text('items'); t.integer('created_by'); ts(t);
+  });
+  await make('student_changes', (t) => {
+    t.increments('id'); t.integer('student_id').notNullable().index(); t.string('field', 40).notNullable(); t.text('old_value'); t.text('new_value'); t.integer('user_id'); t.string('user_name', 150); ts(t);
+  });
+  await make('student_guardians', (t) => {
+    t.increments('id'); t.integer('student_id').notNullable().index(); t.string('name', 120).notNullable(); t.string('relation', 40); t.string('phone', 30); t.string('national_id', 20);
+    t.boolean('can_pickup').notNullable().defaultTo(true); t.boolean('is_legal').notNullable().defaultTo(false); t.string('notes', 250); ts(t);
+  });
+  await make('exit_permits', (t) => {
+    t.increments('id'); t.integer('student_id').notNullable().index(); t.string('kind', 10).notNullable().defaultTo('exit'); t.string('permit_date', 10).notNullable(); t.string('permit_time', 5);
+    t.string('reason', 250); t.string('picked_up_by', 120); t.integer('approved_by'); t.string('approved_name', 150); ts(t);
+  });
+  await make('teacher_leaves', (t) => {
+    t.increments('id'); t.integer('teacher_id').notNullable().index(); t.string('kind', 20).notNullable().defaultTo('casual'); t.string('start_date', 10).notNullable(); t.string('end_date', 10).notNullable();
+    t.integer('days').defaultTo(1); t.text('reason'); t.string('status', 12).notNullable().defaultTo('pending').index(); t.integer('decided_by'); t.string('decided_at', 30); t.string('decision_note', 250); ts(t);
+  });
+  await make('teacher_evaluations', (t) => {
+    t.increments('id'); t.integer('teacher_id').notNullable().index(); t.string('eval_date', 10).notNullable(); t.integer('term').defaultTo(1); t.text('scores'); t.decimal('total', 6, 2);
+    t.text('comment'); t.integer('evaluator_id'); ts(t);
+  });
+
 }
 
-const TABLES = ['settings', 'modules_state', 'sessions', 'users', 'academic_years', 'subjects', 'teachers', 'classrooms', 'class_subjects', 'students', 'student_documents', 'student_notes', 'attendance', 'tickets', 'ticket_messages', 'assessments', 'scores', 'homework', 'homework_submissions', 'timetable', 'exam_schedule', 'announcements', 'events', 'notifications', 'discipline_records', 'health_records', 'meetings', 'fees', 'payments', 'books', 'book_loans', 'bus_routes', 'audit_logs'];
+const TABLES = ['settings', 'modules_state', 'sessions', 'users', 'academic_years', 'subjects', 'teachers', 'classrooms', 'class_subjects', 'students', 'student_documents', 'student_notes', 'attendance', 'tickets', 'ticket_messages', 'assessments', 'scores', 'homework', 'homework_submissions', 'timetable', 'exam_schedule', 'announcements', 'events', 'notifications', 'discipline_records', 'health_records', 'meetings', 'fees', 'payments', 'books', 'book_loans', 'bus_routes', 'audit_logs', 'parent_students', 'sms_log', 'message_templates', 'group_messages', 'student_year_records', 'report_comments', 'fee_installments', 'teacher_unavailability', 'substitutions', 'questions', 'exam_papers', 'student_changes', 'student_guardians', 'exit_permits', 'teacher_leaves', 'teacher_evaluations'];
 /** حذف جدول‌های ساخته‌شده توسط نصب ناقص (فقط در ویزارد نصب استفاده می‌شود) */
 async function dropAll(db) { for (const t of TABLES) await db.schema.dropTableIfExists(t); }
 

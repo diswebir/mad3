@@ -3,7 +3,9 @@ const express = require('express');
 const db = require('../db');
 const svc = require('../services');
 const { requireRole } = require('../middleware');
+const permissions = require('../permissions');
 const router = express.Router();
+const permJson = (b) => JSON.stringify([].concat(b.perm || []).filter((x) => permissions.PERMS[x]));
 router.use('/users', requireRole('admin'));
 
 router.get('/users', async (req, res, next) => {
@@ -30,7 +32,7 @@ router.post('/users/new', async (req, res, next) => {
     if (b.email && !/^\S+@\S+\.\S+$/.test(b.email)) errors.push('ایمیل معتبر نیست.');
     if (!svc.validPhone(b.phone)) errors.push('تلفن معتبر نیست.');
     if (errors.length) return res.view('users/form', { title: 'کاربر جدید', row: null, errors, vals: b });
-    const r = await k('users').insert({ username: b.username.toLowerCase(), password_hash: svc.hash(b.password), role: b.role, full_name: b.full_name, email: b.email || null, phone: b.phone || null, active: 1, must_change_password: b.must_change ? 1 : 0 });
+    const r = await k('users').insert({ username: b.username.toLowerCase(), password_hash: svc.hash(b.password), role: b.role, full_name: b.full_name, email: b.email || null, phone: b.phone || null, active: 1, must_change_password: b.must_change ? 1 : 0, title: b.title ? String(b.title).slice(0, 80) : null, permissions: b.role === 'deputy' ? permJson(b) : null });
     await svc.audit(req, 'create', 'users', Array.isArray(r) ? r[0] : r, b.username);
     req.flash('success', 'کاربر ایجاد شد.'); res.redirect('/users');
   } catch (e) { next(e); }
@@ -55,9 +57,12 @@ router.post('/users/:id(\\d+)/edit', async (req, res, next) => {
     if (!svc.validPhone(b.phone)) errors.push('تلفن معتبر نیست.');
     if (errors.length) return res.view('users/form', { title: 'ویرایش کاربر', row, errors, vals: { ...row, ...b } });
     const upd = { full_name: b.full_name, email: b.email || null, phone: b.phone || null };
+    if (['admin', 'deputy'].includes(row.role)) { upd.title = b.title ? String(b.title).slice(0, 80) : null; }
     if (['admin', 'deputy'].includes(row.role) && ['admin', 'deputy'].includes(b.role) && row.id !== req.user.id) upd.role = b.role;
+    const finalRole = upd.role || row.role;
+    if (finalRole === 'deputy' && ['admin', 'deputy'].includes(row.role)) upd.permissions = permJson(b); else if (finalRole === 'admin') upd.permissions = null;
     await k('users').where({ id: row.id }).update(upd);
-    await svc.audit(req, 'update', 'users', row.id, row.username);
+    await svc.audit(req, 'update', 'users', row.id, row.username + (upd.permissions ? ' perms=' + upd.permissions : ''));
     req.flash('success', 'کاربر ویرایش شد.'); res.redirect('/users');
   } catch (e) { next(e); }
 });

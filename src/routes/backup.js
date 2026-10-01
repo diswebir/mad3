@@ -13,7 +13,7 @@ const J = require('../utils/jalali');
 const { requireRole } = require('../middleware');
 const router = express.Router();
 router.use('/backup', modules.guard('backup'), requireRole('admin'));
-const TABLES = ['settings', 'modules_state', 'users', 'academic_years', 'subjects', 'teachers', 'classrooms', 'class_subjects', 'students', 'student_documents', 'student_notes', 'attendance', 'tickets', 'ticket_messages', 'assessments', 'scores', 'homework', 'homework_submissions', 'timetable', 'exam_schedule', 'announcements', 'events', 'notifications', 'discipline_records', 'health_records', 'meetings', 'fees', 'payments', 'books', 'book_loans', 'bus_routes', 'audit_logs'];
+const TABLES = require('../schema').TABLES.filter((t) => t !== 'sessions'); // شامل جدول‌های نسخه ۲ هم می‌شود
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 100 * 1024 * 1024, files: 1 } }).single('file');
 
 router.get('/backup', async (req, res, next) => {
@@ -25,7 +25,7 @@ router.get('/backup', async (req, res, next) => {
 });
 router.post('/backup/download', async (req, res, next) => {
   try {
-    const k = db.get(); const out = { app: 'school-management', version: 1, created_at: new Date().toISOString(), tables: {} };
+    const k = db.get(); const out = { app: 'school-management', version: 2, created_at: new Date().toISOString(), tables: {} };
     for (const t of TABLES) out.tables[t] = await k(t).select();
     await svc.audit(req, 'backup', 'system', null, 'JSON');
     res.set('Content-Type', 'application/json; charset=utf-8').set('Content-Disposition', `attachment; filename="school-backup-${J.todayISO()}.json"`).send(JSON.stringify(out));

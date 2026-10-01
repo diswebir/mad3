@@ -1,7 +1,7 @@
 'use strict';
 /** برچسب‌های فارسی وضعیت‌ها و دسته‌بندی‌ها (مشترک بین ویوها و کنترلرها) */
 const L = {
-  roles: { admin: 'مدیر', deputy: 'معاون', teacher: 'معلم', student: 'دانش‌آموز' },
+  roles: { admin: 'مدیر', deputy: 'معاون', teacher: 'معلم', student: 'دانش‌آموز', parent: 'اولیا' },
   gender: { male: 'پسر', female: 'دختر' },
   genderAdult: { male: 'مرد', female: 'زن' },
   studentStatus: { active: 'مشغول به تحصیل', graduated: 'فارغ‌التحصیل', transferred: 'منتقل‌شده', suspended: 'تعلیق', dropped: 'ترک تحصیل' },
