@@ -29,6 +29,7 @@ async function bootMain() {
     lastRefresh = Date.now();
     Promise.all([settings.load(), modules.load()]).then(() => next(), next);
   });
+  r.use(require('./routes/cron').router); // بدون نشست/CSRF؛ فقط با توکن
   r.use(mw.sessionMiddleware(cfg));
   r.use(mw.flash);
   r.use((req, res, next) => mw.loadUser(req, res, next).catch(next));
@@ -42,6 +43,7 @@ async function bootMain() {
 function startJobs() {
   state.timers.forEach(clearInterval); state.timers = [];
   const jobs = require('./jobs');
+  require('./routes/cron').ensureToken().catch(() => {});
   jobs.run();
   const t = setInterval(jobs.run, 30 * 60 * 1000); t.unref && t.unref();
   state.timers.push(t);

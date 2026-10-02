@@ -73,6 +73,35 @@ async function dispatchRows(ids) {
 }
 
 /**
+ * ارسال پیامک الگویی (Pattern) ippanel — مخصوص کد تأیید. فقط یک گیرنده؛ منتظر نتیجه می‌ماند.
+ * کد در گزارش پیامک فقط در حالت آزمایشی ذخیره می‌شود؛ در حالت واقعی مخفی است.
+ * خروجی: { ok, error, simulated }
+ */
+async function sendPattern({ to, patternCode, params, event = 'otp', userId = null, secretKeys = [] }) {
+  const cfg = config(); const num = toE164(to);
+  if (!num) return { ok: false, error: 'شماره‌ی موبایل معتبر نیست.' };
+  const real = cfg.provider === 'ippanel';
+  const shown = Object.keys(params).map((p) => `${p}=${secretKeys.includes(p) && real ? '••••' : params[p]}`).join(' ');
+  const k = db.get();
+  const [rid] = await k('sms_log').insert({ to_number: num, message: `[الگو ${patternCode || '-'}] ${shown}`.slice(0, 1000), event, status: 'queued', created_by: userId });
+  const id = typeof rid === 'object' ? rid.id : rid;
+  const done = async (status, error, ref) => { await k('sms_log').where({ id }).update({ status, error: error ? String(error).slice(0, 250) : null, provider_ref: ref ? String(ref).slice(0, 60) : null }); return { ok: status !== 'failed', error: error || null, simulated: status === 'simulated' }; };
+  if (!real) return done('simulated');
+  if (!cfg.apiKey || !cfg.from || !patternCode) return done('failed', 'کلید API، شماره ارسال‌کننده یا کد الگو تنظیم نشده است.');
+  try {
+    const ctrl = new AbortController(); const timer = setTimeout(() => ctrl.abort(), 15000);
+    const res = await fetch(cfg.base + '/api/send', {
+      method: 'POST', signal: ctrl.signal, headers: { 'Content-Type': 'application/json', Authorization: cfg.apiKey },
+      body: JSON.stringify({ sending_type: 'pattern', from_number: cfg.from, code: patternCode, recipients: [num], params }),
+    });
+    clearTimeout(timer);
+    let json = null; try { json = await res.json(); } catch (_) { /* ignore */ }
+    if (res.ok && json && json.meta && json.meta.status === true) { const refs = (json.data && json.data.message_outbox_ids) || []; return done('sent', null, refs[0]); }
+    return done('failed', (json && json.meta && (json.meta.message || JSON.stringify(json.meta.errors || {}))) || ('HTTP ' + res.status));
+  } catch (e) { return done('failed', e.name === 'AbortError' ? 'مهلت ارتباط با سرویس پیامک تمام شد.' : e.message); }
+}
+
+/**
  * ثبت پیامک در صف. items: [{ to, message, studentId }]؛ {wait:true} تا پایان ارسال صبر می‌کند.
  * اگر سامانه پیامک غیرفعال باشد هیچ چیزی ثبت نمی‌شود. خروجی: تعداد پیامک‌های ثبت‌شده.
  */
@@ -108,9 +137,9 @@ async function notifyParents(students, tplOrFn, event, userId) {
 }
 async function retryFailed(ids) {
   const k = db.get();
-  const rows = await k('sms_log').whereIn('id', ids).where({ status: 'failed' });
+  const rows = await k('sms_log').whereIn('id', ids).where({ status: 'failed' }).whereNot('event', 'otp'); // کد تأیید هرگز دوباره ارسال نمی‌شود
   await k('sms_log').whereIn('id', rows.map((r) => r.id)).update({ status: 'queued', error: null });
   await dispatchRows(rows.map((r) => r.id));
   return rows.length;
 }
-module.exports = { toE164, isMobile, display, render, enqueue, eventOn, notifyParents, parentNumbers, retryFailed, config, DEFAULT_BASE };
+module.exports = { sendPattern, toE164, isMobile, display, render, enqueue, eventOn, notifyParents, parentNumbers, retryFailed, config, DEFAULT_BASE };

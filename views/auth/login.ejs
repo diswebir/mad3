@@ -12,6 +12,7 @@
   <div class="box"><div class="inner">
     <h2>ورود به حساب کاربری</h2>
     <p class="muted">برای ورود نام کاربری و رمز عبور خود را وارد کنید.</p>
+    <% (typeof flash !== 'undefined' && flash || []).forEach(function(f){ %><div class="alert flash <%= f.type %>"><%- icon(f.type === 'success' ? 'circle-check' : 'info', 18) %><div><%= f.msg %></div></div><% }) %>
     <% if (error) { %><div class="alert error"><%- icon('circle-x', 18) %><div><%= error %></div></div><% } %>
     <form method="post" action="<%= u('/login') %>" autocomplete="on">
       <input type="hidden" name="_csrf" value="<%= csrf %>">
@@ -19,6 +20,10 @@
       <div class="field" style="margin-bottom:1.1rem"><label for="password">رمز عبور</label><input id="password" class="ltr" type="password" name="password" required autocomplete="current-password"></div>
       <button class="btn primary block" type="submit"><%- icon('log-in', 17) %> ورود</button>
     </form>
+    <div class="auth-links" style="display:flex;justify-content:space-between;gap:.5rem;flex-wrap:wrap;margin-top:.9rem;font-size:.88rem">
+      <a href="<%= u('/forgot') %>">فراموشی رمز عبور؟</a>
+      <% if (otpParent) { %><a href="<%= u('/login/otp') %>">ورود اولیا با کد پیامکی</a><% } %>
+    </div>
     <% if (demo) { %>
     <div class="card demo-box"><b>حساب‌های نمونه (دمو)</b>
       <table><% demo.forEach(function(d){ %><tr><td><%= d[0] %></td><td class="ltr"><%= d[1] %></td><td class="ltr"><%= d[2] %></td></tr><% }) %></table>

@@ -373,6 +373,7 @@ async function seedDemo(k) {
   }
   await require('./seedV2').seedV2(k);
   await settings.set('show_demo_logins', '1');
+  await settings.set('otp_demo_show_code', '1');
   await k('audit_logs').insert({ user_id: 1, user_name: 'سامانه', action: 'install', entity: 'system', details: 'نصب سامانه و بارگذاری داده نمونه' });
 }
 

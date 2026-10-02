@@ -1,0 +1,22 @@
+<div class="auth">
+  <div class="hero">
+    <div class="logo" style="width:64px;height:64px;border-radius:18px;background:rgba(255,255,255,.18);display:grid;place-items:center"><%- icon('shield-check', 30) %></div>
+    <h1><%= S('school_name') %></h1>
+    <p>بازیابی امن حساب با کد یکبارمصرف پیامکی</p>
+  </div>
+  <div class="box"><div class="inner">
+    <h2><%= title %></h2>
+    <p class="muted"><%= intro %></p>
+    <% if (!enabled) { %>
+      <div class="alert warn"><%- icon('triangle-alert', 18) %><div>ارسال کد پیامکی در این مدرسه فعال نیست. برای بازیابی حساب با مدیریت یا معاون مدرسه تماس بگیرید.</div></div>
+    <% } else { %>
+      <% if (error) { %><div class="alert error"><%- icon('circle-x', 18) %><div><%= error %></div></div><% } %>
+      <form method="post" action="<%= u(action) %>">
+        <input type="hidden" name="_csrf" value="<%= csrf %>">
+        <div class="field" style="margin-bottom:1.1rem"><label for="identifier"><%= purpose === 'login' ? 'شماره موبایل' : 'نام کاربری یا شماره موبایل' %></label><input id="identifier" class="ltr" name="identifier" required autofocus autocomplete="username" inputmode="text" placeholder="<%= purpose === 'login' ? '09121234567' : '' %>"></div>
+        <button class="btn primary block" type="submit"><%- icon('send', 17) %> ارسال کد پیامکی</button>
+      </form>
+    <% } %>
+    <p style="margin-top:1rem"><a href="<%= u('/login') %>">← بازگشت به صفحه ورود</a></p>
+  </div></div>
+</div>

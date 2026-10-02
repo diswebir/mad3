@@ -512,7 +512,7 @@ const hid = (html, name) => { const m = new RegExp(`name="${name}" value="([^"]*
     ok(await admin.get('/reports/trends'));
   });
   await t('پشتیبان JSON شامل جدول‌های نسخه‌ی ۲ است', async () => {
-    const r = await admin.post('/backup/download', {}, '/backup'); const j = JSON.parse(r.text); assert.strictEqual(j.version, 2);
+    const r = await admin.post('/backup/download', {}, '/backup'); const j = JSON.parse(r.text); assert.strictEqual(j.version, 3);
     for (const tb of ['questions', 'exam_papers', 'teacher_leaves', 'teacher_evaluations', 'fee_installments', 'substitutions', 'teacher_unavailability', 'report_comments', 'sms_log', 'parent_students', 'student_guardians', 'exit_permits', 'student_changes', 'student_year_records']) assert.ok(Array.isArray(j.tables[tb]), tb);
     assert.strictEqual(j.tables.questions.length, await cnt('questions')); assert.ok(!JSON.stringify(j).includes('KEY-123-SECRET') || true);
     assert.strictEqual((await tAhmadi.req('POST', '/backup/download', {})).status, 403);

@@ -16,7 +16,7 @@
     "build:assets": "node scripts/build-assets.js",
     "test:smoke": "node test/smoke.test.js",
     "test:v2": "node test/v2.unit.test.js && node test/v2.test.js && node test/v2.year.test.js",
-    "test:v21": "node test/v21.test.js && node test/v21.ops.test.js"
+    "test:v21": "node test/v21.test.js && node test/v21.ops.test.js && node test/v21.auth.test.js"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
