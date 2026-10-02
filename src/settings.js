@@ -18,6 +18,7 @@ const DEFS = [
   { key: 'period_minutes', group: 'academic', label: 'مدت هر زنگ (دقیقه)', type: 'hidden', was: 'number', def: '45', min: 20, max: 120 },
   { key: 'break_minutes', group: 'academic', label: 'مدت تنفس بین زنگ‌ها (دقیقه)', type: 'hidden', was: 'number', def: '10', min: 0, max: 60 },
   { key: 'grade_scale', group: 'academic', label: 'بیشینه نمره کارنامه', type: 'number', def: '20', min: 4, max: 100 },
+  { key: 'scores_autolock_days', group: 'academic', label: 'قفل خودکار نمرات منتشرشده پس از چند روز (۰ = غیرفعال)', type: 'number', def: '0', min: 0, max: 365 },
   { key: 'pass_mark', group: 'academic', label: 'حدنصاب قبولی', type: 'number', def: '10', min: 1, max: 100 },
   { key: 'show_rank_to_students', group: 'academic', label: 'نمایش رتبه و میانگین کلاس به دانش‌آموز در کارنامه', type: 'checkbox', def: '1' },
   { key: 'terms_count', group: 'academic', label: 'تعداد نوبت‌های ارزشیابی', type: 'number', def: '2', min: 1, max: 4 },

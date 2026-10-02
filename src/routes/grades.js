@@ -11,6 +11,7 @@ const { requireRole, isManager } = require('../middleware');
 const { classResults } = require('../lib/gradesCalc');
 const reportcard = require('../lib/reportcard');
 const sms = require('../lib/sms');
+const lock = require('../lib/scoreLock');
 const router = express.Router();
 router.use('/grades', modules.guard('grades'));
 const staff = requireRole('admin', 'deputy', 'teacher');
@@ -77,7 +78,7 @@ router.get('/grades/assessments/:id(\\d+)', staff, async (req, res, next) => {
     const pass = settings.num('pass_mark') / (settings.num('grade_scale') || 20) * Number(a.max_score);
     const stats = vals.length ? { n: vals.length, avg: round2(vals.reduce((x, y) => x + y, 0) / vals.length), min: Math.min(...vals), max: Math.max(...vals), passed: vals.filter((v) => v >= pass).length, bins: [0, 0, 0, 0] } : null;
     if (stats) vals.forEach((v) => { stats.bins[Math.min(3, Math.floor(v / Number(a.max_score) * 4))]++; });
-    res.view('grades/assessment', { title: a.title, a, cs, students, scores, stats, assessmentVals: { ...a, date: J.isoToJString(a.date) }, terms: settings.num('terms_count') || 2 });
+    res.view('grades/assessment', { title: a.title, a, cs, students, scores, stats, locked: lock.isLocked(a), canUnlock: isManager(req.user), canEditLocked: isManager(req.user), historyCount: Number((await k('scores_history').where({ assessment_id: a.id }).count({ c: '*' }).first()).c), assessmentVals: { ...a, date: J.isoToJString(a.date) }, terms: settings.num('terms_count') || 2 });
   } catch (e) { next(e); }
 });
 router.post('/grades/assessments/:id(\\d+)/scores', staff, async (req, res, next) => {
@@ -93,19 +94,17 @@ router.post('/grades/assessments/:id(\\d+)/scores', staff, async (req, res, next
       ops.push([s.id, val, note]);
     }
     if (errors.length) { req.flash('error', errors.slice(0, 3).join(' ')); return res.redirect('/grades/assessments/' + a.id); }
-    await k.transaction(async (t) => {
-      for (const [sid, val, note] of ops) {
-        const ex = existing[sid];
-        if (ex) await t('scores').where({ id: ex.id }).update({ score: val, note }); else if (val !== null || note) await t('scores').insert({ assessment_id: a.id, student_id: sid, score: val, note });
-      }
-    });
-    await svc.audit(req, 'scores', 'assessments', a.id, `${a.title} — ${cs.class_name}`);
-    req.flash('success', 'نمرات ذخیره شد.'); res.redirect('/grades/assessments/' + a.id);
+    const g = lock.gate(req.user, a, req.body); if (!g.ok) { req.flash('error', g.reason); return res.redirect('/grades/assessments/' + a.id); }
+    let changed = 0;
+    await k.transaction(async (t) => { changed = await lock.apply(t, a, ops, existing, { user: req.user, source: 'manual', reason: g.needReason ? req.body.reason : null }); });
+    await svc.audit(req, 'scores', 'assessments', a.id, `${a.title} — ${cs.class_name}: ${changed} تغییر${g.needReason ? ' (اصلاح نمره‌ی قفل‌شده: ' + String(req.body.reason).trim().slice(0, 100) + ')' : ''}`);
+    req.flash('success', changed ? `نمرات ذخیره شد (${changed} تغییر در تاریخچه ثبت شد).` : 'تغییری در نمرات ایجاد نشد.'); res.redirect('/grades/assessments/' + a.id);
   } catch (e) { next(e); }
 });
 router.post('/grades/assessments/:id(\\d+)/update', staff, async (req, res, next) => {
   try {
     const r = await loadAssessment(req, req.params.id); if (!r) return nf(res);
+    if (lock.isLocked(r.a)) { req.flash('error', 'ارزشیابی قفل است؛ ابتدا قفل آن را باز کنید.'); return res.redirect('/grades/assessments/' + r.a.id); }
     const errors = []; const data = parseAssessment(req.body, errors);
     if (!errors.length) { const mx = await db.get()('scores').where({ assessment_id: r.a.id }).max({ m: 'score' }).first(); if (mx && mx.m !== null && Number(mx.m) > data.max_score) errors.push(`بیشینه نمره نمی‌تواند کمتر از بالاترین نمره ثبت‌شده (${mx.m}) باشد.`); }
     if (errors.length) { req.flash('error', errors.join(' ')); return res.redirect('/grades/assessments/' + r.a.id); }
@@ -127,9 +126,33 @@ router.post('/grades/assessments/:id(\\d+)/publish', staff, async (req, res, nex
     req.flash('success', pub ? 'نمرات برای دانش‌آموزان منتشر شد.' : 'انتشار نمرات لغو شد.'); res.redirect('/grades/assessments/' + r.a.id);
   } catch (e) { next(e); }
 });
+router.post('/grades/assessments/:id(\\d+)/lock', staff, async (req, res, next) => {
+  try {
+    const k = db.get(); const r = await loadAssessment(req, req.params.id); if (!r) return nf(res); const back = '/grades/assessments/' + r.a.id;
+    const want = req.body.action === 'unlock' ? 0 : 1; const now = lock.isLocked(r.a) ? 1 : 0;
+    if (want === now) { req.flash('info', want ? 'ارزشیابی از قبل قفل است.' : 'ارزشیابی از قبل باز است.'); return res.redirect(back); }
+    if (!want && !isManager(req.user)) { req.flash('error', 'باز کردن قفل فقط توسط مدیر/معاون ممکن است.'); return res.redirect(back); }
+    const reason = String(req.body.reason || '').trim();
+    if (!want && !reason) { req.flash('error', 'برای باز کردن قفل، دلیل را بنویسید.'); return res.redirect(back); }
+    await k.transaction(async (t) => { await t('assessments').where({ id: r.a.id }).update({ locked: want }); await lock.log(t, r.a, want ? 'lock' : 'unlock', req.user, reason || null); });
+    await svc.audit(req, want ? 'lock' : 'unlock', 'assessments', r.a.id, r.a.title + (reason ? ' — ' + reason.slice(0, 100) : ''));
+    req.flash('success', want ? 'نمرات قفل شد؛ ویرایش فقط برای مدیر با ثبت دلیل ممکن است.' : 'قفل نمرات باز شد.'); res.redirect(back);
+  } catch (e) { next(e); }
+});
+router.get('/grades/assessments/:id(\\d+)/history', staff, async (req, res, next) => {
+  try {
+    const k = db.get(); const r = await loadAssessment(req, req.params.id); if (!r) return nf(res);
+    const rows = await k('scores_history as h').leftJoin('students as s', 's.id', 'h.student_id').where('h.assessment_id', r.a.id).orderBy('h.id', 'desc').limit(500)
+      .select('h.*', 's.first_name', 's.last_name', 's.student_code');
+    res.view('grades/history', { title: 'تاریخچه‌ی نمرات', a: r.a, cs: r.cs, rows });
+  } catch (e) { next(e); }
+});
 router.post('/grades/assessments/:id(\\d+)/delete', staff, async (req, res, next) => {
   try {
     const k = db.get(); const r = await loadAssessment(req, req.params.id); if (!r) return nf(res);
+    if (lock.isLocked(r.a)) { req.flash('error', 'ارزشیابی قفل است؛ ابتدا قفل آن را باز کنید.'); return res.redirect('/grades/assessments/' + r.a.id); }
+    const cntScores = Number((await k('scores').where({ assessment_id: r.a.id }).whereNotNull('score').count({ c: '*' }).first()).c);
+    await lock.log(k, r.a, 'delete', req.user, `حذف ارزشیابی «${r.a.title}» با ${cntScores} نمره`);
     await k('scores').where({ assessment_id: r.a.id }).del(); await k('assessments').where({ id: r.a.id }).del();
     await svc.audit(req, 'delete', 'assessments', r.a.id, r.a.title); req.flash('success', 'ارزشیابی و نمرات آن حذف شد.'); res.redirect('/grades/cs/' + r.cs.id);
   } catch (e) { next(e); }

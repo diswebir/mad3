@@ -12,6 +12,7 @@ const { analyze } = require('../lib/scoreImport');
 const { requireRole } = require('../middleware');
 const { normalizeInput } = require('../utils/fa');
 const { loadAssessment } = require('./grades');
+const lock = require('../lib/scoreLock');
 const router = express.Router();
 const staff = requireRole('admin', 'deputy', 'teacher');
 router.use('/grades', modules.guard('grades'));
@@ -42,9 +43,10 @@ router.post('/grades/assessments/:id(\\d+)/import', staff, (req, res, next) => u
       else if (ext === '.csv' || ext === '.txt') rows = parseCSV(req.file.buffer.toString('utf8'));
       else { req.flash('error', 'فقط فایل‌های xlsx و csv پذیرفته می‌شود.'); return res.redirect(back); }
     } catch (e) { req.flash('error', 'خواندن فایل ممکن نشد: ' + e.message); return res.redirect(back); }
+    if (!lock.gate(req.user, a, { reason: 'x' }).ok) { req.flash('error', 'نمرات این ارزشیابی قفل است؛ فقط مدیر/معاون می‌تواند اصلاح کند.'); return res.redirect(back); }
     const result = analyze(rows, await classStudents(k, cs), a.max_score);
     if (!result.entries.length) { req.flash('error', 'فایل داده‌ای ندارد.'); return res.redirect(back); }
-    res.view('grades/import', { title: 'پیش‌نمایش درون‌ریزی نمرات', a, cs, result, payload: JSON.stringify(result.valid.map((e) => [e.student.id, e.score])) });
+    res.view('grades/import', { title: 'پیش‌نمایش درون‌ریزی نمرات', a, cs, result, locked: lock.isLocked(a), payload: JSON.stringify(result.valid.map((e) => [e.student.id, e.score])) });
   } catch (e) { next(e); }
 });
 
@@ -53,16 +55,17 @@ router.post('/grades/assessments/:id(\\d+)/import/commit', staff, async (req, re
     const r = await loadAssessment(req, req.params.id); if (!r) return nf(res); const { a, cs } = r; const k = db.get();
     let list; try { list = JSON.parse(req.body.payload); } catch (_) { list = null; }
     if (!Array.isArray(list)) { req.flash('error', 'داده‌ی درون‌ریزی نامعتبر است.'); return res.redirect('/grades/assessments/' + a.id); }
+    const g = lock.gate(req.user, a, req.body); if (!g.ok) { req.flash('error', g.reason); return res.redirect('/grades/assessments/' + a.id); }
     const ids = new Set((await classStudents(k, cs)).map((s) => s.id)); let n = 0;
     await k.transaction(async (t) => {
+      const existing = Object.fromEntries((await t('scores').where({ assessment_id: a.id })).map((x) => [x.student_id, x])); const ops = [];
       for (const [sid, score] of list) {
         if (!ids.has(Number(sid))) continue; // هرگز نمره‌ی دانش‌آموز خارج از کلاس ثبت نمی‌شود
         const v = score === null ? null : Number(score);
         if (v !== null && (!Number.isFinite(v) || v < 0 || v > Number(a.max_score))) continue;
-        const ex = await t('scores').where({ assessment_id: a.id, student_id: sid }).first();
-        if (ex) await t('scores').where({ id: ex.id }).update({ score: v }); else if (v !== null) await t('scores').insert({ assessment_id: a.id, student_id: sid, score: v });
-        n++;
+        ops.push([Number(sid), v === null ? null : Math.round(v * 100) / 100, undefined]);
       }
+      n = await lock.apply(t, a, ops, existing, { user: req.user, source: 'import', reason: g.needReason ? req.body.reason : null });
     });
     await svc.audit(req, 'scores_import', 'assessments', a.id, `${a.title} — ${cs.class_name}: ${n} نمره`);
     req.flash('success', `${n} نمره از فایل ثبت شد.`); res.redirect('/grades/assessments/' + a.id);

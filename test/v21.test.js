@@ -19,7 +19,7 @@ function bellForm(id, name, { count = 6, start = '07:45', minutes = 45, brk = 10
 (async () => {
   const app = await boot(); const k = app.k; await inproc(app); // پس از تنظیم SCHOOL_DATA_DIR، کتابخانه‌ها را بارگذاری می‌کنیم
   const admin = await app.login('admin', 'Admin#12345'); const deputy = await app.login('deputy', 'deputy123');
-  const tAhmadi = await app.login('t.ahmadi', 'teacher123'); const student = await app.login('14050001', 'student123');
+  const tAhmadi = await app.login('t.ahmadi', 'teacher123'); const taheriC = await app.login('a.taheri', 'teacher123'); const taheriGet = (u) => taheriC.get(u); const student = await app.login('14050001', 'student123');
   const one = async (q) => (await q.first()) || null; const cnt = async (table, where = {}) => Number((await k(table).where(where).count({ c: '*' }).first()).c);
   const bell = require('../src/lib/bell');
 
@@ -232,6 +232,67 @@ function bellForm(id, name, { count = 6, start = '07:45', minutes = 45, brk = 10
     const r = await admin.post('/settings', { school_name: 'مدرسه نمونه' }, '/settings'); assert.ok(/حداقل یک روز/.test(r.text), 'اعتبارسنجی روزهای هفته');
     assert.ok((await one(k('settings').where({ key: 'week_days' }))), 'تنظیم روزها حذف شد');
   });
+  section('نمرات: قفل، تاریخچه و اصلاح با دلیل');
+  const gradesTeacher = await one(k('teachers as t').join('users as u', 'u.id', 't.user_id').where('u.username', 't.ahmadi').select('t.id'));
+  const gcs = await one(k('class_subjects').where({ teacher_id: gradesTeacher.id }).orderBy('id')); const gStu = await k('students').where({ classroom_id: gcs.classroom_id, status: 'active' }).orderBy('id');
+  let asm; const scoreForm = (vals, extra = {}) => { const f = { ...extra }; for (const s of gStu) f[`score[${s.id}]`] = vals[s.id] === undefined ? '' : String(vals[s.id]); return f; };
+  const lastHist = (sid) => one(k('scores_history').where({ assessment_id: asm.id, student_id: sid }).orderBy('id', 'desc'));
+  await t('ثبت نمره: تاریخچه‌ی set/edit/clear و عدم ثبت برای ذخیره‌ی بدون تغییر', async () => {
+    let r = await tAhmadi.post(`/grades/cs/${gcs.id}/assessments`, { title: 'آزمون قفل', type: 'quiz', term: '1', max_score: '20', weight: '1', date: jstr(today) }, '/grades/cs/' + gcs.id); assert.strictEqual(flash(r).type, 'success', JSON.stringify(flash(r)));
+    asm = await one(k('assessments').where({ title: 'آزمون قفل' })); const url = `/grades/assessments/${asm.id}`;
+    r = await tAhmadi.post(url + '/scores', scoreForm({ [gStu[0].id]: 15, [gStu[1].id]: 12 }), url); assert.ok(/2 تغییر|۲ تغییر/.test(flash(r).text) || /تغییر/.test(flash(r).text), flash(r).text);
+    let h = await lastHist(gStu[0].id); assert.strictEqual(h.action, 'set'); assert.strictEqual(h.old_value, null); assert.strictEqual(Number(h.new_value), 15); assert.strictEqual(h.source, 'manual'); assert.ok(h.user_name);
+    const n0 = await cnt('scores_history'); r = await tAhmadi.post(url + '/scores', scoreForm({ [gStu[0].id]: 15, [gStu[1].id]: 12 }), url); assert.ok(/تغییری در نمرات ایجاد نشد/.test(flash(r).text)); assert.strictEqual(await cnt('scores_history'), n0);
+    await tAhmadi.post(url + '/scores', scoreForm({ [gStu[0].id]: '16,5', [gStu[1].id]: 12 }), url); h = await lastHist(gStu[0].id); assert.strictEqual(h.action, 'edit'); assert.strictEqual(Number(h.old_value), 15); assert.strictEqual(Number(h.new_value), 16.5);
+    await tAhmadi.post(url + '/scores', scoreForm({ [gStu[0].id]: 16.5 }), url); h = await lastHist(gStu[1].id); assert.strictEqual(h.action, 'clear'); assert.strictEqual(h.new_value, null);
+    const bad = await tAhmadi.post(url + '/scores', scoreForm({ [gStu[0].id]: 25 }), url); assert.strictEqual(flash(bad).type, 'error'); assert.strictEqual(Number((await one(k('scores').where({ assessment_id: asm.id, student_id: gStu[0].id }))).score), 16.5);
+    ok(await tAhmadi.get(url + '/history')); assert.ok(/ویرایش/.test((await tAhmadi.get(url + '/history')).text));
+  });
+  await t('قفل: معلم قفل می‌کند و دیگر نمی‌تواند نمره/مشخصات را تغییر دهد یا حذف کند یا قفل را باز کند', async () => {
+    const url = `/grades/assessments/${asm.id}`; let r = await tAhmadi.post(url + '/lock', { action: 'lock' }, url); assert.strictEqual(flash(r).type, 'success'); assert.strictEqual(Number((await one(k('assessments').where({ id: asm.id }))).locked), 1);
+    r = await tAhmadi.post(url + '/scores', scoreForm({ [gStu[0].id]: 5 }), url); assert.strictEqual(flash(r).type, 'error'); assert.strictEqual(Number((await one(k('scores').where({ assessment_id: asm.id, student_id: gStu[0].id }))).score), 16.5);
+    r = await tAhmadi.post(url + '/update', { title: 'عنوان جدید', type: 'quiz', term: '1', max_score: '20', weight: '1', date: jstr(today) }, url); assert.strictEqual(flash(r).type, 'error'); assert.strictEqual((await one(k('assessments').where({ id: asm.id }))).title, 'آزمون قفل');
+    r = await tAhmadi.post(url + '/delete', {}, url); assert.strictEqual(flash(r).type, 'error'); assert.ok(await one(k('assessments').where({ id: asm.id })));
+    r = await tAhmadi.post(url + '/lock', { action: 'unlock', reason: 'x' }, url); assert.strictEqual(flash(r).type, 'error'); assert.strictEqual(Number((await one(k('assessments').where({ id: asm.id }))).locked), 1);
+    const page = ok(await tAhmadi.get(url)); assert.ok(/قفل‌شده/.test(page.text) && /readonly/.test(page.text));
+    // درون‌ریزی توسط معلم
+    const imp = await tAhmadi.multipart(url + '/import', {}, { field: 'file', name: 's.csv', content: Buffer.from(`کد,نمره\n${gStu[0].student_code},3\n`) }, url); assert.ok(/قفل/.test(flash(imp).text), flash(imp) && flash(imp).text);
+    r = await tAhmadi.post(url + '/import/commit', { payload: JSON.stringify([[gStu[0].id, 3]]) }, url); assert.strictEqual(flash(r).type, 'error'); assert.strictEqual(Number((await one(k('scores').where({ assessment_id: asm.id, student_id: gStu[0].id }))).score), 16.5);
+  });
+  await t('اصلاح نمره‌ی قفل‌شده توسط مدیر: بدون دلیل رد، با دلیل ثبت و در تاریخچه', async () => {
+    const url = `/grades/assessments/${asm.id}`; let r = await admin.post(url + '/scores', scoreForm({ [gStu[0].id]: 18 }), url); assert.strictEqual(flash(r).type, 'error'); assert.ok(/دلیل/.test(flash(r).text));
+    assert.strictEqual(Number((await one(k('scores').where({ assessment_id: asm.id, student_id: gStu[0].id }))).score), 16.5);
+    r = await admin.post(url + '/scores', scoreForm({ [gStu[0].id]: 18 }, { reason: 'خطای تصحیح' }), url); assert.strictEqual(flash(r).type, 'success', JSON.stringify(flash(r)));
+    const h = await lastHist(gStu[0].id); assert.strictEqual(Number(h.new_value), 18); assert.strictEqual(h.reason, 'خطای تصحیح'); assert.ok(/ادمین|مدیر|admin/i.test(h.user_name || 'مدیر'));
+    const pv = await admin.multipart(url + '/import', {}, { field: 'file', name: 's.csv', content: Buffer.from(`کد,نمره\n${gStu[0].student_code},19\n`) }, url); ok(pv); assert.ok(/name="reason"/.test(pv.text), 'فیلد دلیل در پیش‌نمایش');
+    r = await admin.post(url + '/import/commit', { payload: JSON.stringify([[gStu[0].id, 19]]) }, url); assert.strictEqual(flash(r).type, 'error'); assert.strictEqual(Number((await one(k('scores').where({ assessment_id: asm.id, student_id: gStu[0].id }))).score), 18);
+    r = await admin.post(url + '/import/commit', { payload: JSON.stringify([[gStu[0].id, 19], [gStu[1].id, 7]]), reason: 'درون‌ریزی اصلاحی' }, url); assert.strictEqual(flash(r).type, 'success');
+    const h2 = await lastHist(gStu[0].id); assert.strictEqual(h2.source, 'import'); assert.strictEqual(h2.reason, 'درون‌ریزی اصلاحی'); assert.strictEqual(Number(h2.new_value), 19);
+  });
+  await t('باز کردن قفل نیازمند دلیل است و در تاریخچه می‌ماند؛ سپس معلم دوباره می‌تواند ویرایش کند', async () => {
+    const url = `/grades/assessments/${asm.id}`; let r = await admin.post(url + '/lock', { action: 'unlock', reason: '' }, url); assert.strictEqual(flash(r).type, 'error');
+    r = await admin.post(url + '/lock', { action: 'unlock', reason: 'درخواست دبیر' }, url); assert.strictEqual(flash(r).type, 'success'); assert.strictEqual(Number((await one(k('assessments').where({ id: asm.id }))).locked), 0);
+    assert.ok(await one(k('scores_history').where({ assessment_id: asm.id, action: 'unlock', reason: 'درخواست دبیر' })));
+    r = await tAhmadi.post(url + '/scores', scoreForm({ [gStu[0].id]: 17, [gStu[1].id]: 7 }), url); assert.strictEqual(flash(r).type, 'success');
+    r = await admin.post(url + '/lock', { action: 'unlock', reason: 'باز' }, url); assert.strictEqual(flash(r).type, 'info');
+    ok(await admin.get(url + '/history'));
+    assert.strictEqual((await taheriGet(url + '/history')).status, 404, 'معلم غیرمرتبط به تاریخچه دسترسی ندارد');
+  });
+  await t('قفل خودکار: فقط منتشرشده‌های قدیمی؛ ارزشیابی بازشده توسط مدیر دوباره قفل نمی‌شود', async () => {
+    const settings = require('../src/settings'); const sl = require('../src/lib/scoreLock'); await settings.set('scores_autolock_days', '30');
+    const old = J.addDays(today, -60); const mk = async (title, extra) => { const r = await k('assessments').insert({ class_subject_id: gcs.id, title, type: 'quiz', term: 1, max_score: 20, weight: 1, date: old, published: 1, locked: 0, ...extra }); return Array.isArray(r) ? r[0] : r; };
+    const a1 = await mk('قدیمی منتشرشده'); const a2 = await mk('قدیمی پیش‌نویس', { published: 0 }); const a3 = await mk('قدیمی بازشده'); const a4 = await mk('تازه', { date: today });
+    await k('scores_history').insert({ assessment_id: a3, student_id: 0, action: 'unlock', reason: 'قبلاً باز شد', source: 'system', created_at: '2026-01-01 00:00:00' });
+    const n = await sl.autoLock(k, today); const lk = async (id) => Number((await one(k('assessments').where({ id }))).locked);
+    assert.ok(n >= 1); assert.strictEqual(await lk(a1), 1); assert.strictEqual(await lk(a2), 0); assert.strictEqual(await lk(a3), 0); assert.strictEqual(await lk(a4), 0);
+    assert.ok(await one(k('scores_history').where({ assessment_id: a1, action: 'lock' })), 'ثبت در تاریخچه'); assert.strictEqual(await sl.autoLock(k, today), 0, 'اجرای دوباره بی‌اثر است');
+    await settings.set('scores_autolock_days', '0'); const a5 = await mk('پس از غیرفعال'); assert.strictEqual(await sl.autoLock(k, today), 0); assert.strictEqual(await lk(a5), 0);
+  });
+  await t('حذف ارزشیابی در تاریخچه ثبت می‌شود', async () => {
+    const url = `/grades/assessments/${asm.id}`; const r = await tAhmadi.post(url + '/delete', {}, url); assert.strictEqual(flash(r).type, 'success');
+    assert.strictEqual(await cnt('assessments', { id: asm.id }), 0); const h = await one(k('scores_history').where({ assessment_id: asm.id, action: 'delete' })); assert.ok(h && /نمره/.test(h.reason));
+  });
+
   await t('خطای سروری در لاگ نیست', async () => { assert.ok(!/\[error\]/.test(app.log()), app.log().split('\n').filter((l) => /\[error\]/.test(l)).slice(0, 3).join('\n')); });
 
   await app.stop(); process.exit(done() ? 0 : 1);
