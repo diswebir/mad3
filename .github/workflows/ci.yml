@@ -16,9 +16,22 @@ jobs:
           node-version: ${{ matrix.node }}
           cache: npm
       - run: npm ci
-      - run: npm test
+      - name: Tests
+        run: |
+          set +e
+          npm test > /tmp/t.log 2>&1; rc=$?
+          summary=$(grep -E "✗|AssertionError|Error:" -A3 /tmp/t.log | head -c 3500 | sed ':a;N;$!ba;s/%/%25/g;s/\r/%0D/g;s/\n/%0A/g')
+          [ $rc -ne 0 ] && echo "::error title=tests failed::$summary"
+          tail -n 15 /tmp/t.log
+          exit $rc
       - name: Test under a sub-path (cPanel style)
-        run: TEST_BASE_PATH=/school npm test
+        run: |
+          set +e
+          TEST_BASE_PATH=/school npm test > /tmp/t.log 2>&1; rc=$?
+          summary=$(grep -E "✗|AssertionError|Error:" -A3 /tmp/t.log | head -c 3500 | sed ':a;N;$!ba;s/%/%25/g;s/\r/%0D/g;s/\n/%0A/g')
+          [ $rc -ne 0 ] && echo "::error title=tests failed::$summary"
+          tail -n 15 /tmp/t.log
+          exit $rc
 
   test-mysql:
     runs-on: ubuntu-latest
@@ -33,6 +46,7 @@ jobs:
           --health-interval=5s --health-timeout=5s --health-retries=20
     env:
       TEST_DB: mysql
+      TEST_LOG_SERVER: '1'
       MYSQL_HOST: 127.0.0.1
       MYSQL_PORT: 3306
       MYSQL_USER: root
