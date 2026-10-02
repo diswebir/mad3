@@ -63,7 +63,8 @@ jobs:
           rc=0
           for f in v2 v21 v21.auth v21.ux v21.settings; do
             node test/$f.test.js > /tmp/$f.log 2>&1 || rc=1
-            summary=$(grep -E "✗|AssertionError|Error:|موفق،|rror" -A2 /tmp/$f.log | head -c 3500 | sed ':a;N;$!ba;s/%/%25/g;s/\r/%0D/g;s/\n/%0A/g')
-            echo "::notice title=mysql $f::$summary"
+            esc() { head -c 3400 | sed ':a;N;$!ba;s/%/%25/g;s/\r/%0D/g;s/\n/%0A/g'; }
+            echo "::notice title=mysql $f fails::$(grep -E '✗' -A7 /tmp/$f.log | cut -c1-260 | esc)"
+            echo "::notice title=mysql $f server::$(grep -E 'SERVERLOG' /tmp/$f.log | esc)"
           done
           exit $rc
