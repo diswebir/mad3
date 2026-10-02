@@ -1,8 +1,14 @@
 'use strict';
 const { requireAuth } = require('../middleware');
 
+/** حالت تعمیر: فقط مدیر کل کار می‌کند؛ بقیه‌ی کاربران وارد‌شده پیام تعمیر می‌بینند (خروج آزاد است) */
+function maintenanceGuard(req, res, next) {
+  if (!require('../settings').bool('maintenance_mode') || !req.user || req.user.role === 'admin' || /^\/(logout|assets|healthz)(\/|$)/.test(req.path)) return next();
+  res.status(503).set('Retry-After', '600').view('error', { code: 503, title: 'سامانه در حال به‌روزرسانی است', message: require('../settings').get('maintenance_message') || 'کمی بعد دوباره مراجعه کنید.' });
+}
 module.exports = function mountRoutes(r) {
   require('./auth')(r);
+  r.use(maintenanceGuard);
   r.use(requireAuth);
   r.use(require('./parents').parentGuard);
   r.use(require('../permissions').guard);

@@ -62,17 +62,35 @@ const done = () => { console.log(`\n${counts.pass} موفق، ${counts.fail} ن�
 const unesc = (s) => String(s).replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&');
 /** مقادیر فعلی فرم تنظیمات را می‌خواند، overrides را اعمال می‌کند و ذخیره می‌کند (تیک‌ها: 1/0) */
 async function setSettings(admin, overrides) {
-  const page = await admin.get('/settings'); const m = /<form method="post" action="[^"]*\/settings">([\s\S]*?)<\/form>/.exec(page.text); assert.ok(m, 'settings form not found');
-  const html = m[1]; const form = {};
-  for (const i of html.matchAll(/<input\b([^>]*)>/g)) {
-    const a = i[1]; const name = (/name="([^"]*)"/.exec(a) || [])[1]; if (!name) continue; const type = (/type="([^"]*)"/.exec(a) || [])[1] || 'text'; const val = unesc((/value="([^"]*)"/.exec(a) || [])[1] || '');
-    if (type === 'checkbox') { if (/\bchecked\b/.test(a)) form[name] = [].concat(form[name] || [], val); } else if (name !== '_csrf') form[name] = val;
+  const first = await admin.get('/settings'); const tabs = [...first.text.matchAll(/data-tab="([a-z]+)"/g)].map((m) => m[1]); assert.ok(tabs.length, 'settings tabs not found');
+  const pages = {}; for (const tb of tabs) pages[tb] = tb === 'general' ? first : await admin.get('/settings?tab=' + tb);
+  const parse = (html) => {
+    const form = {};
+    for (const i of html.matchAll(/<input\b([^>]*)>/g)) {
+      const a = i[1]; const name = (/name="([^"]*)"/.exec(a) || [])[1]; if (!name) continue; const type = (/type="([^"]*)"/.exec(a) || [])[1] || 'text'; const val = unesc((/value="([^"]*)"/.exec(a) || [])[1] || '');
+      if (type === 'checkbox') { if (/\bchecked\b/.test(a)) form[name] = [].concat(form[name] || [], val); } else if (name !== '_csrf') form[name] = val;
+    }
+    for (const s of html.matchAll(/<select name="([^"]*)">([\s\S]*?)<\/select>/g)) { const sel = /<option value="([^"]*)" selected/.exec(s[2]) || /<option value="([^"]*)"/.exec(s[2]); form[s[1]] = sel ? unesc(sel[1]) : ''; }
+    for (const t of html.matchAll(/<textarea name="([^"]*)"[^>]*>([\s\S]*?)<\/textarea>/g)) form[t[1]] = unesc(t[2]);
+    return form;
+  };
+  const byTab = {};
+  for (const [k, v] of Object.entries(overrides)) {
+    const tb = tabs.find((x) => { const m = /<form method="post" action="[^"]*\/settings" class="card sform">([\s\S]*?)<\/form>/.exec(pages[x].text); return m && new RegExp('name="' + k + '"').test(m[1]); });
+    assert.ok(tb, 'setting not found in any tab: ' + k); (byTab[tb] = byTab[tb] || {})[k] = v;
   }
-  for (const s of html.matchAll(/<select name="([^"]*)">([\s\S]*?)<\/select>/g)) { const sel = /<option value="([^"]*)" selected/.exec(s[2]) || /<option value="([^"]*)"/.exec(s[2]); form[s[1]] = sel ? unesc(sel[1]) : ''; }
-  for (const t of html.matchAll(/<textarea name="([^"]*)"[^>]*>([\s\S]*?)<\/textarea>/g)) form[t[1]] = unesc(t[2]);
-  for (const [k, v] of Object.entries(overrides)) { if (Array.isArray(v)) form[k] = v.map(String); else if (v === 1 || v === 0 || v === '1' || v === '0') { if (String(v) === '1' && typeof form[k] === 'undefined') form[k] = '1'; else if (String(v) === '0') delete form[k]; else form[k] = String(v); } else form[k] = String(v); }
-  const r = await admin.req('POST', '/settings', { ...form, _csrf: admin.csrf(page.text) });
-  const f = flash(r); assert.ok(f && f.type === 'success', 'settings not saved: ' + (f ? f.text : r.status)); return r;
+  let last = null;
+  for (const [tb, ov] of Object.entries(byTab)) {
+    const m = /<form method="post" action="[^"]*\/settings" class="card sform">([\s\S]*?)<\/form>/.exec(pages[tb].text); const form = parse(m[1]);
+    for (const [k, v] of Object.entries(ov)) {
+      if (Array.isArray(v)) form[k] = v.map(String);
+      else if (v === 1 || v === 0 || v === '1' || v === '0') { if (String(v) === '1' && typeof form[k] === 'undefined') form[k] = '1'; else if (String(v) === '0') delete form[k]; else form[k] = String(v); }
+      else form[k] = String(v);
+    }
+    last = await admin.req('POST', '/settings', { ...form, _group: tb, _csrf: admin.csrf(pages[tb].text) });
+    const f = flash(last); assert.ok(f && f.type === 'success', 'settings not saved: ' + (f ? f.text : last.status));
+  }
+  return last;
 }
 /** بارگذاری ماژول‌های برنامه در همین پردازش روی پایگاه دادهٔ نمونهٔ در حال اجرا (برای تست واحدِ دارای DB) */
 async function inproc(app) {

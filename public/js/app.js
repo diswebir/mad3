@@ -199,3 +199,29 @@ document.addEventListener('change', function (e) {
   if (f.size > max) { alert('حجم فایل بیش از ' + i.getAttribute('data-file-max') + ' مگابایت است.'); i.value = ''; return; }
   if (i.hasAttribute('data-cert') && !/^image\/(jpeg|png|webp)$/.test(f.type)) { alert('فقط تصویر JPG، PNG یا WebP پذیرفته می‌شود.'); i.value = ''; }
 });
+
+/* دکمه‌ی کپی: data-copy="#selector" */
+document.addEventListener('click', function (e) {
+  var b = e.target.closest && e.target.closest('[data-copy]'); if (!b) return;
+  var el = document.querySelector(b.getAttribute('data-copy')); if (!el) return; el.select();
+  var done = function () { var t = b.innerHTML; b.textContent = 'کپی شد ✓'; setTimeout(function () { b.innerHTML = t; }, 1500); };
+  if (navigator.clipboard && window.isSecureContext) navigator.clipboard.writeText(el.value).then(done, function () { document.execCommand('copy'); done(); }); else { document.execCommand('copy'); done(); }
+});
+
+/* منوی کناری آکاردئونی: هر بار فقط یک بخش باز؛ بخش دارای صفحه‌ی فعال همیشه باز؛ آخرین انتخاب در مرورگر می‌ماند */
+(function () {
+  var nav = document.getElementById('nav'); if (!nav) return;
+  var groups = Array.prototype.slice.call(nav.querySelectorAll('.nav-group')); if (!groups.length) return;
+  var KEY = 'nav-open';
+  function setOpen(g, open) { g.classList.toggle('open', open); var b = g.querySelector('.nav-head'); if (b) b.setAttribute('aria-expanded', open ? 'true' : 'false'); }
+  function openOnly(key) { groups.forEach(function (g) { setOpen(g, g.getAttribute('data-key') === key); }); }
+  var hasActive = groups.some(function (g) { return g.classList.contains('has-active'); });
+  if (!hasActive) { var saved = null; try { saved = localStorage.getItem(KEY); } catch (e) {} openOnly(saved !== null ? saved : groups[0].getAttribute('data-key')); }
+  groups.forEach(function (g) {
+    g.querySelector('.nav-head').addEventListener('click', function () {
+      var willOpen = !g.classList.contains('open'); openOnly(willOpen ? g.getAttribute('data-key') : '');
+      try { localStorage.setItem(KEY, willOpen ? g.getAttribute('data-key') : ''); } catch (e) {}
+    });
+  });
+  var act = nav.querySelector('.nav-inner a.active'); if (act && act.scrollIntoView) act.scrollIntoView({ block: 'nearest' });
+})();

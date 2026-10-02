@@ -36,8 +36,16 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
     const B = require('../src/lib/backupTools'); const list = B.list(); assert.ok(list.some((f) => f.kind === 'auto'));
     const data = await B.dump(k); assert.ok(!JSON.stringify(data).includes(token), 'توکن cron در پشتیبان است');
   });
-  await t('توکن cron در صفحه‌ی تنظیمات به‌صورت متن آشکار در فیلد نمی‌آید', async () => {
-    const page = await admin.get('/settings?tab=system'); assert.strictEqual(page.status, 200); assert.ok(!page.text.includes(token), 'توکن نباید در value فیلد باشد');
+  await t('توکن cron فقط برای مدیر کل و فقط در تب «نگهداری» دیده می‌شود؛ بازسازی توکن قبلی را بی‌اعتبار می‌کند', async () => {
+    const sys = await admin.get('/settings?tab=system'); assert.strictEqual(sys.status, 200); assert.ok(sys.text.includes('/cron?token=' + token), 'نشانی cron در تب سیستم نیست');
+    assert.ok(/readonly/.test(sys.text) && /curl -fsS/.test(sys.text), 'دستور cPanel');
+    assert.ok(!(await admin.get('/settings?tab=general')).text.includes(token), 'توکن نباید در تب‌های دیگر باشد');
+    const deputy = await app.login('deputy', 'deputy123'); assert.strictEqual((await deputy.get('/settings?tab=system')).status, 403);
+    const r = await admin.post('/settings/cron/regenerate', {}, '/settings?tab=system'); assert.strictEqual(flash(r).type, 'success');
+    const nt = (await k('settings').where({ key: 'cron_token' }).first()).value; assert.ok(/^[a-f0-9]{48}$/.test(nt) && nt !== token);
+    await sleep(10600); assert.strictEqual((await get('/cron?token=' + token)).status, 403, 'توکن قدیمی باید رد شود');
+    assert.notStrictEqual((await get('/cron?token=' + nt)).status, 403, 'توکن جدید باید پذیرفته شود');
+    await k('settings').where({ key: 'cron_token' }).update({ value: nt });
   });
 
   section('یادآوری اقساط');

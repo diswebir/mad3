@@ -18,13 +18,24 @@
     <span class="logo"><% if (S('logo')) { %><img src="<%= fileUrl('branding', S('logo')) %>" alt=""><% } else { %><%- icon('school', 22) %><% } %></span>
     <span><%= S('school_name') %><small>سامانه مدیریت مدرسه</small></span>
   </a>
-  <nav class="nav">
-    <% (nav || []).forEach(function(sec){ %>
-      <h6><%= sec.title %></h6>
-      <% sec.items.forEach(function(it){ %>
-        <a href="<%= u(it.href) %>" class="<%= activeHref === it.href ? 'active' : '' %>"><%- icon(it.icon, 18) %><span><%= it.label %></span><% if (it.badgeCount) { %><span class="badge-n"><%= fa(it.badgeCount) %></span><% } %></a>
-      <% }) %>
+  <nav class="nav" id="nav" aria-label="منوی اصلی">
+    <% var NAV_ICONS = { main: 'layout-dashboard', edu: 'graduation-cap', comm: 'message-square', services: 'briefcase', system: 'settings' };
+       var topItems = []; var secs = (nav || []).map(function(sec){ var rest = sec.items.filter(function(it){ if (it.href === '/') { topItems.push(it); return false; } return true; }); return { key: sec.key, title: sec.title, items: rest }; }).filter(function(sec){ return sec.items.length; });
+       var activeSec = ''; secs.forEach(function(sec){ if (sec.items.some(function(it){ return activeHref === it.href; })) activeSec = sec.key; });
+       if (!activeSec && secs.length) activeSec = ''; %>
+    <% topItems.forEach(function(it){ %><a href="<%= u(it.href) %>" class="nav-top <%= activeHref === it.href ? 'active' : '' %>"><%- icon(it.icon, 18) %><span><%= it.label %></span></a><% }) %>
+    <% secs.forEach(function(sec){ var open = sec.key === activeSec; var bsum = sec.items.reduce(function(a, it){ return a + (it.badgeCount || 0); }, 0); %>
+    <div class="nav-group<%= open ? ' open' : '' %><%= sec.items.some(function(it){ return activeHref === it.href; }) ? ' has-active' : '' %>" data-key="<%= sec.key %>">
+      <button type="button" class="nav-head" aria-expanded="<%= open ? 'true' : 'false' %>" aria-controls="ng-<%= sec.key %>">
+        <span class="nh-ic"><%- icon(NAV_ICONS[sec.key] || 'layout-grid', 18) %></span><span class="nh-t"><%= sec.title %></span>
+        <% if (bsum) { %><span class="badge-n"><%= fa(bsum) %></span><% } %><span class="nh-n"><%= fa(sec.items.length) %></span><span class="nh-chev"><%- icon('chevron-down', 16) %></span>
+      </button>
+      <div class="nav-body" id="ng-<%= sec.key %>"><div class="nav-inner">
+        <% sec.items.forEach(function(it){ %><a href="<%= u(it.href) %>" class="<%= activeHref === it.href ? 'active' : '' %>"><%- icon(it.icon, 18) %><span><%= it.label %></span><% if (it.badgeCount) { %><span class="badge-n"><%= fa(it.badgeCount) %></span><% } %></a><% }) %>
+      </div></div>
+    </div>
     <% }) %>
+    <noscript><style>.nav-body{grid-template-rows:1fr!important}</style></noscript>
   </nav>
 </aside>
 <div class="main">

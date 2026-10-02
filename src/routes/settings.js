@@ -12,12 +12,33 @@ const { requireRole, uploader } = require('../middleware');
 const router = express.Router();
 router.use(['/settings', '/modules'], requireRole('admin'));
 
-router.get('/settings', (req, res) => res.view('settings/index', { title: 'تنظیمات', defs: settings.DEFS.filter((d) => d.type !== 'hidden'), groups: settings.GROUPS, values: settings.all(), errors: [] }));
-router.post('/settings', async (req, res, next) => {
-  try {
-    const errors = []; const out = {};
-    for (const d of settings.DEFS) {
-      if (d.type === 'hidden') continue;
+const TABS = [
+  ['general', 'اطلاعات مدرسه', 'school'], ['academic', 'آموزشی', 'graduation-cap'], ['reportcard', 'کارنامه', 'file-text'], ['attendance', 'حضور و غیاب', 'calendar-check'],
+  ['tickets', 'تیکت‌ها', 'life-buoy'], ['students', 'دانش‌آموزان', 'users'], ['finance', 'مالی', 'wallet'], ['hr', 'منابع انسانی', 'user-cog'],
+  ['sms', 'پیامک و کد تأیید', 'smartphone'], ['security', 'امنیت', 'shield-check'], ['appearance', 'ظاهر و ورود', 'palette'], ['system', 'نگهداری، پشتیبان و cron', 'database-backup'],
+];
+const tabKey = (t) => (TABS.some((x) => x[0] === t) ? t : 'general');
+const defsOf = (tab) => settings.DEFS.filter((d) => d.type !== 'hidden' && d.group === tab);
+/** نشانی کامل cron برای نمایش به مدیر */
+const cronUrl = (req) => `${req.protocol}://${req.get('host')}${config.load().basePath === '/' ? '' : config.load().basePath || ''}/cron?token=${settings.get('cron_token')}`;
+
+async function renderTab(req, res, tab, { errors = [], values = null, confirm = null, status = 200 } = {}) {
+  tab = tabKey(tab); const data = { title: 'تنظیمات', tab, tabs: TABS, defs: defsOf(tab), values: values || settings.all(), errors, confirm, groups: settings.GROUPS };
+  if (tab === 'system') {
+    const k = db.get(); const last = await k('audit_logs').where({ action: 'cron' }).orderBy('id', 'desc').first();
+    const B = require('../lib/backupTools'); const list = B.list();
+    data.cron = { url: cronUrl(req), last: last ? last.created_at : null, lastResult: last ? last.details : null, line: `*/15 * * * * curl -fsS "${cronUrl(req)}" >/dev/null 2>&1`, wget: `*/15 * * * * wget -q -O /dev/null "${cronUrl(req)}"` };
+    data.backups = { n: list.length, last: list.reduce((m, f) => Math.max(m, f.mtime || 0), 0) };
+  }
+  return res.status(status).view('settings/index', data);
+}
+router.get('/settings', (req, res, next) => renderTab(req, res, req.query.tab).catch(next));
+
+/** اعتبارسنجی و جمع‌آوری مقادیر برای مجموعه‌ای از تنظیمات */
+function collect(req, defs) {
+  const errors = []; const out = {};
+  for (const d of defs) {
+    if (d.type === 'hidden') continue;
       let v = req.body[d.key];
       if (d.type === 'checkbox') v = v === '1' ? '1' : '0';
       else if (d.type === 'days') v = [].concat(v || []).join(',');
@@ -35,25 +56,43 @@ router.post('/settings', async (req, res, next) => {
       if (d.type === 'color' && !/^#[0-9a-fA-F]{6}$/.test(v)) { errors.push('رنگ نامعتبر است.'); continue; }
       if (d.key === 'week_days' && !v) { errors.push('حداقل یک روز را برای هفته‌ی مدرسه انتخاب کنید.'); continue; }
       if (d.key === 'school_name' && !v) { errors.push('نام مدرسه نمی‌تواند خالی باشد.'); continue; }
-      out[d.key] = v;
+    out[d.key] = v;
+  }
+  return { out, errors };
+}
+router.post('/settings', async (req, res, next) => {
+  try {
+    const group = TABS.some((x) => x[0] === req.body._group) ? req.body._group : null; // بدون _group = همه‌ی تنظیمات (سازگاری با نسخه‌های قبل)
+    const defs = group ? defsOf(group) : settings.DEFS.filter((d) => d.type !== 'hidden');
+    const { out, errors } = collect(req, defs); const tab = group || 'general';
+    const mergedValues = { ...settings.all(), ...req.body };
+    if (errors.length) return renderTab(req, res, tab, { errors, values: mergedValues });
+    // تغییر روزهای هفته‌ی مدرسه: اگر ساعت‌های برنامه در روزهای حذف‌شده بمانند، تأیید صریح لازم است
+    if (out.week_days !== undefined && out.week_days !== settings.get('week_days') && req.body.confirm_orphans !== '1') {
+      const days = out.week_days.split(',').filter(Boolean).map(Number);
+      const orphans = await require('../lib/timetableTools').orphans(db.get(), { days });
+      if (orphans.length) return renderTab(req, res, tab, { values: mergedValues, status: 409, confirm: { text: `با این تغییر ${orphans.length} ساعت درسیِ برنامه‌ی هفتگی در روزهای حذف‌شده می‌ماند (${require('../lib/timetableTools').describeOrphans(orphans)}). این ساعت‌ها در برنامه‌ی هفتگی دیده نمی‌شوند و باید جابه‌جا یا حذف شوند.` } });
     }
-    if (errors.length) return res.view('settings/index', { title: 'تنظیمات', defs: settings.DEFS.filter((d) => d.type !== 'hidden'), groups: settings.GROUPS, values: { ...settings.all(), ...req.body }, errors });
     await settings.setMany(out);
-    await svc.audit(req, 'update', 'settings', null, 'تنظیمات سامانه');
-    req.flash('success', 'تنظیمات ذخیره شد.'); res.redirect('/settings');
+    await svc.audit(req, 'update', 'settings', null, group ? `تنظیمات «${settings.GROUPS[group]}»` : 'تنظیمات سامانه');
+    req.flash('success', 'تنظیمات ذخیره شد.'); res.redirect('/settings?tab=' + tab);
   } catch (e) { next(e); }
+});
+/** ساخت توکن جدید cron (توکن قبلی بی‌اعتبار می‌شود) */
+router.post('/settings/cron/regenerate', async (req, res, next) => {
+  try { await require('./cron').regenerate(); await svc.audit(req, 'update', 'settings', null, 'بازسازی توکن cron'); req.flash('success', 'توکن cron جدید ساخته شد؛ زمان‌بندی هاست را با نشانی جدید به‌روز کنید.'); res.redirect('/settings?tab=system'); } catch (e) { next(e); }
 });
 router.post('/settings/logo', uploader('branding', 'logo', { images: true, maxMB: 1 }), async (req, res, next) => {
   try {
-    if (req.uploadError || !req.file) { req.flash('error', req.uploadError || 'فایلی انتخاب نشد.'); return res.redirect('/settings'); }
+    if (req.uploadError || !req.file) { req.flash('error', req.uploadError || 'فایلی انتخاب نشد.'); return res.redirect('/settings?tab=appearance'); }
     const old = settings.get('logo');
     if (old) fs.unlink(path.join(config.UPLOAD_DIR, 'branding', old), () => {});
     await settings.set('logo', req.file.filename);
-    req.flash('success', 'لوگو بروزرسانی شد.'); res.redirect('/settings');
+    req.flash('success', 'لوگو بروزرسانی شد.'); res.redirect('/settings?tab=appearance');
   } catch (e) { next(e); }
 });
 router.post('/settings/logo/remove', async (req, res, next) => {
-  try { const old = settings.get('logo'); if (old) fs.unlink(path.join(config.UPLOAD_DIR, 'branding', old), () => {}); await settings.set('logo', ''); res.redirect('/settings'); } catch (e) { next(e); }
+  try { const old = settings.get('logo'); if (old) fs.unlink(path.join(config.UPLOAD_DIR, 'branding', old), () => {}); await settings.set('logo', ''); res.redirect('/settings?tab=appearance'); } catch (e) { next(e); }
 });
 
 router.get('/settings/system', async (req, res, next) => {

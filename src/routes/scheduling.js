@@ -90,7 +90,8 @@ router.post('/timetable/auto', mgr, async (req, res, next) => {
 /* ---------- جانشین‌یابی ---------- */
 async function substituteData(k, date) {
   const dow = J.dow(date);
-  const slots = await k('timetable as tt').join('class_subjects as cs', 'cs.id', 'tt.class_subject_id').join('subjects as s', 's.id', 'cs.subject_id').join('classrooms as c', 'c.id', 'tt.classroom_id').where('tt.day', dow).where('c.status', '<>', 'archived').whereNotNull('cs.teacher_id')
+  const off = await require('../lib/calendar').offDay(date, k); // روز تعطیل/غیر از هفته‌ی مدرسه: کلاسی برگزار نمی‌شود
+  const slots = off.off ? [] : await k('timetable as tt').join('class_subjects as cs', 'cs.id', 'tt.class_subject_id').join('subjects as s', 's.id', 'cs.subject_id').join('classrooms as c', 'c.id', 'tt.classroom_id').where('tt.day', dow).where('c.status', '<>', 'archived').whereNotNull('cs.teacher_id')
     .select('tt.classroom_id', 'tt.period', 'tt.class_subject_id', 'cs.teacher_id', 's.name as subject', 'c.name as class_name');
   const subs = await k('substitutions').where({ date });
   const unav = await k('teacher_unavailability').where({ day: dow });
@@ -102,7 +103,7 @@ async function substituteData(k, date) {
   for (const s of subs) (busy[s.substitute_teacher_id] = busy[s.substitute_teacher_id] || new Set()).add(s.period);
   for (const u of unav) (busy[u.teacher_id] = busy[u.teacher_id] || new Set()).add(u.period);
   const onLeave = new Set(leaves.map((l) => l.teacher_id));
-  return { slots, subs, subMap, teachers, busy, onLeave, leaves };
+  return { slots, subs, subMap, teachers, busy, onLeave, leaves, off };
 }
 const freeFor = (d, period, excludeId) => d.teachers.filter((t) => t.id !== excludeId && !d.onLeave.has(t.id) && !(d.busy[t.id] && d.busy[t.id].has(period)));
 
@@ -114,7 +115,7 @@ router.get('/timetable/substitutes', mgr, async (req, res, next) => {
     const tid = Number(req.query.teacher_id) || (teachersToday.find((t) => d.onLeave.has(t.id)) || {}).id || null;
     const mine = tid ? d.slots.filter((s) => s.teacher_id === tid).sort((a, b) => a.period - b.period).map((s) => ({ ...s, current: d.subMap[`${s.classroom_id}-${s.period}`] || null, options: freeFor(d, s.period, tid) })) : [];
     const list = await k('substitutions as s').join('classrooms as c', 'c.id', 's.classroom_id').leftJoin('teachers as a', 'a.id', 's.absent_teacher_id').leftJoin('users as au', 'au.id', 'a.user_id').join('teachers as t', 't.id', 's.substitute_teacher_id').join('users as tu', 'tu.id', 't.user_id').where('s.date', date).orderBy('s.period').select('s.*', 'c.name as class_name', 'au.full_name as absent_name', 'tu.full_name as sub_name');
-    res.view('timetable/substitutes', { title: 'جانشین‌یابی معلم', date, teachers: teachersToday, tid, mine, list, onLeave: [...d.onLeave] });
+    res.view('timetable/substitutes', { off: d.off, title: 'جانشین‌یابی معلم', date, teachers: teachersToday, tid, mine, list, onLeave: [...d.onLeave] });
   } catch (e) { next(e); }
 });
 router.post('/timetable/substitutes', mgr, async (req, res, next) => {
@@ -122,6 +123,7 @@ router.post('/timetable/substitutes', mgr, async (req, res, next) => {
     const k = db.get(); const date = J.parseJalali(req.body.date); const tid = Number(req.body.teacher_id);
     if (!date) { req.flash('error', 'تاریخ نامعتبر است.'); return res.redirect('/timetable/substitutes'); }
     const d = await substituteData(k, date); const choice = req.body.sub || {}; let n = 0; const notify = []; const errors = [];
+    if (d.off.off) { req.flash('error', `این تاریخ تعطیل است (${d.off.title}) و کلاسی برگزار نمی‌شود؛ جانشین لازم نیست.`); return res.redirect('/timetable/substitutes?date=' + encodeURIComponent(J.isoToJString(date))); }
     await k.transaction(async (t) => {
       for (const s of d.slots.filter((x) => x.teacher_id === tid)) {
         const key = `${s.classroom_id}-${s.period}`; const v = Number(choice[key]) || 0; const cur = d.subMap[key];
