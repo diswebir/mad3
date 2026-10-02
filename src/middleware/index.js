@@ -128,6 +128,13 @@ function csrfProtect(req, res, next) {
 /* ---------- پیام‌های فلش ---------- */
 function flash(req, res, next) {
   req.flash = (type, msg) => { if (!req.session) return; (req.session.flash = req.session.flash || []).push({ type, msg }); };
+  // express-session پیش از پایان ذخیره‌ی نشست، سرآیند ریدایرکت را می‌فرستد؛ با پایگاه‌داده‌ی کندتر (MySQL) مرورگر می‌تواند
+  // پیش از ذخیره‌شدنِ پیام فلش درخواست بعدی را بفرستد. پس پیش از هر ریدایرکت، نشست را صریحاً ذخیره می‌کنیم.
+  const origRedirect = res.redirect.bind(res);
+  res.redirect = function (...args) {
+    if (!req._noSessionSave && req.session && typeof req.session.save === 'function') return req.session.save(() => origRedirect(...args));
+    return origRedirect(...args);
+  };
   res.locals.flash = [];
   if (req.session && req.session.flash && req.session.flash.length) { res.locals.flash = req.session.flash; req.session.flash = []; }
   next();

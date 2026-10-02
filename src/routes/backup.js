@@ -60,6 +60,7 @@ async function doRestore(req, res, data, label) {
   await B.restore(k, data);
   await settings.load(); await modules.load(); require('../middleware').invalidateBadges();
   await k('sessions').del();
+  req._noSessionSave = true; // نشست حذف‌شده نباید با ذخیره‌ی پیش از ریدایرکت دوباره ساخته شود
   console.log(`[backup] restored from ${label}; previous state saved as ${pre.name}`);
   res.redirect('/login');
 }
