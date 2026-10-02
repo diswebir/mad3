@@ -41,7 +41,7 @@ class Client {
 
 async function t(name, fn) { try { await fn(); counts.pass++; console.log('  ✓', name); } catch (e) { counts.fail++; console.log('  ✗', name, '\n     ', String(e.stack || e.message).split('\n').slice(0, process.env.VERBOSE ? 14 : 3).join('\n      ')); } }
 const ok = (r, msg) => { assert.ok(r.status === 200, `${msg || r.url} → HTTP ${r.status}`); assert.ok(!/خطای سرور/.test(r.text), `${msg || r.url} → خطای سرور`); return r; };
-const flash = (r) => { const m = /class="alert (?:flash )?(success|error|info|warn)[^"]*"[^>]*>(?:<svg[\s\S]*?<\/svg>)?<div>([\s\S]*?)<\/div>/.exec(r.text); return m ? { type: m[1], text: m[2].replace(/<[^>]+>/g, '').trim() } : null; };
+const flash = (r) => { const m = /class="alert (?:flash )?(success|error|info|warn)[^"]*"[^>]*>(?:<svg[\s\S]*?<\/svg>)?<div>([\s\S]*?)<\/div>/.exec(r.text); if (m) return { type: m[1], text: m[2].replace(/<[^>]+>/g, '').trim() }; return process.env.TEST_DB === 'mysql' ? { type: `NOFLASH[${r.status} ${r.url} ${String(r.text).replace(/<[^>]+>|\s+/g, ' ').slice(0, 160)}]`, text: '' } : null; };
 
 /** نصب تازه در پوشه‌ی موقت و اجرای سرور. خروجی: { base, k (knex مستقل برای بررسی DB), login, stop } */
 async function boot({ prefix = PREFIX, demo = true } = {}) {
