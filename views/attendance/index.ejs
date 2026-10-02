@@ -9,7 +9,7 @@
 </form>
 <% if (cls) { %>
 <% if (future) { %><div class="alert error"><%- icon('circle-x', 18) %><div>تاریخ انتخاب‌شده در آینده است و امکان ثبت وجود ندارد.</div></div><% } %>
-<% if (offDay) { %><div class="alert warn"><%- icon('triangle-alert', 18) %><div>این روز جزو روزهای فعال مدرسه نیست.</div></div><% } %>
+<% if (offDay && offDay.off) { %><div class="alert warn"><%- icon('triangle-alert', 18) %><div><%= offDay.reason === 'holiday' ? 'این روز تعطیل است: ' + offDay.title + '.' : 'این روز جزو روزهای فعال مدرسه نیست.' %> ثبت حضور و غیاب در روز تعطیل معمولاً لازم نیست.</div></div><% } %>
 <% if (typeof blocked !== 'undefined' && blocked) { %><div class="alert error"><%- icon('lock', 18) %><div><%= blocked %></div></div><% } %>
 <% if (recorded) { %><div class="alert info"><%- icon('info', 18) %><div>حضور و غیاب این روز قبلاً ثبت شده است؛ می‌توانید آن را اصلاح کنید.</div></div><% } %>
 <% if (!students.length) { %><div class="card empty">در این کلاس دانش‌آموز فعالی وجود ندارد.</div><% } else { %>

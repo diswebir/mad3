@@ -214,19 +214,22 @@ async function waitUp() { for (let i = 0; i < 80; i++) { try { const r = await f
     const id = /loans\/(\d+)\/return/.exec(r.text)[1]; r = await admin.post(`/library/loans/${id}/return`, {}, '/library/loans'); ok(r); assert.ok(/بازگشت کتاب ثبت شد/.test(r.text));
   });
   await t('رویداد، امتحان و تداخل امتحان', async () => {
-    const j = J.isoToJString(J.addDays(J.todayISO(), 40));
+    let ex = J.addDays(J.todayISO(), 200); while (J.dow(ex) > 4) ex = J.addDays(ex, 1); // دور از امتحانات نمونه و روز کاری
+    const j = J.isoToJString(ex);
     let r = await admin.post('/events/new', { title: 'رویداد تست', type: 'event', start_date: j, audience: 'all' }, '/events/new'); ok(r); assert.ok(/ثبت شد/.test(r.text));
     r = await admin.post('/exams/new', { classroom_id: '1', subject_id: '8', exam_date: j, start_time: '09:00', duration: '60', type: 'quiz' }, '/exams/new'); ok(r); assert.ok(/ثبت شد/.test(r.text));
     r = await admin.post('/exams/new', { classroom_id: '1', subject_id: '9', exam_date: j, start_time: '09:30', duration: '60', type: 'quiz' }, '/exams/new'); assert.ok(/تداخل/.test(r.text), 'تداخل امتحان تشخیص داده نشد');
     ok(await admin.get('/calendar?year=1405&month=8'));
+    r = await admin.post('/holidays', { title: 'تعطیلی تست', start_date: j }, '/holidays'); assert.ok(/ثبت شد/.test(r.text));
+    r = await admin.post('/exams/new', { classroom_id: '1', subject_id: '10', exam_date: j, start_time: '09:00', duration: '30', type: 'quiz' }, '/exams/new'); assert.ok(/تعطیل/.test(r.text), 'امتحان در روز تعطیل پذیرفته شد');
   });
   await t('مالی: صورت‌حساب گروهی برای کلاس', async () => {
     const r = await admin.post('/finance/fees/new', { target: 'class', classroom_id: '1', title: 'کتاب', category: 'books', amount: '500000', discount: '0', due_date: J.isoToJString(J.addDays(J.todayISO(), 10)) }, '/finance/fees/new'); ok(r); assert.ok(/برای ۱۲ دانش‌آموز ثبت شد|برای 12 دانش‌آموز ثبت شد|ثبت شد/.test(r.text), r.text.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').slice(300, 700));
   });
   await t('کاربران و تنظیمات', async () => {
     let r = await admin.post('/users/new', { username: 'deputy2', full_name: 'معاون دوم', role: 'deputy', password: 'Deputy#1234', phone: '09120000000' }, '/users/new'); ok(r); assert.ok(/کاربر ایجاد شد/.test(r.text));
-    r = await admin.post('/settings', { school_name: 'مدرسه ویرایش‌شده', school_type: 'متوسطه اول', periods_count: '7', period_start: '08:00', period_minutes: '40', break_minutes: '10', grade_scale: '20', pass_mark: '10', terms_count: '2', attendance_mode: 'daily', absence_alert_threshold: '4', student_code_prefix: '1405', student_password_mode: 'random', currency_label: 'تومان', session_hours: '8', min_password_length: '6', max_login_attempts: '5', lockout_minutes: '10', primary_color: '#0f766e', week_days: ['0', '1', '2', '3', '4'], notify_on_absence: '1' }, '/settings'); ok(r); assert.ok(/ذخیره شد/.test(r.text) && /مدرسه ویرایش‌شده/.test(r.text));
-    r = await admin.post('/settings', { school_name: 'x', periods_count: '99' }, '/settings'); assert.ok(/باید عددی بین/.test(r.text));
+    r = await admin.post('/settings', { school_name: 'مدرسه ویرایش‌شده', school_type: 'متوسطه اول', week_days: ['0', '1', '2', '3', '4'], grade_scale: '20', pass_mark: '10', terms_count: '2', attendance_mode: 'daily', absence_alert_threshold: '4', student_code_prefix: '1405', student_password_mode: 'random', currency_label: 'تومان', session_hours: '8', min_password_length: '6', max_login_attempts: '5', lockout_minutes: '10', primary_color: '#0f766e', week_days: ['0', '1', '2', '3', '4'], notify_on_absence: '1' }, '/settings'); ok(r); assert.ok(/ذخیره شد/.test(r.text) && /مدرسه ویرایش‌شده/.test(r.text));
+    r = await admin.post('/settings', { school_name: 'x', late_after_minutes: '9999' }, '/settings'); assert.ok(/باید عددی بین/.test(r.text));
     r = await admin.multipart('/settings/logo', {}, { field: 'logo', name: 'l.png', content: Buffer.from('iVBORw0KGgo=', 'base64') }); ok(r);
     r = await new Client().get('/login'); assert.ok(/\/files\/branding\//.test(r.text), 'لوگو در صفحه ورود نیست');
   });

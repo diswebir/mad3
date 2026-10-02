@@ -177,11 +177,21 @@ async function seedDemo(k) {
   }
 
   /* --- حضور و غیاب روزهای مدرسه از شروع سال تا امروز --- */
+  /* تعطیلات نمونه: رسمی‌های ثابت سال‌های جاری + یک تعطیلی دستی (مدیر می‌تواند آن‌ها را ویرایش کند) */
+  const cal = require('./lib/calendar'); const bellLib = require('./lib/bell');
+  const holRows = []; const jy0 = J.isoToJ(year.start_date).jy;
+  for (const jy of [jy0, jy0 + 1]) for (const h of cal.fixedSolarFor(jy)) if (h.start_date >= year.start_date && Math.abs(Date.parse(h.start_date) - Date.parse(today)) > 4 * 86400000) holRows.push({ ...h, kind: 'official', created_by: 1 });
+  holRows.push({ start_date: J.addDays(today, -12), end_date: J.addDays(today, -11), title: 'تعطیلی به‌دلیل آلودگی هوا', kind: 'manual', created_by: 1 });
+  await bulk(k, 'holidays', holRows);
+  /* الگوی ویژه‌ی زنگ: چهارشنبه‌ها زنگ‌های کوتاه‌تر (تعداد زنگ‌ها برابر، پس برنامه‌ی هفتگی دست‌نخورده می‌ماند) */
+  await bellLib.saveSchedule(k, { name: 'چهارشنبه‌ها (زنگ‌های کوتاه)', days: [4], grades: [], isDefault: false, rows: bellLib.fromTemplate({ count: 6, minutes: 35, brk: 5 }) });
+  await bellLib.load(k);
+  const holSet = new Set(); for (const h of holRows) for (let d = h.start_date; d <= h.end_date; d = J.addDays(d, 1)) holSet.add(d);
   const attRows = []; const absences = [];
   if (mod('attendance')) {
     const start = year.start_date; const wd = settings.weekDays();
     for (let dte = start; dte <= today; dte = J.addDays(dte, 1)) {
-      if (!wd.includes(J.dow(dte))) continue;
+      if (!wd.includes(J.dow(dte)) || holSet.has(dte)) continue;
       for (const s of stuRows) {
         const x = r();
         const status = x < 0.915 ? 'present' : x < 0.955 ? 'absent' : x < 0.985 ? 'late' : x < 0.993 ? 'excused' : 'leave';

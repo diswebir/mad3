@@ -43,7 +43,7 @@ router.post('/holidays', async (req, res, next) => {
     if (r.error) { req.flash('error', r.error); return res.redirect('/holidays'); }
     const dup = await k('holidays').where({ start_date: r.s, end_date: r.e, title: r.title }).first();
     if (dup) { req.flash('error', 'این تعطیلی قبلاً ثبت شده است.'); return res.redirect('/holidays'); }
-    const [id] = await k('holidays').insert({ start_date: r.s, end_date: r.e, title: r.title, kind: 'manual', created_by: req.user.id, created_at: svc.nowStr(), updated_at: svc.nowStr() });
+    const [id] = await k('holidays').insert({ start_date: r.s, end_date: r.e, title: r.title, kind: 'manual', created_by: req.user.id, created_at: svc.nowStr() });
     const im = await impact(k, r.s, r.e); await svc.audit(req, 'create', 'holidays', id, `${r.title}: ${r.s} تا ${r.e}`);
     req.flash('success', `تعطیلی «${r.title}» برای ${r.days} روز ثبت شد.${im.exams ? ` توجه: ${im.exams} امتحان در این بازه برنامه‌ریزی شده که باید جابه‌جا شود.` : ''}`);
     res.redirect(`/holidays?year=${J.isoToJ(r.s).jy}`);
@@ -55,7 +55,7 @@ router.post('/holidays/fixed', async (req, res, next) => {
     let added = 0;
     for (const h of cal.fixedSolarFor(jy)) {
       if (await k('holidays').where({ start_date: h.start_date, title: h.title }).first()) continue;
-      await k('holidays').insert({ ...h, kind: 'official', created_by: req.user.id, created_at: svc.nowStr(), updated_at: svc.nowStr() }); added++;
+      await k('holidays').insert({ ...h, kind: 'official', created_by: req.user.id, created_at: svc.nowStr() }); added++;
     }
     await svc.audit(req, 'create', 'holidays', null, `تعطیلات رسمی ثابت ${jy}: ${added} مورد`);
     req.flash('success', added ? `${added} تعطیلی رسمی ثابت برای سال ${jy} افزوده شد. تعطیلی‌های قمری (تاسوعا، عاشورا، ...) را خودتان دستی ثبت کنید.` : 'همه‌ی تعطیلات ثابت این سال از قبل ثبت شده بود.');
@@ -66,7 +66,7 @@ router.post('/holidays/:id(\\d+)/update', async (req, res, next) => {
   try {
     const k = db.get(); const h = await k('holidays').where({ id: req.params.id }).first(); if (!h) return res.redirect('/holidays');
     const r = parseRange(req.body); if (r.error) { req.flash('error', r.error); return res.redirect('/holidays'); }
-    await k('holidays').where({ id: h.id }).update({ start_date: r.s, end_date: r.e, title: r.title, updated_at: svc.nowStr() });
+    await k('holidays').where({ id: h.id }).update({ start_date: r.s, end_date: r.e, title: r.title });
     await svc.audit(req, 'update', 'holidays', h.id, `${r.title}: ${r.s} تا ${r.e}`); req.flash('success', 'تعطیلی ویرایش شد.'); res.redirect(`/holidays?year=${J.isoToJ(r.s).jy}`);
   } catch (e) { next(e); }
 });

@@ -373,9 +373,17 @@ const hid = (html, name) => { const m = new RegExp(`name="${name}" value="([^"]*
     await until(async () => (await one(k('sms_log').where({ event: 'absence', student_id: absentStu.id, status: 'sent' }))));
     const n1 = mock.calls.length; await admin.post('/attendance', attForm(absentStu), `/attendance?class_id=${absentStu.classroom_id}&date=${encodeURIComponent(jstr(today))}`); await new Promise((r) => setTimeout(r, 400)); assert.strictEqual(mock.calls.length, n1, 'ثبت مجدد همان غیبت نباید پیامک دوباره بفرستد');
   });
+  /* ساعت شروع زنگ اول را (با حذف الگوهای ویژه) از طریق ویرایشگر ساعت زنگ‌ها تغییر می‌دهد */
+  const setFirstBell = async (hm) => {
+    await k('bell_schedules').where({ is_default: 0 }).del(); await require('../src/lib/bell').load(k);
+    const def = await one(k('bell_schedules').where({ is_default: 1 })); const [h, m] = hm.split(':').map(Number); const f = (x) => String(Math.floor(x / 60)).padStart(2, '0') + ':' + String(x % 60).padStart(2, '0');
+    const kind = []; const start = []; const end = []; const label = []; let cur = h * 60 + m;
+    for (let i = 0; i < 6; i++) { kind.push('class'); start.push(f(cur)); end.push(f(cur + 45)); label.push(''); cur += 45; if (i < 5) { kind.push('break'); start.push(f(cur)); end.push(f(cur + 10)); label.push('تفریح'); cur += 10; } }
+    const r = await admin.post('/timetable/bells/save', { id: String(def.id), name: def.name, kind, start, end, label }, '/timetable/bells'); assert.strictEqual(flash(r).type, 'success', JSON.stringify(flash(r)));
+  };
   await t('ورود با QR: دروازه، تأخیر و پیامک تأخیر، تکراری، کد جعلی', async () => {
     const s = classStu[6]; const jsonPost = (client, code) => client.post('/attendance/gate', { code }, '/attendance/gate', { headers: { accept: 'application/json' } });
-    await setSettings(admin, { school_start_time: '00:01', late_after_minutes: 0 }); const n0 = mock.calls.length;
+    await setFirstBell('00:01'); await setSettings(admin, { late_after_minutes: 0 }); const n0 = mock.calls.length;
     let r = await jsonPost(admin, qr.payload(s.student_code)); assert.strictEqual(r.status, 200, r.text); let j = JSON.parse(r.text); assert.strictEqual(j.ok, true); assert.strictEqual(j.status, 'late');
     const row = await one(k('attendance').where({ student_id: s.id, date: today })); assert.ok(row.arrival_time); assert.strictEqual(row.status, 'late');
     await until(() => mock.calls.length > n0); assert.ok(lastCalls(n0).some((c) => /تأخیر/.test(c.body.message)), 'پیامک تأخیر');
@@ -383,7 +391,7 @@ const hid = (html, name) => { const m = new RegExp(`name="${name}" value="([^"]*
     r = await jsonPost(admin, 'MAD:' + classStu[7].student_code + ':00000000'); assert.strictEqual(r.status, 400); assert.strictEqual(await cnt('attendance', { student_id: classStu[7].id, date: today, status: 'late' }), 0);
     r = await jsonPost(admin, '99999999'); assert.strictEqual(r.status, 404);
     assert.strictEqual((await student.req('POST', '/attendance/gate', { code: qr.payload(classStu[7].student_code) }, { headers: { accept: 'application/json' } })).status, 403);
-    await setSettings(admin, { school_start_time: '07:30', late_after_minutes: 15 });
+    await setFirstBell('07:30'); await setSettings(admin, { late_after_minutes: 15 });
     const ok2 = await jsonPost(admin, qr.payload(classStu[8].student_code)); const j2 = JSON.parse(ok2.text); assert.ok(j2.ok); ok(await admin.get('/attendance/gate')); ok(await admin.get('/attendance/late'));
   });
   await t('انتشار نمرات → پیامک نمره فقط برای دانش‌آموزانِ دارای نمره', async () => {

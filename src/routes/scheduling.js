@@ -7,6 +7,9 @@ const settings = require('../settings');
 const modules = require('../modules');
 const J = require('../utils/jalali');
 const sched = require('../lib/scheduler');
+const bell = require('../lib/bell');
+const tt = require('../lib/timetableTools');
+const cal = require('../lib/calendar');
 const { requireRole, isManager } = require('../middleware');
 const router = express.Router();
 const mgr = requireRole('admin', 'deputy');
@@ -21,14 +24,14 @@ router.get('/timetable/availability', requireRole('admin', 'deputy', 'teacher'),
     const teachers = own ? [] : await teacherList(k);
     const tid = own ? (req.user.teacher && req.user.teacher.id) : (Number(req.query.teacher_id) || (teachers[0] && teachers[0].id));
     const off = tid ? new Set((await k('teacher_unavailability').where({ teacher_id: tid })).map((r) => `${r.day}-${r.period}`)) : new Set();
-    res.view('timetable/availability', { title: 'ساعت‌های غیرمجاز معلمان', teachers, tid, off, periods: settings.periods(), days: settings.weekDays(), WEEKDAYS: J.WEEKDAYS, readOnly: own });
+    res.view('timetable/availability', { title: 'ساعت‌های غیرمجاز معلمان', teachers, tid, off, periods: bell.defaultPeriods().concat(bell.maxPeriods() > bell.defaultPeriods().length ? Array.from({ length: bell.maxPeriods() - bell.defaultPeriods().length }, (_, i) => ({ n: bell.defaultPeriods().length + i + 1, start: '', end: '' })) : []), days: settings.weekDays(), WEEKDAYS: J.WEEKDAYS, readOnly: own });
   } catch (e) { next(e); }
 });
 router.post('/timetable/availability', mgr, async (req, res, next) => {
   try {
     const k = db.get(); const tid = Number(req.body.teacher_id); const t = await k('teachers').where({ id: tid }).first();
     if (!t) { req.flash('error', 'معلم نامعتبر است.'); return res.redirect('/timetable/availability'); }
-    const valid = new Set(); for (const d of settings.weekDays()) for (const p of settings.periods()) valid.add(`${d}-${p.n}`);
+    const valid = new Set(); for (const d of settings.weekDays()) for (const p of Array.from({ length: bell.maxPeriods() }, (_, i) => ({ n: i + 1 }))) valid.add(`${d}-${p.n}`);
     const off = [].concat(req.body.off || []).filter((x) => valid.has(x));
     // اگر معلم در خانه‌ای برنامه دارد نمی‌توان آن را غیرمجاز کرد
     const busy = await k('timetable as tt').join('class_subjects as cs', 'cs.id', 'tt.class_subject_id').join('classrooms as c', 'c.id', 'tt.classroom_id').where('cs.teacher_id', tid).select('tt.day', 'tt.period', 'c.name');
@@ -42,16 +45,18 @@ router.post('/timetable/availability', mgr, async (req, res, next) => {
 
 /* ---------- تولید خودکار ---------- */
 async function buildInput(k, scopeClassId) {
-  const days = settings.weekDays(); const periods = settings.periods().map((p) => p.n);
-  const allClasses = await k('classrooms').where('status', '<>', 'archived').orderBy('name').select('id', 'name');
+  const days = settings.weekDays(); const periods = Array.from({ length: bell.maxPeriods() }, (_, i) => i + 1);
+  const allClasses = await k('classrooms').where('status', '<>', 'archived').orderBy('name').select('id', 'name', 'grade_level');
   const inScope = scopeClassId ? allClasses.filter((c) => c.id === scopeClassId) : allClasses;
   const scopeIds = inScope.map((c) => c.id);
-  const cs = await k('class_subjects').whereIn('classroom_id', scopeIds.length ? scopeIds : [0]).select('id', 'classroom_id', 'teacher_id', 'weekly_hours', 'subject_id');
-  const classes = inScope.map((c) => ({ id: c.id, name: c.name, items: cs.filter((x) => x.classroom_id === c.id && x.weekly_hours > 0).map((x) => ({ csId: x.id, teacherId: x.teacher_id || null, hours: x.weekly_hours })) }));
+  const cs = await k('class_subjects').whereIn('classroom_id', scopeIds.length ? scopeIds : [0]).select('id', 'classroom_id', 'teacher_id', 'weekly_hours', 'subject_id', 'max_per_day');
+  const classes = inScope.map((c) => ({ id: c.id, name: c.name, items: cs.filter((x) => x.classroom_id === c.id && x.weekly_hours > 0).map((x) => ({ csId: x.id, teacherId: x.teacher_id || null, hours: x.weekly_hours, maxPerDay: x.max_per_day || 2 })) }));
   const fixedRows = await k('timetable as tt').join('class_subjects as cs', 'cs.id', 'tt.class_subject_id').whereNotIn('tt.classroom_id', scopeIds.length ? scopeIds : [0]).select('tt.classroom_id', 'tt.day', 'tt.period', 'tt.class_subject_id', 'cs.teacher_id');
   const fixed = fixedRows.map((r) => ({ classId: r.classroom_id, day: r.day, period: r.period, csId: r.class_subject_id, teacherId: r.teacher_id || null }));
   const unavailable = {}; for (const r of await k('teacher_unavailability')) (unavailable[r.teacher_id] = unavailable[r.teacher_id] || []).push(`${r.day}-${r.period}`);
-  return { days, periods, classes, fixed, unavailable, allClasses };
+  const grade = Object.fromEntries(allClasses.map((c) => [c.id, c.grade_level]));
+  const isOpen = (cid, d, p) => p <= bell.countFor({ day: d, grade: grade[cid] });
+  return { days, periods, classes, fixed, unavailable, allClasses, isOpen };
 }
 router.get('/timetable/auto', mgr, async (req, res, next) => {
   try { const k = db.get(); res.view('timetable/auto', { title: 'تولید خودکار برنامه', classes: await k('classrooms').where('status', '<>', 'archived').orderBy('name').select('id', 'name'), result: null, f: {} }); } catch (e) { next(e); }
@@ -63,14 +68,13 @@ router.post('/timetable/auto', mgr, async (req, res, next) => {
     const seed = Math.max(1, parseInt(b.seed, 10) || 1);
     const inp = await buildInput(k, scope);
     if (!inp.classes.some((c) => c.items.length)) { req.flash('error', 'درسی با ساعت هفتگی برای چیدن وجود ندارد؛ ابتدا دروس کلاس‌ها را تعریف کنید.'); return res.redirect('/timetable/auto'); }
-    const r = sched.generate({ days: inp.days, periods: inp.periods, classes: inp.classes, fixed: inp.fixed, unavailable: inp.unavailable, seed, attempts: 120 });
+    const r = sched.generate({ days: inp.days, periods: inp.periods, classes: inp.classes, fixed: inp.fixed, unavailable: inp.unavailable, seed, attempts: 120, isOpen: inp.isOpen });
     const errors = sched.validate(r.placements, inp.fixed, inp.unavailable);
     if (errors.length) throw new Error('خطای داخلی مولد برنامه: ' + errors[0]); // نباید رخ دهد؛ برنامه‌ی ناسازگار هرگز ذخیره نمی‌شود
     if (b.phase === 'apply') {
       await k.transaction(async (t) => {
         const ids = inp.classes.map((c) => c.id);
-        await t('timetable').whereIn('classroom_id', ids).del();
-        if (r.placements.length) await t('timetable').insert(r.placements.map((p) => ({ classroom_id: p.classId, day: p.day, period: p.period, class_subject_id: p.csId })));
+        for (const cid of ids) await tt.replaceClass(t, cid, r.placements.filter((p) => p.classId === cid).map((p) => ({ day: p.day, period: p.period, class_subject_id: p.csId })), { userId: req.user.id });
       });
       await svc.audit(req, 'auto_generate', 'timetable', scope || null, `${r.placements.length} خانه، ${r.unplaced.length} چیده‌نشده (seed ${seed})`);
       req.flash(r.unplaced.length ? 'info' : 'success', `برنامه ذخیره شد: ${r.placements.length} ساعت چیده شد${r.unplaced.length ? ` و ${r.unplaced.length} ساعت جا نشد` : ''}.`);

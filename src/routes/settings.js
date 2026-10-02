@@ -30,6 +30,7 @@ router.post('/settings', async (req, res, next) => {
       if (d.type === 'number') { const n = Number(v); if (isNaN(n) || (d.min !== undefined && n < d.min) || (d.max !== undefined && n > d.max)) { errors.push(`«${d.label}» باید عددی بین ${d.min} و ${d.max} باشد.`); continue; } v = String(n); }
       if (d.type === 'time' && !svc.validTime(v)) { errors.push(`«${d.label}» نامعتبر است.`); continue; }
       if (d.type === 'color' && !/^#[0-9a-fA-F]{6}$/.test(v)) { errors.push('رنگ نامعتبر است.'); continue; }
+      if (d.key === 'week_days' && !v) { errors.push('حداقل یک روز را برای هفته‌ی مدرسه انتخاب کنید.'); continue; }
       if (d.key === 'school_name' && !v) { errors.push('نام مدرسه نمی‌تواند خالی باشد.'); continue; }
       out[d.key] = v;
     }

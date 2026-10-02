@@ -28,17 +28,18 @@ const parseDate = (s) => (s ? (J.parseJalali(s) || null) : null);
 router.get('/attendance', staff, async (req, res, next) => {
   try {
     const k = db.get(); const classes = await accessibleClasses(req, true);
-    const date = parseDate(req.query.date) || J.todayISO(); const mode = settings.get('attendance_mode'); const periods = settings.periods();
-    const period = mode === 'periodic' ? Math.min(Math.max(parseInt(req.query.period, 10) || 1, 1), periods.length) : 0;
+    const date = parseDate(req.query.date) || J.todayISO(); const mode = settings.get('attendance_mode');
     const classId = Number(req.query.class_id) || (classes[0] && classes[0].id);
     const cls = classes.find((c) => c.id === classId);
+    const periods = require('../lib/bell').periodsFor({ day: J.dow(date), grade: cls && cls.grade_level }); // زنگ‌های همان روز و پایه
+    const period = mode === 'periodic' ? Math.min(Math.max(parseInt(req.query.period, 10) || 1, 1), Math.max(1, periods.length)) : 0;
     const data = { title: 'ثبت حضور و غیاب', classes, cls, date, mode, periods, period, STATUSES, today: J.todayISO() };
     if (cls) {
       data.students = await k('students').where({ classroom_id: cls.id, status: 'active' }).orderBy('last_name').orderBy('first_name').select('id', 'first_name', 'last_name', 'student_code', 'father_phone', 'mother_phone');
       const ex = await k('attendance').where({ classroom_id: cls.id, date, period });
       data.existing = Object.fromEntries(ex.map((a) => [a.student_id, a]));
       data.recorded = ex.length > 0;
-      data.offDay = !settings.weekDays().includes(J.dow(date));
+      data.offDay = await require('../lib/calendar').offDay(date, k);
       data.future = date > J.todayISO();
       const perm = await rules.canRecord(req.user, cls, date, period, { homeroomIds: req.user.role === 'teacher' ? await svc.homeroomClassIds(req.user) : [] });
       data.blocked = perm.ok ? null : perm.reason;

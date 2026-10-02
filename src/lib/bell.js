@@ -56,7 +56,8 @@ function validateRows(input) {
   if (!list.length) return { errors: ['حداقل یک زنگ درسی لازم است.'], rows };
   let prevEnd = -1; let n = 0; let seq = 1;
   list.forEach((r, i) => {
-    const kind = KINDS[r.kind] ? r.kind : 'class'; const a = toMin(r.start); const b = toMin(r.end); const at = `ردیف ${i + 1}`;
+    const kind = r.kind; const a = toMin(r.start); const b = toMin(r.end); const at = `ردیف ${i + 1}`;
+    if (!KINDS[kind]) { errors.push(`${at}: نوع ردیف نامعتبر است.`); return; }
     if (isNaN(a) || isNaN(b)) { errors.push(`${at}: ساعت شروع/پایان نامعتبر است (مثل ۰۷:۴۵).`); return; }
     if (b <= a) { errors.push(`${at}: پایان باید پس از شروع باشد.`); return; }
     if (a < prevEnd) { errors.push(`${at}: با ردیف قبل هم‌پوشانی دارد.`); return; }

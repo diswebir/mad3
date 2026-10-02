@@ -119,7 +119,7 @@ router.get('/classes/:id(\\d+)', requireRole('admin', 'deputy', 'teacher'), asyn
   try {
     const k = db.get(); const c = await getClass(req, req.params.id); if (!c) return nf(res);
     const students = await k('students').where({ classroom_id: c.id }).orderBy('last_name').orderBy('first_name').select('id', 'first_name', 'last_name', 'student_code', 'gender', 'status', 'father_phone', 'mother_phone');
-    const subjects = await k('class_subjects as cs').join('subjects as s', 's.id', 'cs.subject_id').leftJoin('teachers as t', 't.id', 'cs.teacher_id').leftJoin('users as u', 'u.id', 't.user_id').where('cs.classroom_id', c.id).orderBy('s.name').select('cs.id', 'cs.weekly_hours', 'cs.teacher_id', 's.id as subject_id', 's.name as subject_name', 'u.full_name as teacher_name');
+    const subjects = await k('class_subjects as cs').join('subjects as s', 's.id', 'cs.subject_id').leftJoin('teachers as t', 't.id', 'cs.teacher_id').leftJoin('users as u', 'u.id', 't.user_id').where('cs.classroom_id', c.id).orderBy('s.name').select('cs.id', 'cs.weekly_hours', 'cs.max_per_day', 'cs.teacher_id', 's.id as subject_id', 's.name as subject_name', 'u.full_name as teacher_name');
     const data = { title: c.name, c, students, subjects, mgrFlag: isManager(req.user) };
     if (data.mgrFlag) {
       const used = subjects.map((s) => s.subject_id);
@@ -174,7 +174,8 @@ router.post('/classes/:id(\\d+)/subjects/:csid/update', mgr, async (req, res, ne
         if (clash) { req.flash('error', `معلم انتخاب‌شده در ${J.WEEKDAYS[s.day]} زنگ ${s.period} کلاس دیگری دارد؛ ابتدا برنامه هفتگی را اصلاح کنید.`); return res.redirect('/classes/' + c.id); }
       }
     }
-    await k('class_subjects').where({ id: old.id }).update({ teacher_id, weekly_hours: hours });
+    const mpd = req.body.max_per_day !== undefined ? Math.max(1, Math.min(6, Number(req.body.max_per_day) || 2)) : old.max_per_day;
+    await k('class_subjects').where({ id: old.id }).update({ teacher_id, weekly_hours: hours, max_per_day: mpd });
     await svc.audit(req, 'update', 'class_subjects', old.id, '');
     req.flash('success', 'تخصیص بروزرسانی شد.'); res.redirect('/classes/' + c.id);
   } catch (e) { next(e); }

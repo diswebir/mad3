@@ -38,7 +38,7 @@ function mergeCells(cells, days, max, keyFn) {
 router.get('/timetable', async (req, res, next) => {
   try {
     const k = db.get(); const u = req.user; const days = settings.weekDays();
-    const data = { title: 'برنامه هفتگی', days, mode: 'class', cells: {}, edit: false, WEEKDAYS: J.WEEKDAYS, subject: '', classes: [], hours: [], placed: {}, options: [], span: {}, skip: {}, grid: buildGrid(days, null), versionInfo: null, daySummary: null, editData: null };
+    const data = { title: 'برنامه هفتگی', days, mode: 'class', cells: {}, edit: false, WEEKDAYS: J.WEEKDAYS, subject: '', classes: [], hours: [], placed: {}, options: [], span: {}, skip: {}, grid: buildGrid(days, null), versionInfo: null, daySummary: null, editData: null, cls: null, dateStr: '', teacherId: null, versions: [], hiddenRows: 0, weekTotal: 0, subs: [] };
     const finish = () => { const keyFn = data.mode === 'teacher' ? (c) => `${c.class_subject_id}` : (c) => `${c.class_subject_id}`; const m = data.versionInfo && !data.versionInfo.current ? mergeCells(data.cells, days, data.grid.max, keyFn) : mergeCells(data.cells, days, data.grid.max, keyFn); if (!data.edit) { data.span = m.span; data.skip = m.skip; } return res.view('timetable/index', data); };
     const teacherView = async (tid, name) => {
       data.mode = 'teacher'; data.subject = name; data.teacherId = tid;

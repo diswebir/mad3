@@ -103,18 +103,31 @@ function defs(db) {
     },
     {
       key: 'exams', module: 'exams', table: 'exam_schedule', title: 'برنامه امتحانات', singular: 'امتحان', icon: 'clipboard-list', read: ALL, write: STAFF, labelField: 'type',
-      base: (k) => k('exam_schedule as t').join('subjects as s', 's.id', 't.subject_id').join('classrooms as c', 'c.id', 't.classroom_id').select('t.*', 's.name as subject_name', 'c.name as class_name'),
+      base: (k) => k('exam_schedule as t').join('subjects as s', 's.id', 't.subject_id').join('classrooms as c', 'c.id', 't.classroom_id').leftJoin('teachers as sv', 'sv.id', 't.supervisor_id').leftJoin('users as svu', 'svu.id', 'sv.user_id').select('t.*', 's.name as subject_name', 'c.name as class_name', 'svu.full_name as supervisor_name'),
       scope: async (req, qb) => { const ids = await svc.accessibleClassIds(req.user); if (ids) qb.whereIn('t.classroom_id', ids.length ? ids : [0]); },
       orderBy: [['t.exam_date', 'asc']], sortable: ['t.exam_date'], search: ['s.name', 'c.name'],
       filters: [{ name: 'classroom_id', label: 'کلاس', column: 't.classroom_id', optionsFn: async (k, req) => (await k('classrooms').where('status', '<>', 'archived').orderBy('name').select('id', 'name')).map((c) => [c.id, c.name]) }, { name: 'type', label: 'نوع', column: 't.type', options: pairs(L.examType) }],
       fields: [{ name: 'classroom_id', label: 'کلاس', type: 'select', required: true, optionsFn: async (k) => (await k('classrooms').where('status', '<>', 'archived').orderBy('name').select('id', 'name')).map((c) => [c.id, c.name]) },
         { name: 'subject_id', label: 'درس', type: 'select', required: true, optionsFn: async (k) => (await k('subjects').orderBy('name').select('id', 'name')).map((c) => [c.id, c.name]) },
         { name: 'exam_date', label: 'تاریخ امتحان', type: 'date', required: true }, { name: 'start_time', label: 'ساعت شروع', type: 'time' }, { name: 'duration', label: 'مدت (دقیقه)', type: 'number', min: 5, max: 300 },
-        { name: 'type', label: 'نوع', type: 'select', required: true, options: pairs(L.examType) }, { name: 'location', label: 'مکان', type: 'text' }, { name: 'notes', label: 'توضیحات', type: 'textarea' }],
+        { name: 'type', label: 'نوع', type: 'select', required: true, options: pairs(L.examType) }, { name: 'location', label: 'مکان', type: 'text' },
+        { name: 'supervisor_id', label: 'مراقب جلسه', type: 'select', optionsFn: async (k) => (await k('teachers as t').join('users as u', 'u.id', 't.user_id').where('t.status', 'active').orderBy('u.full_name').select('t.id', 'u.full_name')).map((c) => [c.id, c.full_name]) },
+        { name: 'notes', label: 'توضیحات', type: 'textarea' }],
       defaults: () => ({ type: 'midterm', duration: 60 }),
       validate: async (d, req, existing) => {
         const inClass = await k0()('class_subjects').where({ classroom_id: d.classroom_id, subject_id: d.subject_id }).first();
         if (!inClass) return 'این درس در فهرست دروس کلاس انتخاب‌شده تعریف نشده است.';
+        const off = await require('./lib/calendar').offDay(d.exam_date, k0());
+        if (off.off) return off.reason === 'holiday' ? `این تاریخ تعطیل است (${off.title}).` : 'این تاریخ خارج از روزهای هفته‌ی مدرسه است.';
+        if (d.supervisor_id) {
+          const toM = (t) => { const [h, m] = String(t || '0:0').split(':').map(Number); return h * 60 + m; };
+          const lv = await k0()('teacher_leaves').where({ teacher_id: d.supervisor_id, status: 'approved' }).where('start_date', '<=', d.exam_date).where('end_date', '>=', d.exam_date).first();
+          if (lv) return 'مراقب انتخاب‌شده در این تاریخ مرخصی تأییدشده دارد.';
+          if (d.start_time) {
+            const a0 = toM(d.start_time); const a1 = a0 + (d.duration || 60);
+            for (const e of await k0()('exam_schedule').where({ supervisor_id: d.supervisor_id, exam_date: d.exam_date }).whereNotNull('start_time').modify((b) => { if (existing) b.whereNot('id', existing.id); })) { const b0 = toM(e.start_time); if (a0 < b0 + (e.duration || 60) && b0 < a1) return 'این مراقب در همین ساعت مراقب امتحان دیگری است.'; }
+          }
+        }
         const q = k0()('exam_schedule').where({ classroom_id: d.classroom_id, exam_date: d.exam_date }).modify((b) => { if (existing) b.whereNot('id', existing.id); });
         const same = await q.clone().where({ subject_id: d.subject_id, type: d.type }).first(); if (same) return 'این امتحان برای این کلاس و تاریخ قبلاً ثبت شده است.';
         if (d.start_time) { const toMin = (t) => { const [h, m] = t.split(':').map(Number); return h * 60 + m; }; const a0 = toMin(d.start_time); const a1 = a0 + (d.duration || 60); for (const e of await q.clone().whereNotNull('start_time')) { const b0 = toMin(e.start_time); const b1 = b0 + (e.duration || 60); if (a0 < b1 && b0 < a1) return 'زمان این امتحان با امتحان دیگری از همین کلاس در همان روز تداخل دارد.'; } }
@@ -123,7 +136,7 @@ function defs(db) {
         if (!isNew) return; const us = await k0()('students').where({ classroom_id: d.classroom_id, status: 'active' }).select('user_id'); const sub = await k0()('subjects').where({ id: d.subject_id }).first();
         await svc.notify(us.map((x) => x.user_id), `امتحان ${sub.name} ثبت شد`, `تاریخ: ${J.isoToJString(d.exam_date)} ${d.start_time || ''}`, '/exams');
       },
-      columns: [{ key: 'exam_date', label: 'تاریخ', type: 'date', sortKey: 't.exam_date' }, { key: 'subject_name', label: 'درس' }, { key: 'class_name', label: 'کلاس' }, { key: 'start_time', label: 'ساعت', html: (r, h) => h.fa(r.start_time || '—') }, { key: 'duration', label: 'مدت (دقیقه)', type: 'number' }, { key: 'type', label: 'نوع', type: 'badge', labels: L.examType }, { key: 'location', label: 'مکان' }],
+      columns: [{ key: 'exam_date', label: 'تاریخ', type: 'date', sortKey: 't.exam_date' }, { key: 'subject_name', label: 'درس' }, { key: 'class_name', label: 'کلاس' }, { key: 'start_time', label: 'ساعت', html: (r, h) => h.fa(r.start_time || '—') }, { key: 'duration', label: 'مدت (دقیقه)', type: 'number' }, { key: 'type', label: 'نوع', type: 'badge', labels: L.examType }, { key: 'supervisor_name', label: 'مراقب' }, { key: 'location', label: 'مکان' }],
       headActions: [],
     },
     {

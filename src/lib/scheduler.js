@@ -18,7 +18,7 @@ function prng(seed) { let a = seed >>> 0; return () => { a = (a + 0x6d2b79f5) >>
  * @param {number} [o.attempts]
  * @param {number} [o.maxPerDay]
  */
-function generate({ days, periods, classes, fixed = [], unavailable = {}, seed = 1, attempts = 80, maxPerDay = 2 }) {
+function generate({ days, periods, classes, fixed = [], unavailable = {}, seed = 1, attempts = 80, maxPerDay = 2, isOpen = null }) {
   const slots = []; for (const d of days) for (const p of periods) slots.push([d, p]);
   const unav = {}; for (const [t, list] of Object.entries(unavailable)) unav[t] = new Set(list);
   // بار هر معلم و تعداد ساعت‌های در دسترس او برای مرتب‌سازی سخت‌ترین‌ها
@@ -42,9 +42,11 @@ function generate({ days, periods, classes, fixed = [], unavailable = {}, seed =
       for (const [d, p] of slots) {
         const k = `${d}-${p}`;
         if (classBusy[u.classId].has(k)) continue;
+        if (isOpen && !isOpen(u.classId, d, p)) continue; // این کلاس در این روز این‌قدر زنگ ندارد
         if (u.teacherId && ((teacherBusy[u.teacherId] && teacherBusy[u.teacherId].has(k)) || (unav[u.teacherId] && unav[u.teacherId].has(k)))) continue;
         const same = dayCount[`${u.classId}|${u.csId}|${d}`] || 0;
-        const score = (same >= maxPerDay ? 1000 : 0) + same * 40 + (dayLoad[`${u.classId}|${d}`] || 0) * 3 + p * 0.05 + rnd() * 1.5;
+        const mpd = u.maxPerDay || maxPerDay;
+        const score = (same >= mpd ? 1000 : 0) + same * 40 + (dayLoad[`${u.classId}|${d}`] || 0) * 3 + p * 0.05 + rnd() * 1.5;
         if (score < bestScore) { bestScore = score; bestSlot = [d, p]; }
       }
       if (!bestSlot) { unplaced.push({ classId: u.classId, csId: u.csId, teacherId: u.teacherId }); continue; }
@@ -53,7 +55,8 @@ function generate({ days, periods, classes, fixed = [], unavailable = {}, seed =
       dayCount[`${u.classId}|${u.csId}|${d}`] = (dayCount[`${u.classId}|${u.csId}|${d}`] || 0) + 1; dayLoad[`${u.classId}|${d}`] = (dayLoad[`${u.classId}|${d}`] || 0) + 1;
       placements.push({ classId: u.classId, day: d, period: p, csId: u.csId, teacherId: u.teacherId });
     }
-    const spreadPenalty = Object.values(dayCount).filter((n) => n > maxPerDay).length;
+    const mpdOf = {}; for (const c of classes) for (const it of c.items) mpdOf[`${c.id}|${it.csId}`] = it.maxPerDay || maxPerDay;
+    const spreadPenalty = Object.entries(dayCount).filter(([key, n]) => n > (mpdOf[key.split('|').slice(0, 2).join('|')] || maxPerDay)).length;
     const cand = { placements, unplaced, spreadPenalty, attempt };
     if (!best || unplaced.length < best.unplaced.length || (unplaced.length === best.unplaced.length && spreadPenalty < best.spreadPenalty)) best = cand;
     if (!best.unplaced.length && !best.spreadPenalty) break;
