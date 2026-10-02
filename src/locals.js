@@ -26,7 +26,7 @@ module.exports = function localsMiddleware(req, res, next) {
   l.fa = F.toFa; l.money = F.money; l.num = F.number; l.esc = F.esc;
   l.d = (v) => F.toFa(J.isoToJString(v)); l.ld = (v) => F.toFa(J.longDate(v)); l.dt = (v) => F.toFa(J.dateTimeString(v));
   l.PERMS_LIB = require('./permissions'); l.can = (perm) => require('./permissions').can(req.user, perm); l.APP_VERSION = require('./version').VERSION;
-  l.icon = icon; l.L = L; l.badges_map = badge; l.J = J;
+  l.icon = icon; l.bell = require('./lib/bell'); l.L = L; l.badges_map = badge; l.J = J;
   l.S = (k) => settings.get(k); l.settingsAll = settings.all();
   l.enabled = (k) => modules.isEnabled(k);
   l.initials = (n) => String(n || '?').trim().split(/\s+/).slice(0, 2).map((x) => x[0]).join('\u200c');

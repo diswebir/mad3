@@ -190,12 +190,6 @@ async function createSchema(db) {
   await addCol('fees', 'discount_note', (t) => t.string('discount_note', 150));
   await addCol('teachers', 'weekly_load', (t) => t.integer('weekly_load'));
 
-  /* ===== نسخه‌ی ۲٫۱ ===== */
-  await addCol('class_subjects', 'max_per_day', (t) => t.integer('max_per_day').notNullable().defaultTo(2));
-  await addCol('exam_schedule', 'supervisor_id', (t) => t.integer('supervisor_id'));
-  await addCol('assessments', 'locked', (t) => t.boolean('locked').notNullable().defaultTo(false));
-  await addCol('fee_installments', 'reminded_at', (t) => t.string('reminded_at', 10));
-  await addCol('attendance', 'ticket_id', (t) => t.integer('ticket_id'));
   await make('bell_schedules', (t) => {
     t.increments('id'); t.string('name', 100).notNullable(); t.string('days', 30).notNullable().defaultTo(''); t.string('grades', 200).notNullable().defaultTo('');
     t.boolean('is_default').notNullable().defaultTo(false); ts(t);
@@ -289,6 +283,13 @@ async function createSchema(db) {
     t.increments('id'); t.integer('teacher_id').notNullable().index(); t.string('eval_date', 10).notNullable(); t.integer('term').defaultTo(1); t.text('scores'); t.decimal('total', 6, 2);
     t.text('comment'); t.integer('evaluator_id'); ts(t);
   });
+
+  /* ===== نسخه‌ی ۲٫۱ ===== */
+  await addCol('class_subjects', 'max_per_day', (t) => t.integer('max_per_day').notNullable().defaultTo(2));
+  await addCol('exam_schedule', 'supervisor_id', (t) => t.integer('supervisor_id'));
+  await addCol('assessments', 'locked', (t) => t.boolean('locked').notNullable().defaultTo(false));
+  await addCol('fee_installments', 'reminded_at', (t) => t.string('reminded_at', 10));
+  await addCol('attendance', 'ticket_id', (t) => t.integer('ticket_id'));
 
   await require('./lib/bell').ensureDefault(db);
 }

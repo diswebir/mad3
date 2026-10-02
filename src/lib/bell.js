@@ -81,24 +81,28 @@ async function saveSchedule(k, { id, name, days, grades, isDefault, rows }) {
 }
 async function deleteSchedule(k, id) { await k('bell_rows').where({ schedule_id: id }).del(); await k('bell_schedules').where({ id }).del(); }
 
-const defaultSchedule = () => cache.schedules.find((s) => s.isDefault) || cache.schedules[0] || null;
-/** الگوی مؤثر برای یک روز و پایه: ویژه‌ترین الگوی منطبق، وگرنه پیش‌فرض */
-function scheduleFor({ day, grade } = {}) {
+const defaultOf = (list) => list.find((s) => s.isDefault) || list[0] || null;
+const defaultSchedule = () => defaultOf(cache.schedules);
+/** الگوی مؤثر برای یک روز و پایه از میان list: ویژه‌ترین الگوی منطبق، وگرنه پیش‌فرض */
+function pick(list, { day, grade } = {}) {
   let best = null; let bestScore = 0;
-  for (const s of cache.schedules) {
+  for (const s of list) {
     if (s.isDefault) continue;
     if (s.days.length && (day === undefined || !s.days.includes(Number(day)))) continue;
     if (s.grades.length && (!grade || !s.grades.includes(grade))) continue;
-    const score = (s.days.length ? 2 : 0) + (s.grades.length ? 1 : 0) + 0.001 * (1000 - s.id);
+    const score = (s.days.length ? 2 : 0) + (s.grades.length ? 1 : 0) + 0.001 * (1000 - (s.id || 0));
     if (score > bestScore) { best = s; bestScore = score; }
   }
-  return best && (best.days.length || best.grades.length) ? best : defaultSchedule();
+  return best && (best.days.length || best.grades.length) ? best : defaultOf(list);
 }
+const scheduleFor = (o) => pick(cache.schedules, o);
 const classRows = (s) => (s ? s.rows.filter((r) => r.kind === 'class').map((r) => ({ n: r.n, start: r.start, end: r.end })) : []);
 const periodsFor = (o) => classRows(scheduleFor(o));
 const rowsFor = (o) => { const s = scheduleFor(o); return s ? s.rows : []; };
 const defaultPeriods = () => classRows(defaultSchedule());
 const countFor = (o) => periodsFor(o).length;
+/** شبیه‌سازی: تعداد زنگ‌های درسی اگر فهرست الگوها list می‌بود */
+const countForIn = (list, o) => classRows(pick(list, o)).length;
 const maxPeriods = () => Math.max(1, ...cache.schedules.map((s) => classRows(s).length));
 /** ساعت شروع زنگ اول (مبنای محاسبه‌ی تأخیر ورود) */
 function schoolStart(o) { const p = periodsFor(o); return p.length ? p[0].start : '07:30'; }
@@ -110,4 +114,4 @@ function currentPeriod(hm, o) {
   return { current: cur || null, next: next || null };
 }
 
-module.exports = { KINDS, toMin, fmt, load, ensureDefault, fromTemplate, validateRows, saveSchedule, deleteSchedule, scheduleFor, periodsFor, rowsFor, defaultPeriods, countFor, maxPeriods, schoolStart, currentPeriod, all: () => cache.schedules };
+module.exports = { countForIn, pick, KINDS, toMin, fmt, load, ensureDefault, fromTemplate, validateRows, saveSchedule, deleteSchedule, scheduleFor, periodsFor, rowsFor, defaultPeriods, countFor, maxPeriods, schoolStart, currentPeriod, all: () => cache.schedules };

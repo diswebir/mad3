@@ -147,9 +147,10 @@ router.get('/calendar', modules.guard('calendar'), async (req, res, next) => {
       const q = k('students').where({ status: 'active' }).whereNotNull('birth_date'); if (classIds) q.whereIn('classroom_id', classIds.length ? classIds : [0]);
       for (const s of await q.select('first_name', 'last_name', 'birth_date')) { const j = J.isoToJ(s.birth_date); if (j && j.jm === jm) add(J.jToIso(jy, jm, Math.min(j.jd, length)), { t: `🎂 ${s.first_name} ${s.last_name}`, c: 'bday' }); }
     }
+    const hol = await cal.holidaySet(start, end, k);
     const firstDow = J.dow(start); const cells = [];
     for (let i = 0; i < firstDow; i++) cells.push(null);
-    for (let d = 1; d <= length; d++) { const iso = J.jToIso(jy, jm, d); cells.push({ d, iso, today: iso === J.todayISO(), off: !settings.weekDays().includes(J.dow(iso)), items: items[iso] || [] }); }
+    for (let d = 1; d <= length; d++) { const iso = J.jToIso(jy, jm, d); cells.push({ d, iso, today: iso === J.todayISO(), off: !settings.weekDays().includes(J.dow(iso)) || hol.has(iso), holiday: hol.get(iso) || '', items: items[iso] || [] }); }
     const py = jm === 1 ? jy - 1 : jy; const pm = jm === 1 ? 12 : jm - 1; const ny = jm === 12 ? jy + 1 : jy; const nm = jm === 12 ? 1 : jm + 1;
     res.view('calendar/index', { title: 'تقویم', jy, jm, cells, prev: `?year=${py}&month=${pm}`, next: `?year=${ny}&month=${nm}`, WEEKDAYS: J.WEEKDAYS, MONTHS: J.MONTHS });
   } catch (e) { next(e); }

@@ -20,10 +20,10 @@ const PRESETS = {
 const PATHS = [
   ['/attendance', 'attendance'], ['/grades', 'grades'], ['/exams', 'exams'], ['/questions', 'exams'], ['/papers', 'exams'],
   ['/discipline', 'discipline'], ['/health', 'health'], ['/finance', 'finance'], ['/library', 'library'], ['/transport', 'transport'],
-  ['/reports', 'reports'], ['/messages', 'messaging'], ['/message-templates', 'messaging'], ['/sms', 'messaging'], ['/hr', 'hr'], ['/promotion', 'promotion'], ['/exits', 'exits'], ['/parents', 'parents'],
+  ['/holidays', 'timetable'], ['/reports', 'reports'], ['/messages', 'messaging'], ['/message-templates', 'messaging'], ['/sms', 'messaging'], ['/hr', 'hr'], ['/promotion', 'promotion'], ['/exits', 'exits'], ['/parents', 'parents'],
 ];
 /** مسیرهای مدیریتی برنامه هفتگی (مشاهده برای همه آزاد است) */
-const TIMETABLE_ADMIN = ['/timetable/auto', '/timetable/substitutes', '/timetable/availability'];
+const TIMETABLE_ADMIN = ['/timetable/auto', '/timetable/substitutes', '/timetable/availability', '/timetable/bells', '/timetable/overview'];
 
 function parse(raw) {
   if (raw === null || raw === undefined || raw === '') return null;

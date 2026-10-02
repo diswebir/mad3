@@ -28,7 +28,8 @@ const MODULES = [
     { label: 'ثبت ورود با QR', href: '/attendance/gate', icon: 'qr-code', roles: ['admin', 'deputy'], section: 'edu', perm: 'attendance' },
     { label: 'حضور و غیاب من', href: '/attendance/my', icon: 'calendar-check', roles: ['student'], section: 'edu' }] },
   { key: 'timetable', title: 'برنامه هفتگی', icon: 'clock', desc: 'برنامه هفتگی کلاس‌ها با تشخیص تداخل معلم', nav: [
-    { label: 'برنامه هفتگی', href: '/timetable', icon: 'clock', roles: ALL, section: 'edu' }] },
+    { label: 'برنامه هفتگی', href: '/timetable', icon: 'clock', roles: ALL, section: 'edu' },
+    { label: 'ساعت زنگ‌ها', href: '/timetable/bells', icon: 'bell', roles: STAFF, section: 'edu', perm: 'timetable' }] },
   { key: 'grades', title: 'نمرات و کارنامه', icon: 'award', desc: 'ارزشیابی‌ها، ثبت نمره، کارنامه، رتبه‌بندی و انتشار نمرات', nav: [
     { label: 'نمرات', href: '/grades', icon: 'award', roles: STAFF_T, section: 'edu' , perm: 'grades' },
     { label: 'کارنامه من', href: '/grades/my', icon: 'award', roles: ['student'], section: 'edu' }] },
@@ -44,7 +45,8 @@ const MODULES = [
     { label: 'اطلاعیه‌ها', href: '/announcements', icon: 'megaphone', roles: ALL, section: 'comm' }] },
   { key: 'calendar', title: 'تقویم و رویدادها', icon: 'calendar-days', desc: 'تقویم شمسی مدرسه با رویدادها، امتحانات و تولدها', nav: [
     { label: 'تقویم', href: '/calendar', icon: 'calendar-days', roles: ALL, section: 'comm' },
-    { label: 'مدیریت رویدادها', href: '/events', icon: 'flag', roles: STAFF, section: 'comm' }] },
+    { label: 'مدیریت رویدادها', href: '/events', icon: 'flag', roles: STAFF, section: 'comm' },
+    { label: 'تعطیلات و تقویم آموزشی', href: '/holidays', icon: 'calendar-off', roles: STAFF, section: 'comm', perm: 'timetable' }] },
   { key: 'meetings', title: 'جلسات اولیا', icon: 'users-round', desc: 'برنامه‌ریزی و ثبت صورت‌جلسه ملاقات با اولیا', nav: [
     { label: 'جلسات اولیا', href: '/meetings', icon: 'users-round', roles: ALL, section: 'comm' }] },
   { key: 'documents', title: 'مدارک و فایل‌های پرونده', icon: 'folder-open', desc: 'بارگذاری مدارک در پرونده دانش‌آموز (شناسنامه، عکس، ...)', nav: [] },
