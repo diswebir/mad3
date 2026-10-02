@@ -1,6 +1,6 @@
 {
   "name": "mad3-school-management",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "description": "سامانه مدیریت مدرسه (Node.js) با ویزارد نصب و سازگار با cPanel",
   "main": "app.js",
   "private": true,
