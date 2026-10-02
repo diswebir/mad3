@@ -16,7 +16,7 @@
     <div class="msg <%= m.internal ? 'internal' : (mine ? 'mine' : 'other') %>" <%= i === msgs.length - 1 ? 'id=last' : '' %>>
       <div class="meta"><b><%= m.full_name %></b><span><%= L.roles[m.role] %></span><span><%= dt(m.created_at) %></span><% if (m.internal) { %><span class="badge amber">یادداشت داخلی</span><% } %></div>
       <div class="body"><%= m.body %></div>
-      <% if (m.attachment) { %><div style="margin-top:.4rem"><a class="btn sm" href="<%= fileUrl('tickets', m.attachment) %>"><%- icon('paperclip', 14) %> <%= m.attachment_name || 'پیوست' %></a></div><% } %>
+      <% if (m.attachment && m.is_certificate) { %><div class="cert-box"><span class="badge amber"><%- icon('file-text', 13) %> <%= CERT_TYPES[t.cert_type] || 'گواهی غیبت' %></span><a href="<%= fileUrl('tickets', m.attachment) %>" target="_blank" rel="noopener"><img src="<%= fileUrl('tickets', m.attachment) %>" alt="تصویر گواهی غیبت" loading="lazy"></a></div><% } else if (m.attachment) { %><div style="margin-top:.4rem"><a class="btn sm" href="<%= fileUrl('tickets', m.attachment) %>"><%- icon('paperclip', 14) %> <%= m.attachment_name || 'پیوست' %></a></div><% } %>
     </div><% }) %></div></div>
   <% if (canReply) { %>
   <form class="card" method="post" enctype="multipart/form-data" action="<%= u('/tickets/' + t.id + '/reply') %>?_csrf=<%= csrf %>"><h3><%- icon('send', 18) %> پاسخ</h3>

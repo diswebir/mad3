@@ -289,6 +289,8 @@ async function createSchema(db) {
   await addCol('exam_schedule', 'supervisor_id', (t) => t.integer('supervisor_id'));
   await addCol('assessments', 'locked', (t) => t.boolean('locked').notNullable().defaultTo(false));
   await addCol('fee_installments', 'reminded_at', (t) => t.string('reminded_at', 10));
+  await addCol('ticket_messages', 'is_certificate', (t) => t.boolean('is_certificate').notNullable().defaultTo(false));
+  await addCol('tickets', 'cert_type', (t) => t.string('cert_type', 20));
   await addCol('attendance', 'ticket_id', (t) => t.integer('ticket_id'));
 
   await require('./lib/bell').ensureDefault(db);

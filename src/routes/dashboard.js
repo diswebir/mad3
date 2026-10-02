@@ -27,6 +27,7 @@ router.get('/', async (req, res, next) => {
     const isSchoolDay = settings.weekDays().includes(dow);
     const data = { title: 'داشبورد', today, isSchoolDay, dow };
     const classIds = await svc.accessibleClassIds(u);
+    try { data.todo = await require('../lib/todo').forUser(u); } catch (e) { console.error('[todo]', e.message); }
     if (M('announcements')) data.announcements = await latestAnnouncements(u, classIds);
     if (M('calendar')) {
       const q = k('events as t').where('t.start_date', '>=', today).orderBy('t.start_date').limit(5).select('t.*');

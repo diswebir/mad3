@@ -1,10 +1,21 @@
-<div class="page-head"><h1><%- icon('search', 24) %> جستجو: «<%= q %>»</h1></div>
-<% if (q.length < 2) { %><div class="alert info">حداقل دو حرف وارد کنید.</div><% } else {
-  var any = false; Object.keys(out).forEach(function(k){ if (out[k] && out[k].length) any = true; }); %>
-<% if (!any) { %><div class="card empty">نتیجه‌ای یافت نشد.</div><% } %>
-<% if (out.students && out.students.length) { %><div class="card flush"><div class="card-title"><%- icon('graduation-cap', 18) %> دانش‌آموزان</div><table class="t"><tbody><% out.students.forEach(function(s){ %><tr><td><a href="<%= u('/students/' + s.id) %>"><%= s.first_name %> <%= s.last_name %></a></td><td class="num"><%= fa(s.student_code) %></td><td><%= s.class_name || '—' %></td></tr><% }) %></tbody></table></div><% } %>
-<% if (out.teachers && out.teachers.length) { %><div class="card flush"><div class="card-title"><%- icon('briefcase', 18) %> معلمان</div><table class="t"><tbody><% out.teachers.forEach(function(s){ %><tr><td><a href="<%= u('/teachers/' + s.id) %>"><%= s.full_name %></a></td><td><%= s.specialty || '' %></td></tr><% }) %></tbody></table></div><% } %>
-<% if (out.tickets && out.tickets.length) { %><div class="card flush"><div class="card-title"><%- icon('life-buoy', 18) %> تیکت‌ها</div><table class="t"><tbody><% out.tickets.forEach(function(s){ %><tr><td><a href="<%= u('/tickets/' + s.id) %>"><%= s.subject %></a></td><td><%- pill(L.ticketStatus[s.status], badges_map.ticketStatus[s.status]) %></td></tr><% }) %></tbody></table></div><% } %>
-<% if (out.announcements && out.announcements.length) { %><div class="card flush"><div class="card-title"><%- icon('megaphone', 18) %> اطلاعیه‌ها</div><table class="t"><tbody><% out.announcements.forEach(function(s){ %><tr><td><a href="<%= u('/announcements') %>"><%= s.title %></a></td><td class="muted small"><%= d(s.created_at) %></td></tr><% }) %></tbody></table></div><% } %>
-<% if (out.books && out.books.length) { %><div class="card flush"><div class="card-title"><%- icon('library-big', 18) %> کتاب‌ها</div><table class="t"><tbody><% out.books.forEach(function(s){ %><tr><td><%= s.title %></td><td><%= s.author %></td><td><%= s.category %></td></tr><% }) %></tbody></table></div><% } %>
+<div class="page-head"><h1><%- icon('search', 24) %> جستجو<% if (q) { %>: «<%= q %>»<% } %></h1></div>
+<form class="card" action="<%= u('/search') %>" method="get" style="display:flex;gap:.6rem;flex-wrap:wrap;align-items:center">
+  <input type="search" name="q" value="<%= q %>" placeholder="نام، کد دانش‌آموزی، کد ملی، شماره تلفن، عنوان تیکت..." style="flex:1;min-width:220px" autofocus>
+  <button class="btn primary" type="submit"><%- icon('search', 16) %> جستجو</button>
+</form>
+<% if (!q || q.length < 2) { %><div class="alert info"><%- icon('info', 18) %><div>حداقل دو نویسه وارد کنید. می‌توانید با نام، نام خانوادگی، کد دانش‌آموزی (پرش مستقیم به پرونده)، کد ملی، شماره تلفن اولیا، عنوان تیکت/تکلیف/اطلاعیه، نام کتاب یا کلاس جستجو کنید.</div></div>
+<% } else if (!groups.length) { %><div class="card empty">نتیجه‌ای برای «<%= q %>» یافت نشد.</div>
+<% } else { %>
+  <div class="tabs" style="margin-top:.8rem">
+    <a class="<%= !only ? 'active' : '' %>" href="<%= u('/search?q=' + encodeURIComponent(q)) %>">همه</a>
+    <% tabs.forEach(function(t){ %><a class="<%= only === t.key ? 'active' : '' %>" href="<%= u('/search?q=' + encodeURIComponent(q) + '&type=' + t.key) %>"><%= t.title %> <span class="muted">(<%= fa(t.total) %>)</span></a><% }) %>
+  </div>
+  <% groups.forEach(function(g){ %>
+  <div class="card flush"><div class="card-title"><%- icon(g.icon, 18) %> <%= g.title %> <span class="muted">(<%= fa(g.total) %>)</span>
+    <% if (!only && g.total > g.items.length) { %><a class="btn sm ghost" style="margin-inline-start:auto" href="<%= u('/search?q=' + encodeURIComponent(q) + '&type=' + g.key) %>">نمایش همه</a><% } %></div>
+    <table class="t"><tbody>
+      <% g.items.forEach(function(it){ %><tr><td><a href="<%= u(it.url) %>"><%= it.title %></a></td><td class="muted"><%= it.sub %></td></tr><% }) %>
+    </tbody></table>
+  </div>
+  <% }) %>
 <% } %>

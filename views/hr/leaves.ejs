@@ -10,3 +10,5 @@
 <% } else if (l.status === 'approved' && isM && enabled('timetable')) { %><a class="btn sm ghost" href="<%= u('/timetable/substitutes?date=' + J.isoToJString(l.start_date)) %>">جانشین</a><% } %>
 <% if (l.status === 'pending' || (isM && user.role === 'admin')) { %><form method="post" action="<%= u('/hr/leaves/' + l.id + '/delete') %>" data-confirm="حذف شود؟" style="display:inline"><input type="hidden" name="_csrf" value="<%= csrf %>"><button class="btn sm ghost" style="color:var(--red)"><%- icon('trash-2', 15) %></button></form><% } %></td></tr><% }) %>
 </tbody></table></div></div>
+
+<% if (typeof pages !== 'undefined') { %><%- include('../partials/pager', { page: page, pages: pages }) %><% } %>

@@ -147,3 +147,55 @@ document.addEventListener('change', function (e) {
     });
   }
 })();
+
+/* پیشنهاد زنده‌ی جستجوی سراسری (دکمه‌های ↑ ↓ Enter Esc، و میان‌بر «/») */
+(function () {
+  var form = document.querySelector('form.search'); if (!form) return;
+  var input = form.querySelector('input[name=q]'); var box = document.createElement('div'); box.className = 'suggest'; box.hidden = true; box.setAttribute('role', 'listbox'); form.appendChild(box);
+  var timer = null, seq = 0, sel = -1;
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+  var base = form.getAttribute('action').replace(/\/search$/, '');
+  function links() { return Array.prototype.slice.call(box.querySelectorAll('a')); }
+  function mark(i) { var l = links(); l.forEach(function (a) { a.classList.remove('sel'); }); if (l[i]) { l[i].classList.add('sel'); l[i].scrollIntoView({ block: 'nearest' }); } sel = i; }
+  function render(groups, q) {
+    if (!groups.length) { box.innerHTML = '<div class="none">نتیجه‌ای یافت نشد</div>'; box.hidden = false; sel = -1; return; }
+    var h = ''; groups.forEach(function (g) { h += '<h6>' + esc(g.title) + '</h6>'; g.items.forEach(function (i) { h += '<a href="' + esc(base + i.url) + '"><span>' + esc(i.title) + '</span><small>' + esc(i.sub) + '</small></a>'; }); });
+    h += '<a class="all" href="' + esc(form.getAttribute('action') + '?q=' + encodeURIComponent(q)) + '">نمایش همه‌ی نتایج</a>';
+    box.innerHTML = h; box.hidden = false; sel = -1;
+  }
+  input.addEventListener('input', function () {
+    clearTimeout(timer); var q = input.value.trim(); if (q.length < 2) { box.hidden = true; return; }
+    timer = setTimeout(function () { var my = ++seq; fetch(form.getAttribute('action') + '/suggest?q=' + encodeURIComponent(q), { credentials: 'same-origin', headers: { Accept: 'application/json' } }).then(function (r) { return r.ok ? r.json() : []; }).then(function (g) { if (my === seq) render(g, q); }).catch(function () {}); }, 220);
+  });
+  input.addEventListener('keydown', function (e) {
+    var l = links();
+    if (e.key === 'ArrowDown' && l.length) { e.preventDefault(); mark((sel + 1) % l.length); }
+    else if (e.key === 'ArrowUp' && l.length) { e.preventDefault(); mark((sel - 1 + l.length) % l.length); }
+    else if (e.key === 'Enter' && sel >= 0 && l[sel]) { e.preventDefault(); window.location = l[sel].href; }
+    else if (e.key === 'Escape') { box.hidden = true; input.blur(); }
+  });
+  document.addEventListener('click', function (e) { if (!form.contains(e.target)) box.hidden = true; });
+  input.addEventListener('focus', function () { if (box.innerHTML && input.value.trim().length >= 2) box.hidden = false; });
+  document.addEventListener('keydown', function (e) { if (e.key === '/' && !/^(INPUT|TEXTAREA|SELECT)$/.test((document.activeElement || {}).tagName || '') && !(document.activeElement || {}).isContentEditable) { e.preventDefault(); input.focus(); input.select(); } });
+})();
+
+/* نمایش/پنهان‌سازی فیلدها بر اساس مقدار یک select: data-show-if="id=مقدار" و data-hide-if؛ فیلدهای پنهان‌شده غیرفعال می‌شوند تا ارسال نشوند */
+(function () {
+  var els = document.querySelectorAll('[data-show-if],[data-hide-if]'); if (!els.length) return;
+  function apply() {
+    els.forEach(function (el) {
+      var rule = el.getAttribute('data-show-if') || el.getAttribute('data-hide-if'); var p = rule.split('='); var src = document.getElementById(p[0]); if (!src) return;
+      var match = src.value === p[1]; var show = el.hasAttribute('data-show-if') ? match : !match;
+      el.hidden = !show; el.querySelectorAll('input,select,textarea').forEach(function (i) { i.disabled = !show; });
+    });
+  }
+  els.forEach(function (el) { var p = (el.getAttribute('data-show-if') || el.getAttribute('data-hide-if')).split('=')[0]; var src = document.getElementById(p); if (src && !src._sw) { src._sw = 1; src.addEventListener('change', apply); } });
+  apply();
+})();
+/* بررسی حجم فایل پیش از ارسال (data-file-max به مگابایت) */
+document.addEventListener('change', function (e) {
+  var i = e.target; if (!i || i.type !== 'file' || !i.getAttribute('data-file-max') || !i.files || !i.files[0]) return;
+  var max = Number(i.getAttribute('data-file-max')) * 1024 * 1024; var f = i.files[0];
+  if (f.size > max) { alert('حجم فایل بیش از ' + i.getAttribute('data-file-max') + ' مگابایت است.'); i.value = ''; return; }
+  if (i.hasAttribute('data-cert') && !/^image\/(jpeg|png|webp)$/.test(f.type)) { alert('فقط تصویر JPG، PNG یا WebP پذیرفته می‌شود.'); i.value = ''; }
+});

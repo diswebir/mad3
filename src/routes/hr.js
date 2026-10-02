@@ -46,9 +46,10 @@ router.get('/hr/leaves', async (req, res, next) => {
   try {
     const k = db.get(); const isM = isManager(req.user); if (!isM && !req.user.teacher) return noAccess(res);
     const status = Object.keys(hr.LEAVE_STATUS).includes(req.query.status) ? req.query.status : '';
-    const q = k('teacher_leaves as l').join('teachers as t', 't.id', 'l.teacher_id').join('users as u', 'u.id', 't.user_id').orderByRaw("case l.status when 'pending' then 0 else 1 end").orderBy('l.start_date', 'desc').limit(500).select('l.*', 'u.full_name');
+    const q = k('teacher_leaves as l').join('teachers as t', 't.id', 'l.teacher_id').join('users as u', 'u.id', 't.user_id').orderByRaw("case l.status when 'pending' then 0 else 1 end").orderBy('l.start_date', 'desc').select('l.*', 'u.full_name');
     if (!isM) q.where('l.teacher_id', req.user.teacher.id); if (status) q.where('l.status', status);
-    res.view('hr/leaves', { title: 'مرخصی معلمان', rows: await q, status, isM, LK: hr.LEAVE_KINDS, LS: hr.LEAVE_STATUS });
+    const pg = await require('../utils/paginate').paginate(q, req, 25);
+    res.view('hr/leaves', { title: 'مرخصی معلمان', rows: pg.rows, page: pg.page, pages: pg.pages, total: pg.total, status, isM, LK: hr.LEAVE_KINDS, LS: hr.LEAVE_STATUS });
   } catch (e) { next(e); }
 });
 router.get('/hr/leaves/new', async (req, res, next) => {

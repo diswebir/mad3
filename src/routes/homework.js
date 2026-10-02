@@ -33,7 +33,7 @@ router.get('/homework', async (req, res, next) => {
   try {
     const k = db.get(); const u = req.user; const today = J.todayISO();
     const q = k('homework as h').join('class_subjects as cs', 'cs.id', 'h.class_subject_id').join('subjects as s', 's.id', 'cs.subject_id').join('classrooms as c', 'c.id', 'cs.classroom_id').where('c.status', '<>', 'archived')
-      .orderBy('h.due_date', 'desc').orderBy('h.id', 'desc').limit(100).select('h.*', 's.name as subject_name', 'c.name as class_name');
+            .orderBy('h.due_date', 'desc').orderBy('h.id', 'desc').select('h.*', 's.name as subject_name', 'c.name as class_name');
     if (u.role === 'teacher') q.where('cs.teacher_id', u.teacher ? u.teacher.id : 0);
     if (u.role === 'student') {
       q.where('cs.classroom_id', u.student ? u.student.classroom_id || 0 : 0).leftJoin('homework_submissions as x', function () { this.on('x.homework_id', 'h.id').andOn('x.student_id', k.raw('?', [u.student ? u.student.id : 0])); }).select('x.id as sub_id', 'x.score as my_score', 'x.late as my_late');
@@ -42,7 +42,8 @@ router.get('/homework', async (req, res, next) => {
       if (req.query.class_id) q.where('cs.classroom_id', req.query.class_id);
     }
     const classes = u.role === 'student' ? [] : await k('classrooms').where('status', '<>', 'archived').orderBy('name').select('id', 'name');
-    res.view('homework/index', { title: 'تکالیف', rows: await q, today, classes, classId: req.query.class_id || '' });
+    const pg = await require('../utils/paginate').paginate(q, req, 20);
+    res.view('homework/index', { title: 'تکالیف', rows: pg.rows, total: pg.total, page: pg.page, pages: pg.pages, today, classes, classId: req.query.class_id || '' });
   } catch (e) { next(e); }
 });
 

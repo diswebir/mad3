@@ -34,7 +34,7 @@ router.get('/finance', async (req, res, next) => {
     else if (!isManager(u)) return res.status(403).view('error', { code: 403, title: 'دسترسی غیرمجاز', message: 'دسترسی ندارید.' });
     if (req.query.class_id) q.where('s.classroom_id', req.query.class_id);
     if (req.query.q) q.where((b) => b.where('s.first_name', 'like', `%${req.query.q}%`).orWhere('s.last_name', 'like', `%${req.query.q}%`).orWhere('f.title', 'like', `%${req.query.q}%`));
-    let rows = await q.orderBy('f.due_date', 'desc').orderBy('f.id', 'desc').limit(1000);
+    let rows = await q.orderBy('f.due_date', 'desc').orderBy('f.id', 'desc').limit(20000);
     rows.forEach((f) => { f.net = net(f); f.remaining = Math.max(0, f.net - Number(f.paid)); f.state = f.remaining === 0 ? 'paid' : Number(f.paid) > 0 ? 'partial' : 'unpaid'; f.overdue = f.remaining > 0 && f.due_date && f.due_date < today; });
     const instMap = await loadInstallments(k, rows.map((f) => f.id));
     rows.forEach((f) => { f.insts = instMap[f.id] || []; if (f.insts.length) f.overdue = fin.overdueAmount(f, f.insts, today) > 0; });

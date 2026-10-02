@@ -1,16 +1,16 @@
 <% if (typeof announcements !== 'undefined' && enabled('announcements')) { %>
 <div class="card"><h3><%- icon('megaphone', 18) %> آخرین اطلاعیه‌ها <a class="btn sm ghost" style="margin-right:auto" href="<%= u('/announcements') %>">همه</a></h3>
   <% if (!announcements.length) { %><div class="muted">اطلاعیه‌ای وجود ندارد.</div><% } %>
-  <ul class="list"><% announcements.forEach(function(a){ %><li><span style="color:var(--primary)"><%- icon(a.pinned ? 'flag' : 'megaphone', 18) %></span><div><b><%= a.title %></b><% if (a.pinned) { %> <span class="badge amber">سنجاق‌شده</span><% } %><div class="muted small"><%= String(a.body).slice(0, 110) %><%= String(a.body).length > 110 ? '…' : '' %></div><div class="muted small"><%= d(a.created_at) %></div></div></li><% }) %></ul>
+  <ul class="list"><% announcements.forEach(function(a){ %><li><span style="color:var(--primary)"><%- icon(a.pinned ? 'flag' : 'megaphone', 18) %></span><div><b><a href="<%= u('/announcements') %>"><%= a.title %></a></b><% if (a.pinned) { %> <span class="badge amber">سنجاق‌شده</span><% } %><div class="muted small"><%= String(a.body).slice(0, 110) %><%= String(a.body).length > 110 ? '…' : '' %></div><div class="muted small"><%= d(a.created_at) %></div></div></li><% }) %></ul>
 </div>
 <% } %>
 <% if (typeof events !== 'undefined' && events.length) { %>
-<div class="card"><h3><%- icon('calendar-days', 18) %> رویدادهای پیش‌رو</h3>
-  <ul class="list"><% events.forEach(function(e){ %><li><span class="badge blue nowrap"><%= ld(e.start_date) %></span><div><b><%= e.title %></b> <span class="muted small"><%= L.eventType[e.type] || '' %><%= e.location ? ' — ' + e.location : '' %></span></div></li><% }) %></ul>
+<div class="card"><h3><a class="h-link" href="<%= u('/calendar') %>"><%- icon('calendar-days', 18) %> رویدادهای پیش‌رو</a></h3>
+  <ul class="list"><% events.forEach(function(e){ %><li><span class="badge blue nowrap"><%= ld(e.start_date) %></span><div><b><a href="<%= u('/calendar') %>"><%= e.title %></a></b> <span class="muted small"><%= L.eventType[e.type] || '' %><%= e.location ? ' — ' + e.location : '' %></span></div></li><% }) %></ul>
 </div>
 <% } %>
 <% if (typeof exams !== 'undefined' && exams.length) { %>
-<div class="card"><h3><%- icon('clipboard-list', 18) %> امتحانات پیش‌رو</h3>
-  <ul class="list"><% exams.forEach(function(e){ %><li><span class="badge amber nowrap"><%= ld(e.exam_date) %></span><div><b><%= e.subject_name %></b> — <%= e.class_name %> <span class="muted small">ساعت <%= fa(e.start_time || '') %></span></div></li><% }) %></ul>
+<div class="card"><h3><a class="h-link" href="<%= u('/exams') %>"><%- icon('clipboard-list', 18) %> امتحانات پیش‌رو</a></h3>
+  <ul class="list"><% exams.forEach(function(e){ %><li><span class="badge amber nowrap"><%= ld(e.exam_date) %></span><div><b><a href="<%= u('/exams') %>"><%= e.subject_name %></a></b> — <%= e.class_name %> <span class="muted small">ساعت <%= fa(e.start_time || '') %></span></div></li><% }) %></ul>
 </div>
 <% } %>

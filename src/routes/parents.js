@@ -79,12 +79,12 @@ router.get('/parents', ...guard, async (req, res, next) => {
     const k = db.get(); const q = (req.query.q || '').trim();
     const qb = k('users as u').where('u.role', 'parent');
     if (q) qb.where((b) => b.where('u.full_name', 'like', `%${q}%`).orWhere('u.username', 'like', `%${q}%`));
-    const users = await qb.orderBy('u.id', 'desc').limit(300).select('u.id', 'u.username', 'u.full_name', 'u.active', 'u.last_login');
+    const pg = await require('../utils/paginate').paginate(qb.orderBy('u.id', 'desc').select('u.id', 'u.username', 'u.full_name', 'u.active', 'u.last_login'), req, 30); const users = pg.rows;
     const links = users.length ? await k('parent_students as ps').join('students as s', 's.id', 'ps.student_id').whereIn('ps.user_id', users.map((u) => u.id)).select('ps.user_id', 'ps.student_id', 'ps.relation', 's.first_name', 's.last_name') : [];
     const by = {}; for (const l of links) (by[l.user_id] = by[l.user_id] || []).push(l);
     const classes = await k('classrooms').where('status', '<>', 'archived').orderBy('name').select('id', 'name');
     const withoutParent = Number((await k('students').where('status', 'active').whereNotIn('id', k('parent_students').select('student_id')).count({ c: '*' }).first()).c);
-    res.view('parents/index', { title: 'حساب‌های اولیا', users, by, q, classes, withoutParent, result: null });
+    res.view('parents/index', { title: 'حساب‌های اولیا', users, by, q, classes, withoutParent, result: null, page: pg.page, pages: pg.pages, total: pg.total });
   } catch (e) { next(e); }
 });
 router.post('/parents/create', ...guard, async (req, res, next) => {

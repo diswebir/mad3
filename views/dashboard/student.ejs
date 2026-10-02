@@ -2,13 +2,14 @@
   <div class="actions"><% if (enabled('tickets')) { %><a class="btn primary" href="<%= u('/tickets/new') %>"><%- icon('send', 16) %> ارسال تیکت</a><% } %><a class="btn" href="<%= u('/students/me') %>"><%- icon('id-card', 16) %> پرونده من</a></div></div>
 <div class="grid g4" style="margin-bottom:1.1rem">
   <% if (typeof att !== 'undefined') { %>
-  <div class="card stat green" style="margin:0"><div class="ico"><%- icon('calendar-check', 24) %></div><div><div class="v"><%= att.rate === null ? '—' : fa(att.rate) + '٪' %></div><div class="l">درصد حضور</div></div></div>
-  <div class="card stat red" style="margin:0"><div class="ico"><%- icon('circle-x', 24) %></div><div><div class="v"><%= fa(att.absent || 0) %></div><div class="l">روز غیبت</div></div></div>
+  <a class="card stat green link" style="margin:0" href="<%= u('/attendance/my') %>"><div class="ico"><%- icon('calendar-check', 24) %></div><div><div class="v"><%= att.rate === null ? '—' : fa(att.rate) + '٪' %></div><div class="l">درصد حضور</div></div></a>
+  <a class="card stat red link" style="margin:0" href="<%= u('/attendance/my') %>"><div class="ico"><%- icon('circle-x', 24) %></div><div><div class="v"><%= fa(att.absent || 0) %></div><div class="l">روز غیبت</div></div></a>
   <% } %>
-  <% if (typeof debt !== 'undefined') { %><div class="card stat amber" style="margin:0"><div class="ico"><%- icon('wallet', 24) %></div><div><div class="v" style="font-size:1.15rem"><%= money(debt) %></div><div class="l">مانده بدهی (<%= S('currency_label') %>)</div></div></div><% } %>
-  <% if (typeof tickets !== 'undefined') { %><div class="card stat" style="margin:0"><div class="ico"><%- icon('life-buoy', 24) %></div><div><div class="v"><%= fa(tickets.length) %></div><div class="l">تیکت باز</div></div></div><% } %>
+  <% if (typeof debt !== 'undefined') { %><a class="card stat amber link" style="margin:0" href="<%= u('/finance') %>"><div class="ico"><%- icon('wallet', 24) %></div><div><div class="v" style="font-size:1.15rem"><%= money(debt) %></div><div class="l">مانده بدهی (<%= S('currency_label') %>)</div></div></a><% } %>
+  <% if (typeof tickets !== 'undefined') { %><a class="card stat link" style="margin:0" href="<%= u('/tickets') %>"><div class="ico"><%- icon('life-buoy', 24) %></div><div><div class="v"><%= fa(tickets.length) %></div><div class="l">تیکت باز</div></div></a><% } %>
 </div>
 <div class="grid g-side"><div>
+  <%- include('../partials/todo-card') %>
   <% if (typeof schedule !== 'undefined') { %>
   <div class="card"><h3><%- icon('clock', 18) %> برنامه امروز</h3>
     <% if (!schedule.length) { %><div class="muted">برنامه‌ای برای امروز ثبت نشده است.</div><% } else { %>
@@ -25,6 +26,6 @@
   <% } %>
 </div><div>
   <% if (typeof recentAbsences !== 'undefined' && recentAbsences.length && enabled('tickets')) { %><div class="alert warn"><%- icon('triangle-alert', 18) %><div>غیبت‌های اخیر: <%= recentAbsences.map(function(a){ return d(a.date); }).join('، ') %>. برای توجیه غیبت <a href="<%= u('/tickets/new?category=absence&date=' + recentAbsences[0].date) %>">تیکت ارسال کنید</a>.</div></div><% } %>
-  <% if (typeof loans !== 'undefined' && loans.length) { %><div class="card"><h3><%- icon('library-big', 18) %> کتاب‌های امانتی</h3><ul class="list"><% loans.forEach(function(l){ %><li><div><b><%= l.title %></b><div class="muted small">موعد بازگشت: <%= d(l.due_date) %></div></div></li><% }) %></ul></div><% } %>
+  <% if (typeof loans !== 'undefined' && loans.length) { %><div class="card"><h3><%- icon('library-big', 18) %> کتاب‌های امانتی</h3><ul class="list"><% loans.forEach(function(l){ %><li><div><b><a href="<%= u('/library/loans') %>"><%= l.title %></a></b><div class="muted small">موعد بازگشت: <%= d(l.due_date) %></div></div></li><% }) %></ul></div><% } %>
   <%- include('../partials/common-widgets') %>
 </div></div>

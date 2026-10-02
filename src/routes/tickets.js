@@ -100,7 +100,7 @@ router.get('/tickets', async (req, res, next) => {
 
 /* ---------- ایجاد ---------- */
 async function renderNew(req, res, errors, vals) {
-  res.view('tickets/new', { title: 'تیکت جدید', errors: errors || [], vals: vals || { category: L.ticketCategory[req.query.category] ? req.query.category : 'general', priority: 'normal', related_date: req.query.date ? J.isoToJString(req.query.date) : '' }, groups: await recipientOptions(req) });
+  res.view('tickets/new', { CERT_TYPES: require('../lib/certificate').CERT_TYPES, title: 'تیکت جدید', errors: errors || [], vals: vals || { category: L.ticketCategory[req.query.category] ? req.query.category : 'general', priority: 'normal', related_date: req.query.date ? J.isoToJString(req.query.date) : '' }, groups: await recipientOptions(req) });
 }
 router.get('/tickets/new', async (req, res, next) => { try { await renderNew(req, res); } catch (e) { next(e); } });
 router.post('/tickets/new', uploader('tickets', 'attachment', { maxMB: 5 }), async (req, res, next) => {
@@ -130,10 +130,17 @@ router.post('/tickets/new', uploader('tickets', 'attachment', { maxMB: 5 }), asy
         if (dup) errors.push(`برای این تاریخ قبلاً درخواست توجیه ثبت کرده‌اید (تیکت شماره ${dup.id}).`);
       }
     }
+    let certType = null; const cert = require('../lib/certificate');
+    if (b.category === 'absence') {
+      certType = cert.CERT_TYPES[b.cert_type] ? b.cert_type : 'other';
+      if (req.file && !req.uploadError) { const v = cert.validate(req.file); if (!v.ok) errors.push(v.error); else cert.finalize(req.file, v.ext); }
+      const today = await k('tickets').where({ created_by: u.id, category: 'absence' }).where('created_at', '>=', new Date(Date.now() - 86400000).toISOString().replace('T', ' ').slice(0, 19)).count({ c: '*' }).first();
+      if (Number(today.c) >= 10) errors.push('در ۲۴ ساعت گذشته بیش از حد درخواست توجیه غیبت ثبت کرده‌اید.');
+    }
     if (errors.length) { if (req.file) fs.unlink(req.file.path, () => {}); return renderNew(req, res, errors, b); }
-    const r = await k('tickets').insert({ subject: b.subject.slice(0, 200), category: b.category, priority: b.priority, status: 'open', created_by: u.id, recipient_user_id: rec.user, recipient_role: rec.role, student_id: rec.student, related_date: related, updated_at: svc.nowStr() });
+    const r = await k('tickets').insert({ subject: b.subject.slice(0, 200), category: b.category, priority: b.priority, status: 'open', created_by: u.id, recipient_user_id: rec.user, recipient_role: rec.role, student_id: rec.student, related_date: related, cert_type: certType, updated_at: svc.nowStr() });
     const id = Array.isArray(r) ? r[0] : r;
-    await k('ticket_messages').insert({ ticket_id: id, user_id: u.id, body: b.body.slice(0, 5000), attachment: req.file ? req.file.filename : null, attachment_name: req.file ? req.file.originalname.slice(0, 200) : null });
+    await k('ticket_messages').insert({ ticket_id: id, user_id: u.id, body: b.body.slice(0, 5000), attachment: req.file ? req.file.filename : null, attachment_name: req.file ? req.file.originalname.slice(0, 200) : null, is_certificate: b.category === 'absence' && req.file ? 1 : 0 });
     const targets = rec.user ? [rec.user] : await svc.managerIds();
     await svc.notify(targets.filter((x) => x !== u.id), `تیکت جدید از ${u.full_name}`, b.subject, '/tickets/' + id);
     await svc.audit(req, 'create', 'tickets', id, b.subject);
@@ -152,7 +159,7 @@ router.get('/tickets/:id(\\d+)', async (req, res, next) => {
     if (t.category === 'absence' && t.related_date && t.student_id) att = await k('attendance').where({ student_id: t.student_id, date: t.related_date }).select('status', 'period').first();
     let reassign = [];
     if (isManager(u)) reassign = await k('users').whereIn('role', ['teacher', 'deputy', 'admin']).where({ active: 1 }).orderBy('role').orderBy('full_name').select('id', 'full_name', 'role');
-    res.view('tickets/show', { title: t.subject, slaInfo: sla.status(t, settings.num('ticket_sla_hours')), t, msgs, canManage, att, reassign, isCreator: t.created_by === u.id, canReply: t.status !== 'closed' });
+    res.view('tickets/show', { CERT_TYPES: require('../lib/certificate').CERT_TYPES, title: t.subject, slaInfo: sla.status(t, settings.num('ticket_sla_hours')), t, msgs, canManage, att, reassign, isCreator: t.created_by === u.id, canReply: t.status !== 'closed' });
   } catch (e) { next(e); }
 });
 
@@ -161,8 +168,13 @@ router.post('/tickets/:id(\\d+)/reply', uploader('tickets', 'attachment', { maxM
     const k = db.get(); const u = req.user; const t = await getTicket(req, req.params.id); if (!t) return nf(res);
     if (t.status === 'closed') { req.flash('error', 'این تیکت بسته شده است؛ ابتدا آن را بازگشایی کنید.'); return res.redirect('/tickets/' + t.id); }
     if (req.uploadError || !req.body.body || req.body.body.length < 1) { if (req.file) fs.unlink(req.file.path, () => {}); req.flash('error', req.uploadError || 'متن پیام را وارد کنید.'); return res.redirect('/tickets/' + t.id); }
+    if (t.category === 'absence' && req.file) { // پیوست تیکت توجیه غیبت فقط تصویر معتبر است
+      const cert = require('../lib/certificate'); const v = cert.validate(req.file);
+      if (!v.ok) { fs.unlink(req.file.path, () => {}); req.flash('error', v.error); return res.redirect('/tickets/' + t.id); }
+      cert.finalize(req.file, v.ext);
+    }
     const internal = staffLike(u) && req.body.internal === '1' ? 1 : 0;
-    await k('ticket_messages').insert({ ticket_id: t.id, user_id: u.id, body: req.body.body.slice(0, 5000), attachment: req.file ? req.file.filename : null, attachment_name: req.file ? req.file.originalname.slice(0, 200) : null, internal });
+    await k('ticket_messages').insert({ ticket_id: t.id, user_id: u.id, body: req.body.body.slice(0, 5000), attachment: req.file ? req.file.filename : null, attachment_name: req.file ? req.file.originalname.slice(0, 200) : null, internal, is_certificate: t.category === 'absence' && req.file ? 1 : 0 });
     if (!internal) {
       const status = u.id === t.created_by ? 'pending' : 'answered';
       await k('tickets').where({ id: t.id }).update(stamp({ status, escalated_at: null }));

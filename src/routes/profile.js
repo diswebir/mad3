@@ -72,29 +72,19 @@ router.get('/notifications/:id/go', async (req, res, next) => {
 /* ---- جستجوی سراسری ---- */
 router.get('/search', async (req, res, next) => {
   try {
-    const q = String(req.query.q || '').trim(); const k = db.get(); const u = req.user; const out = {};
-    if (q.length >= 2) {
-      const like = `%${q}%`; const classIds = await svc.accessibleClassIds(u);
-      if (u.role !== 'student') {
-        // جستجوی نام کامل به‌صورت ترکیبی (سازگار با MySQL و SQLite)
-        const parts = q.split(/\s+/).filter(Boolean);
-        const sq2 = k('students as s').leftJoin('classrooms as c', 'c.id', 's.classroom_id').where((b) => {
-          if (parts.length > 1) parts.forEach((p) => b.where((x) => x.where('s.first_name', 'like', `%${p}%`).orWhere('s.last_name', 'like', `%${p}%`)));
-          else b.where('s.first_name', 'like', like).orWhere('s.last_name', 'like', like).orWhere('s.student_code', 'like', like).orWhere('s.national_id', 'like', like).orWhere('s.father_phone', 'like', like).orWhere('s.mother_phone', 'like', like);
-        });
-        if (classIds) sq2.whereIn('s.classroom_id', classIds.length ? classIds : [0]);
-        out.students = await sq2.limit(10).select('s.id', 's.first_name', 's.last_name', 's.student_code', 'c.name as class_name');
-      }
-      if (u.role === 'admin' || u.role === 'deputy') out.teachers = await k('teachers as t').join('users as x', 'x.id', 't.user_id').where((b) => b.where('x.full_name', 'like', like).orWhere('t.personnel_code', 'like', like).orWhere('t.specialty', 'like', like)).limit(10).select('t.id', 'x.full_name', 't.specialty');
-      if (modules.isEnabled('tickets')) {
-        const tq = k('tickets').where('subject', 'like', like);
-        if (u.role !== 'admin' && u.role !== 'deputy') tq.where((b) => b.where('created_by', u.id).orWhere('recipient_user_id', u.id));
-        out.tickets = await tq.orderBy('id', 'desc').limit(8);
-      }
-      if (modules.isEnabled('announcements')) { const aq = k('announcements as t').where((b) => b.where('t.title', 'like', like).orWhere('t.body', 'like', like)); svc.audienceFilter(aq, u, classIds); out.announcements = await aq.limit(5).select('t.*'); }
-      if (modules.isEnabled('library')) out.books = await k('books').where((b) => b.where('title', 'like', like).orWhere('author', 'like', like)).limit(8);
-    }
-    res.view('search', { title: 'جستجو', q, gq: q, out });
+    const search = require('../lib/search'); const q = String(req.query.q || '').trim().slice(0, 100); const only = search.TYPES.some((t) => t[0] === req.query.type) ? req.query.type : null;
+    const groups = await search.run(req.user, q, { limit: only ? 50 : 10, only });
+    // یک نتیجه‌ی دقیقاً هم‌کد → پرش مستقیم به پرونده
+    const st = groups.find((g) => g.key === 'students');
+    if (!only && st && st.total === 1 && st.items[0].code === search.norm(q)) return res.redirect(st.items[0].url);
+    const all = only ? await search.run(req.user, q, { limit: 1 }) : groups;
+    res.view('search', { title: 'جستجو', q, gq: q, groups, only, tabs: all.map((g) => ({ key: g.key, title: g.title, total: g.total })), types: search.TYPES });
+  } catch (e) { next(e); }
+});
+router.get('/search/suggest', async (req, res, next) => {
+  try {
+    const search = require('../lib/search'); const groups = await search.run(req.user, String(req.query.q || '').slice(0, 100), { limit: 4 });
+    res.set('Cache-Control', 'no-store').json(groups.map((g) => ({ key: g.key, title: g.title, items: g.items.map((i) => ({ title: i.title, sub: i.sub, url: i.url })) })));
   } catch (e) { next(e); }
 });
 module.exports = router;

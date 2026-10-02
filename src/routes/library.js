@@ -14,11 +14,12 @@ router.get('/library/loans', async (req, res, next) => {
   try {
     const k = db.get(); const u = req.user; const today = J.todayISO(); const view = req.query.view || 'active';
     const q = k('book_loans as l').join('books as b', 'b.id', 'l.book_id').leftJoin('students as s', 's.id', 'l.student_id').leftJoin('teachers as t', 't.id', 'l.teacher_id').leftJoin('users as tu', 'tu.id', 't.user_id').leftJoin('classrooms as c', 'c.id', 's.classroom_id')
-      .select('l.*', 'b.title', 's.first_name', 's.last_name', 'tu.full_name as teacher_name', 'c.name as class_name').orderBy('l.id', 'desc').limit(300);
+      .select('l.*', 'b.title', 's.first_name', 's.last_name', 'tu.full_name as teacher_name', 'c.name as class_name').orderBy('l.id', 'desc');
     if (u.role === 'student') q.where('l.student_id', u.student ? u.student.id : 0);
     else if (u.role === 'teacher') q.where('l.teacher_id', u.teacher ? u.teacher.id : 0);
     if (view === 'active') q.whereNull('l.returned_at'); else if (view === 'overdue') q.whereNull('l.returned_at').where('l.due_date', '<', today); else if (view === 'returned') q.whereNotNull('l.returned_at');
-    const data = { title: 'امانت کتاب', rows: await q, view, today };
+    const pg = await require('../utils/paginate').paginate(q, req, 25);
+    const data = { title: 'امانت کتاب', rows: pg.rows, view, today, page: pg.page, pages: pg.pages, total: pg.total };
     if (isManager(u)) {
       const books = await k('books as b').select('b.id', 'b.title', 'b.copies', k.raw('(select count(*) from book_loans l where l.book_id = b.id and l.returned_at is null) as lent')).orderBy('b.title');
       data.books = books.filter((b) => b.copies > b.lent);
