@@ -19,3 +19,35 @@ jobs:
       - run: npm test
       - name: Test under a sub-path (cPanel style)
         run: TEST_BASE_PATH=/school npm test
+
+  test-mysql:
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: root
+        ports: ['3306:3306']
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -proot"
+          --health-interval=5s --health-timeout=5s --health-retries=20
+    env:
+      TEST_DB: mysql
+      MYSQL_HOST: 127.0.0.1
+      MYSQL_PORT: 3306
+      MYSQL_USER: root
+      MYSQL_PASSWORD: root
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - name: Integration tests on MySQL 8
+        run: |
+          node test/v2.test.js
+          node test/v21.test.js
+          node test/v21.auth.test.js
+          node test/v21.ux.test.js
+          node test/v21.settings.test.js

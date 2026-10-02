@@ -47,15 +47,24 @@ const flash = (r) => { const m = /class="alert (?:flash )?(success|error|info|wa
 async function boot({ prefix = PREFIX, demo = true } = {}) {
   const port = 3700 + Math.floor(Math.random() * 600); const data = fs.mkdtempSync(path.join(os.tmpdir(), 'school-v2-'));
   const env = { ...process.env, PORT: String(port), SCHOOL_DATA_DIR: data, NODE_ENV: 'test', BASE_PATH: prefix };
+  // TEST_DB=mysql: هر اجرا یک پایگاه‌داده‌ی تازه روی MySQL می‌سازد (MYSQL_HOST/PORT/USER/PASSWORD)
+  const mysqlCfg = process.env.TEST_DB === 'mysql' ? { host: process.env.MYSQL_HOST || '127.0.0.1', port: Number(process.env.MYSQL_PORT) || 3306, user: process.env.MYSQL_USER || 'root', password: process.env.MYSQL_PASSWORD || '', database: 'school_t' + Date.now().toString(36) + Math.floor(Math.random() * 1e4) } : null;
+  if (mysqlCfg) {
+    const admin = await require('mysql2/promise').createConnection({ host: mysqlCfg.host, port: mysqlCfg.port, user: mysqlCfg.user, password: mysqlCfg.password });
+    await admin.query('CREATE DATABASE `' + mysqlCfg.database + '` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci'); await admin.end();
+    Object.assign(env, { DB_CLIENT: 'mysql', DB_HOST: mysqlCfg.host, DB_PORT: String(mysqlCfg.port), DB_USER: mysqlCfg.user, DB_PASSWORD: mysqlCfg.password, DB_NAME: mysqlCfg.database });
+  }
   const inst = spawnSync(process.execPath, ['scripts/install-demo.js', ...(demo ? [] : ['--no-demo'])], { cwd: ROOT, env, encoding: 'utf8' });
   if (inst.status !== 0) throw new Error('install failed: ' + inst.stdout + inst.stderr);
   const server = spawn(process.execPath, ['app.js'], { cwd: ROOT, env, stdio: ['ignore', 'pipe', 'pipe'] });
   let log = ''; server.stdout.on('data', (d) => (log += d)); server.stderr.on('data', (d) => (log += d));
   const base = `http://127.0.0.1:${port}${prefix}`;
   for (let i = 0; i < 80; i++) { try { const r = await fetch(base + '/healthz'); if (r.ok) break; } catch (_) { /* wait */ } await new Promise((r) => setTimeout(r, 250)); }
-  const knex = require('knex')({ client: 'better-sqlite3', connection: { filename: path.join(data, 'school.sqlite') }, useNullAsDefault: true });
+  const knex = mysqlCfg
+    ? require('knex')({ client: 'mysql2', connection: { host: mysqlCfg.host, port: mysqlCfg.port, user: mysqlCfg.user, password: mysqlCfg.password, database: mysqlCfg.database, charset: 'utf8mb4', dateStrings: true, decimalNumbers: true, timezone: '+00:00' }, pool: { min: 0, max: 4, afterCreate(conn, cb) { conn.query("SET time_zone = '+00:00'", (err) => cb(err, conn)); } } })
+    : require('knex')({ client: 'better-sqlite3', connection: { filename: path.join(data, 'school.sqlite') }, useNullAsDefault: true });
   const login = async (username, password) => { const c = new Client(base, prefix); const p = await c.get('/login'); const r = await c.req('POST', '/login', { _csrf: c.csrf(p.text), username, password }); if (/name="password"/.test(r.text) && /\/login/.test(r.url)) throw new Error('login failed for ' + username); return c; };
-  return { base, port, data, k: knex, login, log: () => log, newClient: () => new Client(base, prefix), stop: async () => { server.kill('SIGTERM'); await knex.destroy(); await new Promise((r) => setTimeout(r, 200)); fs.rmSync(data, { recursive: true, force: true }); } };
+  return { base, port, data, k: knex, login, log: () => log, newClient: () => new Client(base, prefix), stop: async () => { server.kill('SIGTERM'); await knex.destroy(); await new Promise((r) => setTimeout(r, 200)); if (mysqlCfg) { try { const c = await require('mysql2/promise').createConnection({ host: mysqlCfg.host, port: mysqlCfg.port, user: mysqlCfg.user, password: mysqlCfg.password }); await c.query('DROP DATABASE IF EXISTS `' + mysqlCfg.database + '`'); await c.end(); } catch (_) { /* ignore */ } } fs.rmSync(data, { recursive: true, force: true }); } };
 }
 const done = () => { console.log(`\n${counts.pass} موفق، ${counts.fail} ناموفق`); return counts.fail === 0; };
 
