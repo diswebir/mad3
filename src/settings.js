@@ -58,6 +58,8 @@ const DEFS = [
   { key: 'sibling_discount_percent', group: 'finance', label: 'تخفیف برادر/خواهر (درصد برای فرزند دوم به بعد، ۰ = غیرفعال)', type: 'number', def: '0', min: 0, max: 100 },
   { key: 'hr_annual_leave_days', group: 'hr', label: 'سقف مرخصی استحقاقی سالانه معلم (روز)', type: 'number', def: '26', min: 0, max: 100 },
   // امنیت
+  { key: 'auto_backup_enabled', group: 'system', label: 'پشتیبان‌گیری خودکار روزانه', type: 'checkbox', def: '1' },
+  { key: 'auto_backup_keep', group: 'system', label: 'تعداد نسخه‌های خودکارِ نگه‌داری‌شده', type: 'number', def: '7', min: 1, max: 60 },
   { key: 'session_hours', group: 'security', label: 'مدت اعتبار نشست (ساعت)', type: 'number', def: '8', min: 1, max: 168 },
   { key: 'min_password_length', group: 'security', label: 'حداقل طول رمز عبور', type: 'number', def: '6', min: 4, max: 32 },
   { key: 'max_login_attempts', group: 'security', label: 'حداکثر تلاش ناموفق ورود', type: 'number', def: '5', min: 3, max: 20 },
@@ -78,7 +80,7 @@ const DEFS = [
   { key: 'show_demo_logins', group: 'appearance', label: 'نمایش حساب‌های دمو در صفحه ورود', type: 'checkbox', def: '0' },
   { key: 'logo', group: 'appearance', label: 'لوگو', type: 'hidden', def: '' },
 ];
-const GROUPS = { general: 'اطلاعات مدرسه', academic: 'تنظیمات آموزشی', reportcard: 'کارنامه و قالب چاپ', attendance: 'حضور و غیاب', tickets: 'تیکت‌ها', students: 'دانش‌آموزان', finance: 'مالی', hr: 'منابع انسانی', sms: 'پیامک (ippanel)', security: 'امنیت', appearance: 'ظاهر' };
+const GROUPS = { general: 'اطلاعات مدرسه', academic: 'تنظیمات آموزشی', reportcard: 'کارنامه و قالب چاپ', attendance: 'حضور و غیاب', tickets: 'تیکت‌ها', students: 'دانش‌آموزان', finance: 'مالی', hr: 'منابع انسانی', sms: 'پیامک (ippanel)', security: 'امنیت', appearance: 'ظاهر', system: 'نگهداری و پشتیبان' };
 
 let cache = null;
 async function load() {

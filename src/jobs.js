@@ -10,6 +10,7 @@ const svc = require('./services');
 async function run() {
   try {
     await KnexStore.cleanup();
+    if (modules.isEnabled('backup')) await require('./lib/backupTools').dailyJob();
     if (modules.isEnabled('grades')) await require('./lib/scoreLock').autoLock();
     if (modules.isEnabled('tickets')) {
       const days = settings.num('ticket_auto_close_days');

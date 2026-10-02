@@ -6,6 +6,7 @@ const svc = require('../services');
 const modules = require('../modules');
 const J = require('../utils/jalali');
 const P = require('../lib/promotion');
+const B = require('../lib/backupTools');
 const { requireRole } = require('../middleware');
 const router = express.Router();
 const guard = [requireRole('admin'), modules.guard('promotion')];
@@ -30,7 +31,8 @@ router.get('/promotion', ...guard, async (req, res, next) => {
     const closed = cur ? Number((await k('student_year_records').where({ academic_year_id: cur.id }).count({ c: '*' }).first()).c) > 0 : false;
     const years = await k('academic_years').orderBy('id', 'desc');
     const yearStats = await k('student_year_records').groupBy('academic_year_id').select('academic_year_id').count({ n: '*' });
-    res.view('promotion/index', { title: 'پایان سال تحصیلی', cur, sug, archived, activeClasses, students, closed, years, yearStats: Object.fromEntries(yearStats.map((r) => [r.academic_year_id, Number(r.n)])), errors: [], vals: { year_title: sug.title, year_start: J.isoToJString(sug.start_date), year_end: J.isoToJString(sug.end_date) } });
+    const runs = await k('promotion_runs').orderBy('id', 'desc').limit(5); const lastRun = runs.find((r) => !r.undone_at && r.id === (runs[0] && runs[0].id)) || null;
+    res.view('promotion/index', { title: 'پایان سال تحصیلی', runs, lastRun, cur, sug, archived, activeClasses, students, closed, years, yearStats: Object.fromEntries(yearStats.map((r) => [r.academic_year_id, Number(r.n)])), errors: [], vals: { year_title: sug.title, year_start: J.isoToJString(sug.start_date), year_end: J.isoToJString(sug.end_date) } });
   } catch (e) { next(e); }
 });
 
@@ -51,14 +53,31 @@ router.post('/promotion/apply', ...guard, async (req, res, next) => {
     if (errors.length) { req.flash('error', errors.join(' ')); return res.redirect('/promotion'); }
     const actions = {}; const act = req.body.act || {};
     for (const [id, v] of Object.entries(act)) if (P.ACTIONS.includes(v)) actions[Number(id)] = v;
-    let summary;
-    try { summary = await P.apply(db.get(), { year, actions, userId: req.user.id }); } catch (e) { req.flash('error', e.message); return res.redirect('/promotion'); }
+    let summary; let backup = null; const k = db.get();
+    try {
+      backup = await B.save(k, 'pre-promotion'); // پشتیبان خودکار پیش از هر تغییری
+      summary = await P.apply(k, { year, actions, userId: req.user.id });
+    } catch (e) { req.flash('error', e.message); return res.redirect('/promotion'); }
+    const { undo, ...pub } = summary;
+    const cur = await k('academic_years').where({ title: summary.year }).first();
+    await k('promotion_runs').insert({ old_year_id: undo.prevYearId, new_year_id: cur ? cur.id : null, new_year_title: summary.year, payload: JSON.stringify({ ...undo, summary: pub }), backup_file: backup && backup.name, user_id: req.user.id });
+    summary = pub;
     await svc.audit(req, 'year_end', 'academic_years', null, `${summary.year}: ارتقا ${summary.promoted}، تکرار ${summary.retained}، فارغ‌التحصیل ${summary.graduated}`);
     req.flash('success', `سال ${summary.year} آغاز شد: ${summary.promoted} ارتقا، ${summary.retained} تکرار پایه، ${summary.graduated} فارغ‌التحصیل${summary.newClasses ? '، ' + summary.newClasses + ' کلاس تازه ساخته شد (دروس آن را تعریف کنید)' : ''}.`);
     res.redirect('/promotion/archive');
   } catch (e) { next(e); }
 });
 
+router.post('/promotion/undo/:id(\\d+)', ...guard, async (req, res, next) => {
+  try {
+    const k = db.get(); const run = await k('promotion_runs').where({ id: req.params.id }).first();
+    if (!run) { req.flash('error', 'ارتقای موردنظر پیدا نشد.'); return res.redirect('/promotion'); }
+    if (req.body.confirm !== 'UNDO') { req.flash('error', 'برای تأیید، عبارت UNDO را تایپ کنید.'); return res.redirect('/promotion'); }
+    let out; try { out = await P.undo(k, run); } catch (e) { req.flash('error', e.message); return res.redirect('/promotion'); }
+    await svc.audit(req, 'year_end_undo', 'academic_years', run.new_year_id, `بازگردانی ارتقای ${run.new_year_title}: ${out.students} دانش‌آموز، ${out.classes} کلاس جدید حذف شد`);
+    req.flash('success', `ارتقای ${run.new_year_title} بازگردانده شد: وضعیت ${out.students} دانش‌آموز و کلاس‌های قبلی به حالت اول برگشت.`); res.redirect('/promotion');
+  } catch (e) { next(e); }
+});
 router.get('/promotion/archive', ...guard, async (req, res, next) => {
   try {
     const k = db.get();
