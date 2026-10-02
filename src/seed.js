@@ -13,6 +13,12 @@ async function seedBase(k, { school, admin, modules }) {
   for (const d of settings.DEFS) vals[d.key] = d.def;
   Object.assign(vals, school || {});
   await k.batchInsert('settings', Object.entries(vals).map(([key, value]) => ({ key, value: String(value) })), 50);
+  { // الگوی پیش‌فرض ساعت زنگ‌ها بر اساس انتخاب ویزارد (تعداد زنگ، شروع، مدت، تنفس)
+    const bell = require('./lib/bell'); const cnt = Math.min(12, Math.max(1, Number(vals.periods_count) || 6));
+    const rows = bell.fromTemplate({ count: cnt, start: /^\d{1,2}:\d{2}$/.test(vals.period_start || '') ? vals.period_start : '07:45', minutes: Number(vals.period_minutes) || 45, brk: vals.break_minutes === '' || vals.break_minutes === undefined ? 10 : Number(vals.break_minutes) });
+    const ex = await k('bell_schedules').where({ is_default: 1 }).first();
+    await bell.saveSchedule(k, { id: ex ? ex.id : undefined, name: 'الگوی پیش‌فرض', days: [], grades: [], isDefault: true, rows });
+  }
   const chosen = new Set(modules || modulesReg.MODULES.map((m) => m.key));
   await k.batchInsert('modules_state', modulesReg.MODULES.map((m) => ({ key: m.key, enabled: m.core || chosen.has(m.key) ? 1 : 0 })), 50);
   await k('users').insert({ username: admin.username, password_hash: admin.password_hash || svc.hash(admin.password), role: 'admin', full_name: admin.full_name, email: admin.email || null, active: 1 });
@@ -146,7 +152,7 @@ async function seedDemo(k) {
   /* --- برنامه هفتگی (بدون تداخل معلمان) --- */
   if (mod('timetable')) {
     const busy = new Set(); const rows = [];
-    const days = [0, 1, 2, 3, 4]; const P = settings.num('periods_count') || 6;
+    const days = [0, 1, 2, 3, 4]; const P = settings.periods().length || 6;
     for (const c of classes) {
       let placed = null;
       for (let attempt = 0; attempt < 200 && !placed; attempt++) {

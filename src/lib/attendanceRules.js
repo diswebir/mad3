@@ -20,7 +20,7 @@ function lockInfo(user, date, today = J.todayISO()) {
 async function scheduledTeacher(classId, date, period) {
   const k = db.get();
   const sub = await k('substitutions').where({ date, classroom_id: classId, period }).first();
-  const slot = await k('timetable as t').join('class_subjects as cs', 'cs.id', 't.class_subject_id').where({ 't.classroom_id': classId, 't.day': J.dow(date), 't.period': period }).select('cs.teacher_id', 'cs.id as cs_id').first();
+  const slot = await require('./timetableTools').slotAt(k, classId, date, period); // با احتساب نسخه‌های قدیمی برنامه
   if (sub) return { teacherId: sub.substitute_teacher_id, substituted: true, originalId: slot ? slot.teacher_id : sub.absent_teacher_id };
   return slot ? { teacherId: slot.teacher_id, substituted: false } : null;
 }
@@ -39,8 +39,9 @@ async function canRecord(user, cls, date, period, { homeroomIds } = {}) {
 }
 
 /** وضعیت ورود در ساعت مشخص: present | late */
-function arrivalStatus(hm) {
-  const start = toMin(settings.get('school_start_time') || '07:30'); const grace = settings.num('late_after_minutes');
+function arrivalStatus(hm, o = {}) {
+  // مبنا: ساعت شروع زنگ اول همان روز/پایه در «ساعت زنگ‌ها» (یک منبع واحد)
+  const start = toMin(require('./bell').schoolStart({ day: o.day === undefined ? J.dow(J.todayISO()) : o.day, grade: o.grade })); const grace = settings.num('late_after_minutes');
   return toMin(hm) > start + grace ? 'late' : 'present';
 }
 module.exports = { daysBetween, lockInfo, scheduledTeacher, canRecord, arrivalStatus, toMin };

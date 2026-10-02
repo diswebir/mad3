@@ -13,10 +13,10 @@ const DEFS = [
   { key: 'school_address', group: 'general', label: 'نشانی', type: 'textarea', def: '' },
   // آموزشی
   { key: 'week_days', group: 'academic', label: 'روزهای هفته مدرسه', type: 'days', def: '0,1,2,3,4' },
-  { key: 'periods_count', group: 'academic', label: 'تعداد زنگ‌های روزانه', type: 'number', def: '6', min: 1, max: 10 },
-  { key: 'period_start', group: 'academic', label: 'ساعت شروع زنگ اول', type: 'time', def: '07:45' },
-  { key: 'period_minutes', group: 'academic', label: 'مدت هر زنگ (دقیقه)', type: 'number', def: '45', min: 20, max: 120 },
-  { key: 'break_minutes', group: 'academic', label: 'مدت تنفس بین زنگ‌ها (دقیقه)', type: 'number', def: '10', min: 0, max: 60 },
+  { key: 'periods_count', group: 'academic', label: 'تعداد زنگ‌های روزانه', type: 'hidden', was: 'number', def: '6', min: 1, max: 10 },
+  { key: 'period_start', group: 'academic', label: 'ساعت شروع زنگ اول', type: 'hidden', was: 'time', def: '07:45' },
+  { key: 'period_minutes', group: 'academic', label: 'مدت هر زنگ (دقیقه)', type: 'hidden', was: 'number', def: '45', min: 20, max: 120 },
+  { key: 'break_minutes', group: 'academic', label: 'مدت تنفس بین زنگ‌ها (دقیقه)', type: 'hidden', was: 'number', def: '10', min: 0, max: 60 },
   { key: 'grade_scale', group: 'academic', label: 'بیشینه نمره کارنامه', type: 'number', def: '20', min: 4, max: 100 },
   { key: 'pass_mark', group: 'academic', label: 'حدنصاب قبولی', type: 'number', def: '10', min: 1, max: 100 },
   { key: 'show_rank_to_students', group: 'academic', label: 'نمایش رتبه و میانگین کلاس به دانش‌آموز در کارنامه', type: 'checkbox', def: '1' },
@@ -41,7 +41,7 @@ const DEFS = [
   { key: 'notify_on_absence', group: 'attendance', label: 'ارسال اعلان غیبت به دانش‌آموز', type: 'checkbox', def: '1' },
   { key: 'attendance_lock_days', group: 'attendance', label: 'قفل ویرایش حضور و غیاب پس از (روز، ۰ = بدون قفل؛ مدیر همیشه می‌تواند)', type: 'number', def: '7', min: 0, max: 365 },
   { key: 'attendance_enforce_schedule', group: 'attendance', label: 'در حالت زنگ‌به‌زنگ فقط معلمِ برنامه (یا جانشین) آن زنگ حق ثبت داشته باشد', type: 'checkbox', def: '0' },
-  { key: 'school_start_time', group: 'attendance', label: 'ساعت شروع مدرسه (برای ثبت ورود با کارت/QR)', type: 'time', def: '07:30' },
+  { key: 'school_start_time', group: 'attendance', label: 'ساعت شروع مدرسه (برای ثبت ورود با کارت/QR)', type: 'hidden', was: 'time', def: '07:30' },
   { key: 'late_after_minutes', group: 'attendance', label: 'ورود پس از چند دقیقه «تأخیر» محسوب شود', type: 'number', def: '10', min: 0, max: 120 },
   // تیکت
   { key: 'ticket_student_to_teacher', group: 'tickets', label: 'اجازه ارسال تیکت دانش‌آموز به معلم', type: 'checkbox', def: '1' },
@@ -86,6 +86,7 @@ async function load() {
   for (const d of DEFS) m[d.key] = d.def;
   for (const r of rows) m[r.key] = r.value === null ? '' : r.value;
   cache = m;
+  try { await require('./lib/bell').load(db.get()); } catch (_) { /* جدول زنگ‌ها هنوز ساخته نشده (نصب‌کننده) */ }
   return m;
 }
 function all() { return cache || {}; }
@@ -101,14 +102,12 @@ async function set(key, value) {
 }
 async function setMany(obj) { for (const k of Object.keys(obj)) await set(k, obj[k]); }
 
-/** زمان‌بندی زنگ‌ها بر اساس تنظیمات */
+/** زنگ‌های درسی الگوی پیش‌فرضِ ساعت زنگ‌ها (صفحه‌ی «ساعت زنگ‌ها») */
 function periods() {
-  const n = num('periods_count') || 6; const len = num('period_minutes') || 45; const br = num('break_minutes');
-  const [h, m] = String(get('period_start') || '07:45').split(':').map(Number);
-  let cur = h * 60 + m; const out = [];
-  const f = (x) => `${String(Math.floor(x / 60)).padStart(2, '0')}:${String(x % 60).padStart(2, '0')}`;
-  for (let i = 1; i <= n; i++) { out.push({ n: i, start: f(cur), end: f(cur + len) }); cur += len + br; }
-  return out;
+  const bell = require('./lib/bell'); const p = bell.defaultPeriods();
+  if (p.length) return p;
+  // پیش از ساخت جدول زنگ‌ها (نصب‌کننده / تست واحد): الگوی ساده از تنظیمات
+  return bell.fromTemplate({ count: num('periods_count') || 6, start: get('period_start') || '07:45', minutes: num('period_minutes') || 45, brk: num('break_minutes') }).filter((r) => r.kind === 'class').map((r) => ({ n: r.n, start: r.start, end: r.end }));
 }
 function weekDays() { return String(get('week_days') || '0,1,2,3,4').split(',').filter((x) => x !== '').map(Number); }
 

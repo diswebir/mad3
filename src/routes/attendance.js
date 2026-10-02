@@ -56,7 +56,7 @@ router.post('/attendance', staff, async (req, res, next) => {
   try {
     const k = db.get(); const b = req.body; const classes = await accessibleClasses(req, true);
     const cls = classes.find((c) => c.id === Number(b.class_id)); const date = parseDate(b.date);
-    const mode = settings.get('attendance_mode'); const period = mode === 'periodic' ? Math.min(Math.max(parseInt(b.period, 10) || 1, 1), settings.num('periods_count') || 12) : 0;
+    const mode = settings.get('attendance_mode'); const period = mode === 'periodic' ? Math.min(Math.max(parseInt(b.period, 10) || 1, 1), require('../lib/bell').maxPeriods()) : 0;
     const back = `/attendance?class_id=${b.class_id}&date=${encodeURIComponent(J.isoToJString(date || J.todayISO()))}${mode === 'periodic' ? '&period=' + period : ''}`;
     if (!cls || !date) { req.flash('error', 'کلاس یا تاریخ نامعتبر است.'); return res.redirect('/attendance'); }
     if (date > J.todayISO()) { req.flash('error', 'ثبت حضور و غیاب برای روزهای آینده ممکن نیست.'); return res.redirect(back); }
@@ -136,7 +136,7 @@ router.get('/attendance/late', staff, async (req, res, next) => {
     const ranking = await base().groupBy('s.id', 's.first_name', 's.last_name', 'c.name').select('s.id', 's.first_name', 's.last_name', 'c.name as class_name').count({ n: '*' }).orderBy('n', 'desc').limit(30);
     const all = await base().select('a.date', 'a.arrival_time', 'a.student_id');
     const byDow = [0, 0, 0, 0, 0, 0, 0]; for (const r of all) byDow[J.dow(r.date)]++;
-    const timed = all.filter((r) => r.arrival_time); const avgMin = timed.length ? Math.round(timed.reduce((a, r) => a + Math.max(0, rules.toMin(r.arrival_time) - rules.toMin(settings.get('school_start_time') || '07:30')), 0) / timed.length) : null;
+    const timed = all.filter((r) => r.arrival_time); const avgMin = timed.length ? Math.round(timed.reduce((a, r) => a + Math.max(0, rules.toMin(r.arrival_time) - rules.toMin(require('../lib/bell').schoolStart({ day: J.dow(J.todayISO()) }))), 0) / timed.length) : null;
     const classes = await accessibleClasses(req);
     if (req.query.format === 'csv') return res.set('Content-Type', 'text/csv; charset=utf-8').set('Content-Disposition', 'attachment; filename="late-report.csv"').send(toCSV(['نام', 'کلاس', 'تعداد تأخیر'], ranking.map((r) => [`${r.first_name} ${r.last_name}`, r.class_name, r.n])));
     res.view('attendance/late', { title: 'گزارش تأخیرها', from, to, classId, classes, ranking, byDow, total: all.length, avgMin });
@@ -150,7 +150,7 @@ router.get('/attendance/gate', gateRoles, async (req, res, next) => {
     const k = db.get(); const today = J.todayISO();
     const recent = await k('attendance as a').join('students as s', 's.id', 'a.student_id').leftJoin('classrooms as c', 'c.id', 'a.classroom_id').where('a.date', today).whereNotNull('a.arrival_time').orderBy('a.arrival_time', 'desc').limit(15).select('a.arrival_time', 'a.status', 's.first_name', 's.last_name', 'c.name as class_name');
     const count = Number((await k('attendance').where({ date: today }).whereNotNull('arrival_time').count({ c: '*' }).first()).c);
-    res.view('attendance/gate', { title: 'ثبت ورود با QR', recent, count, startTime: settings.get('school_start_time'), grace: settings.num('late_after_minutes') });
+    res.view('attendance/gate', { title: 'ثبت ورود با QR', recent, count, startTime: require('../lib/bell').schoolStart({ day: J.dow(J.todayISO()) }), grace: settings.num('late_after_minutes') });
   } catch (e) { next(e); }
 });
 router.post('/attendance/gate', gateRoles, async (req, res, next) => {
@@ -159,13 +159,14 @@ router.post('/attendance/gate', gateRoles, async (req, res, next) => {
   try {
     const k = db.get(); const code = qr.parse(req.body.code);
     if (!code) return reply(400, { ok: false, message: 'کد خوانده‌شده معتبر نیست.' });
-    const s = await k('students as s').leftJoin('classrooms as c', 'c.id', 's.classroom_id').where('s.student_code', code).select('s.*', 'c.name as class_name').first();
+    const s = await k('students as s').leftJoin('classrooms as c', 'c.id', 's.classroom_id').where('s.student_code', code).select('s.*', 'c.name as class_name', 'c.grade_level').first();
     if (!s || s.status !== 'active' || !s.classroom_id) return reply(404, { ok: false, message: 'دانش‌آموز فعالِ دارای کلاس با این کد یافت نشد.' });
     const date = J.todayISO(); const hm = J.nowHM(); const periodic = settings.get('attendance_mode') === 'periodic'; const period = periodic ? 1 : 0;
-    if (!settings.weekDays().includes(J.dow(date))) return reply(409, { ok: false, message: 'امروز روز تعطیل مدرسه است.' });
+    const off = await require('../lib/calendar').offDay(date, k);
+    if (off.off) return reply(409, { ok: false, message: off.reason === 'holiday' ? `امروز تعطیل است (${off.title}).` : 'امروز روز تعطیل مدرسه است.' });
     const old = await k('attendance').where({ student_id: s.id, date, period }).first();
     if (old && old.arrival_time) return reply(200, { ok: true, duplicate: true, message: `${s.first_name} ${s.last_name}: ورود قبلاً در ساعت ${old.arrival_time} ثبت شده است.`, student: `${s.first_name} ${s.last_name}`, class: s.class_name, status: old.status, time: old.arrival_time });
-    const status = rules.arrivalStatus(hm);
+    const status = rules.arrivalStatus(hm, { day: J.dow(date), grade: s.grade_level });
     if (old) await k('attendance').where({ id: old.id }).update({ status: old.status === 'excused' || old.status === 'leave' ? old.status : status, arrival_time: hm, recorded_by: req.user.id, updated_at: svc.nowStr() });
     else await k('attendance').insert({ student_id: s.id, classroom_id: s.classroom_id, date, period, status, arrival_time: hm, recorded_by: req.user.id });
     if (status === 'late') await sms.notifyParents([s], (x) => sms.render('اولیای گرامی، {student} امروز ساعت {time} وارد مدرسه شد (تأخیر). {school}', { student: `${x.first_name} ${x.last_name}`, time: hm }), 'late', req.user.id);
