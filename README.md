@@ -25,7 +25,7 @@ npm start            # http://localhost:3000  → ویزارد نصب
 نصب بدون مرورگر (خط فرمان): `npm run demo` (مدیر: `admin` / `Admin#12345`؛ و با `--no-demo` برای نصب خالی).
 
 ## نصب روی cPanel
-راهنمای گام‌به‌گام: [docs/CPANEL.md](docs/CPANEL.md) — خلاصه: آپلود ← Setup Node.js App (فایل شروع `app.js`) ← Run NPM Install ← ساخت دیتابیس MySQL ← باز کردن آدرس و تکمیل ویزارد.
+راهنمای کامل و گام‌به‌گام (نصب واقعی، **نصب دمو**، رفتن از دمو به واقعی، سایت دموی عمومی، cron، پیامک، به‌روزرسانی و عیب‌یابی): [docs/CPANEL.md](docs/CPANEL.md) — خلاصه: آپلود ← Setup Node.js App (فایل شروع `app.js`) ← Run NPM Install ← ساخت دیتابیس MySQL ← باز کردن آدرس و تکمیل ویزارد.
 
 ## نقش‌ها
 | نقش | توانایی |
