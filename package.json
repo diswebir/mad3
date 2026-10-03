@@ -13,6 +13,9 @@
     "dev": "node --watch app.js",
     "test": "npm run test:smoke && npm run test:v2 && npm run test:v21",
     "demo": "node scripts/install-demo.js",
+    "reset:admin": "node scripts/reset-admin.js",
+    "reset:install": "node scripts/reset-install.js --yes --uploads --backups",
+    "reset:demo": "node scripts/reset-install.js --yes --uploads --reinstall-demo",
     "build:assets": "node scripts/build-assets.js",
     "test:smoke": "node test/smoke.test.js",
     "test:v2": "node test/v2.unit.test.js && node test/v2.test.js && node test/v2.year.test.js",
@@ -27,7 +30,7 @@
     "helmet": "^7.1.0",
     "jalaali-js": "^1.2.7",
     "knex": "^3.1.0",
-    "multer": "^1.4.5-lts.1",
+    "multer": "^2.0.2",
     "mysql2": "^3.9.7",
     "qrcode": "^1.5.4"
   },

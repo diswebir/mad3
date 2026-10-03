@@ -5,7 +5,8 @@ const config = require('../src/config');
 const svc = require('../src/services');
 
 (async () => {
-  const [username, password] = process.argv.slice(2);
+  // بدون SSH: متغیرهای RESET_USER و RESET_PASSWORD را در Setup Node.js App بگذارید و «Run JS script ← reset:admin» را بزنید (پس از کار، متغیرها را حذف کنید)
+  const [argUser, argPass] = process.argv.slice(2); const username = argUser || process.env.RESET_USER; const password = argPass || process.env.RESET_PASSWORD;
   if (!username || !password || password.length < 8) { console.log('استفاده: node scripts/reset-admin.js <username> <new-password (حداقل ۸ نویسه)>'); process.exit(1); }
   if (!config.isInstalled()) { console.log('سامانه هنوز نصب نشده است.'); process.exit(1); }
   const k = db.init(config.load().db);
