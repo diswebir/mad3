@@ -1,0 +1,14 @@
+<div class="page-head"><div><h1><%- icon('layers', 24) %> گام ۲ و ۳: برنامه‌ی ارتقا — سال <%= year.title %></h1><div class="muted small">وضعیت پیشنهادی بر پایه‌ی معدل سالانه (حداقل قبولی: <%= fa(pass) %>) است. هر مورد را می‌توانید تغییر دهید.</div></div></div>
+<div class="steps"><span class="s done">۱) سال جدید</span><span class="s cur">۲) تعیین وضعیت دانش‌آموزان</span><span class="s">۳) تأیید و اجرا</span></div>
+<form method="post" action="<%= u('/promotion/apply') %>" data-confirm="پایان سال اجرا شود؟ این عملیات برگشت‌پذیر نیست.">
+<input type="hidden" name="_csrf" value="<%= csrf %>"><% Object.keys(yearForm).forEach(function(n){ %><input type="hidden" name="<%= n %>" value="<%= yearForm[n] %>"><% }) %>
+<% plan.forEach(function(p){ %>
+<div class="card flush"><h3 style="padding:1rem 1rem 0"><%= p.cls.name %> <span class="badge blue"><%= p.cls.grade_level %></span> <span class="muted small">← <%= p.target ? 'مقصد ارتقا: ' + p.target.name : (p.nextGrade ? 'پایه‌ی بعد (' + p.nextGrade + ') کلاسی ندارد؛ در صورت ارتقا کلاس تازه ساخته می‌شود' : 'آخرین پایه: فارغ‌التحصیلی') %></span></h3>
+<div class="table-wrap"><table class="t"><thead><tr><th>دانش‌آموز</th><th>معدل</th><th>رتبه</th><th>غیبت</th><th>وضعیت</th></tr></thead><tbody>
+<% if (!p.rows.length) { %><tr><td colspan="5" class="muted" style="text-align:center">دانش‌آموز فعالی در این کلاس نیست.</td></tr><% } %>
+<% p.rows.forEach(function(r){ %><tr><td><%= r.name %> <span class="muted small num"><%= fa(r.code) %></span></td><td><%= r.overall === null ? '—' : fa(r.overall) %></td><td><%= r.rank ? fa(r.rank) : '—' %></td><td><%= fa(r.absent) %></td>
+<td><select name="act[<%= r.id %>]" style="width:auto"><option value="promote" <%= r.suggested === 'promote' ? 'selected' : '' %>>ارتقا<%= p.nextGrade ? ' به ' + p.nextGrade : '' %></option><option value="retain" <%= r.suggested === 'retain' ? 'selected' : '' %>>تکرار پایه</option><option value="graduate" <%= r.suggested === 'graduate' ? 'selected' : '' %>>فارغ‌التحصیل</option></select><% if (r.overall === null) { %> <span class="badge amber">بدون نمره</span><% } %></td></tr><% }) %></tbody></table></div></div>
+<% }) %>
+<div class="card" style="max-width:640px"><h3>گام ۳: تأیید نهایی</h3><p class="muted"><%= fa(total) %> دانش‌آموز در <%= fa(plan.length) %> کلاس پردازش می‌شود. برای تأیید، عبارت <b class="ltr">PROMOTE</b> را تایپ کنید.</p>
+<div class="field"><input type="text" class="ltr" name="confirm" autocomplete="off" placeholder="PROMOTE" required></div>
+<div class="form-actions"><button class="btn danger"><%- icon('check', 16) %> اجرای پایان سال</button><a class="btn" href="<%= u('/promotion') %>">انصراف</a></div></div></form>

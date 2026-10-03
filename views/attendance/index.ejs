@@ -1,0 +1,29 @@
+<div class="page-head"><div><h1><%- icon('calendar-check', 24) %> ثبت حضور و غیاب</h1><div class="muted"><%= cls ? 'کلاس ' + cls.name : '' %> — <%= ld(date) %> (<%= J.WEEKDAYS[J.dow(date)] %>)</div></div>
+<div class="actions"><a class="btn" href="<%= u('/attendance/report') %><%= cls ? '?class_id=' + cls.id : '' %>"><%- icon('list-checks', 16) %> گزارش ماهانه</a><a class="btn" href="<%= u('/attendance/absentees') %>"><%- icon('phone', 16) %> لیست غایبین امروز</a></div></div>
+<% if (!classes.length) { %><div class="card empty"><%- icon('school', 42) %><div>کلاسی برای ثبت حضور و غیاب در دسترس شما نیست.<% if (user.role === 'teacher' && mode !== 'periodic') { %><div class="muted small" style="margin-top:.4rem">در حالت «روزانه» فقط معلم راهنمای هر کلاس می‌تواند حضور و غیاب را ثبت کند.</div><% } %></div></div><% } else { %>
+<form class="card" method="get" style="display:flex;gap:.8rem;flex-wrap:wrap;align-items:end">
+  <div class="field"><label>کلاس</label><select name="class_id" data-autosubmit><% classes.forEach(function(c){ %><option value="<%= c.id %>" <%= cls && c.id === cls.id ? 'selected' : '' %>><%= c.name %><%= (typeof recordedIds !== 'undefined' && recordedIds.includes(c.id)) ? ' ✓' : '' %></option><% }) %></select></div>
+  <div class="field"><label>تاریخ</label><input class="jdate ltr" type="text" name="date" value="<%= J.isoToJString(date) %>" data-autosubmit autocomplete="off"></div>
+  <% if (mode === 'periodic') { %><div class="field"><label>زنگ</label><select name="period" data-autosubmit><% periods.forEach(function(p){ %><option value="<%= p.n %>" <%= p.n === period ? 'selected' : '' %>>زنگ <%= fa(p.n) %> (<%= fa(p.start) %>)</option><% }) %></select></div><% } %>
+  <button class="btn" type="submit">نمایش</button>
+</form>
+<% if (cls) { %>
+<% if (future) { %><div class="alert error"><%- icon('circle-x', 18) %><div>تاریخ انتخاب‌شده در آینده است و امکان ثبت وجود ندارد.</div></div><% } %>
+<% if (offDay && offDay.off) { %><div class="alert warn"><%- icon('triangle-alert', 18) %><div><%= offDay.reason === 'holiday' ? 'این روز تعطیل است: ' + offDay.title + '.' : 'این روز جزو روزهای فعال مدرسه نیست.' %> ثبت حضور و غیاب در روز تعطیل معمولاً لازم نیست.</div></div><% } %>
+<% if (typeof blocked !== 'undefined' && blocked) { %><div class="alert error"><%- icon('lock', 18) %><div><%= blocked %></div></div><% } %>
+<% if (recorded) { %><div class="alert info"><%- icon('info', 18) %><div>حضور و غیاب این روز قبلاً ثبت شده است؛ می‌توانید آن را اصلاح کنید.</div></div><% } %>
+<% if (!students.length) { %><div class="card empty">در این کلاس دانش‌آموز فعالی وجود ندارد.</div><% } else { %>
+<form method="post" action="<%= u('/attendance') %>" id="att-form">
+<input type="hidden" name="_csrf" value="<%= csrf %>"><input type="hidden" name="class_id" value="<%= cls.id %>"><input type="hidden" name="date" value="<%= J.isoToJString(date) %>"><input type="hidden" name="period" value="<%= period %>">
+<div class="card flush">
+  <div class="toolbar"><b class="small">انتخاب سریع:</b><button type="button" class="btn sm" data-set-all="present">همه حاضر</button><button type="button" class="btn sm" data-set-all="absent">همه غایب</button><span class="grow"></span><span class="muted small"><%= fa(students.length) %> دانش‌آموز</span></div>
+  <div class="table-wrap"><table class="t"><thead><tr><th>#</th><th>دانش‌آموز</th><th>وضعیت</th><th>توضیح</th></tr></thead><tbody>
+  <% students.forEach(function(s, i){ var cur = existing[s.id] ? existing[s.id].status : 'present'; %>
+    <tr><td><%= fa(i + 1) %></td><td><a href="<%= u('/students/' + s.id) %>"><%= s.first_name %> <%= s.last_name %></a><div class="muted small ltr num"><%= fa(s.father_phone || s.mother_phone || '') %></div></td>
+    <td><div class="att-row"><% STATUSES.forEach(function(st){ %><input type="radio" id="s<%= s.id %>_<%= st %>" name="status[<%= s.id %>]" value="<%= st %>" <%= cur === st ? 'checked' : '' %>><label class="<%= st %>" for="s<%= s.id %>_<%= st %>"><%= L.attendance[st] %></label><% }) %></div></td>
+    <td><input type="text" name="note[<%= s.id %>]" value="<%= existing[s.id] && existing[s.id].note ? existing[s.id].note : '' %>" maxlength="250" placeholder="اختیاری" style="min-width:150px"></td></tr>
+  <% }) %></tbody></table></div>
+</div>
+<button class="btn primary" type="submit" <%= future || (typeof blocked !== 'undefined' && blocked) ? 'disabled' : '' %>><%- icon('save', 17) %> ذخیره حضور و غیاب</button>
+</form>
+<% } %><% } %><% } %>

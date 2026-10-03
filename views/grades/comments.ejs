@@ -1,0 +1,7 @@
+<div class="page-head"><div><div class="crumbs"><a href="<%= u('/grades/class/' + c.id) %>">نتایج کلاس <%= c.name %></a></div><h1><%- icon('clipboard-pen', 24) %> توصیف کارنامه — <%= c.name %></h1><div class="muted small">متن هر دانش‌آموز در کارنامه‌ی همان نوبت (در صورت فعال‌بودن گزینه در تنظیمات کارنامه) چاپ می‌شود.</div></div></div>
+<div class="tabs"><a class="<%= !term ? 'active' : '' %>" href="?">کل سال</a><% for (var i = 1; i <= terms; i++) { %><a class="<%= term === i ? 'active' : '' %>" href="?term=<%= i %>">نوبت <%= fa(i) %></a><% } %></div>
+<form method="post" action="<%= u('/grades/class/' + c.id + '/comments') %>"><input type="hidden" name="_csrf" value="<%= csrf %>"><input type="hidden" name="term" value="<%= term %>">
+<div class="card flush"><div class="table-wrap"><table class="t"><thead><tr><th style="width:220px">دانش‌آموز</th><th>توصیف</th></tr></thead><tbody>
+<% if (!students.length) { %><tr><td colspan="2" class="muted" style="text-align:center">دانش‌آموزی در کلاس نیست.</td></tr><% } %>
+<% students.forEach(function(s){ %><tr><td><%= s.first_name %> <%= s.last_name %></td><td><textarea name="comment[<%= s.id %>]" maxlength="600" style="min-height:52px"><%= cm[s.id] || '' %></textarea></td></tr><% }) %></tbody></table></div></div>
+<div class="form-actions"><button class="btn primary"><%- icon('save', 16) %> ذخیره</button></div></form>

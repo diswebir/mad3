@@ -1,0 +1,5 @@
+<div class="steps">
+<% var idx = STEPS.findIndex(function(s){ return s[0] === step; }); STEPS.forEach(function(s, i){ %>
+  <div class="s <%= i === idx ? 'cur' : (i < idx ? 'done' : '') %>"><%= fa(i + 1) %>. <%= s[1] %></div>
+<% }) %>
+</div>

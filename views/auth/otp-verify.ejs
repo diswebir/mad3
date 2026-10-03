@@ -1,0 +1,23 @@
+<div class="auth">
+  <div class="hero">
+    <div class="logo" style="width:64px;height:64px;border-radius:18px;background:rgba(255,255,255,.18);display:grid;place-items:center"><%- icon('message-square', 30) %></div>
+    <h1><%= S('school_name') %></h1>
+    <p>کد ۶ رقمی پیامک‌شده را وارد کنید</p>
+  </div>
+  <div class="box"><div class="inner">
+    <h2><%= title %></h2>
+    <p class="muted">اگر حساب و شماره‌ی واردشده در سامانه ثبت باشد، کد تأیید پیامک می‌شود<% if (masked) { %> (به <span class="ltr"><%= masked %></span>)<% } %>. کد تا <%= fa(S('otp_ttl_minutes')) %> دقیقه معتبر است.</p>
+    <% if (demo) { %><div class="alert warn"><%- icon('triangle-alert', 18) %><div>حالت آزمایشی: پیامک واقعی ارسال نشد. کد شما: <b class="ltr"><%= demo %></b></div></div><% } %>
+    <% if (error) { %><div class="alert error"><%- icon('circle-x', 18) %><div><%= error %></div></div><% } %>
+    <form method="post" action="<%= u(action) %>" autocomplete="off">
+      <input type="hidden" name="_csrf" value="<%= csrf %>">
+      <div class="field" style="margin-bottom:.9rem"><label for="code">کد تأیید</label><input id="code" class="ltr" name="code" required autofocus inputmode="numeric" maxlength="6" autocomplete="one-time-code" style="letter-spacing:.5em;text-align:center;font-size:1.3rem"></div>
+      <% if (purpose === 'reset') { %>
+      <div class="field" style="margin-bottom:.9rem"><label for="password">رمز عبور جدید (حداقل <%= fa(min) %> نویسه)</label><input id="password" class="ltr" type="password" name="password" required minlength="<%= min %>" autocomplete="new-password"></div>
+      <div class="field" style="margin-bottom:1.1rem"><label for="password2">تکرار رمز عبور جدید</label><input id="password2" class="ltr" type="password" name="password2" required autocomplete="new-password"></div>
+      <% } %>
+      <button class="btn primary block" type="submit"><%- icon(purpose === 'reset' ? 'key' : 'log-in', 17) %> <%= purpose === 'reset' ? 'تغییر رمز عبور' : 'ورود' %></button>
+    </form>
+    <p style="margin-top:1rem"><a href="<%= u(requestUrl) %>">ارسال دوباره‌ی کد</a> · <a href="<%= u('/login') %>">بازگشت به ورود</a></p>
+  </div></div>
+</div>

@@ -1,0 +1,70 @@
+name: CI
+on:
+  push:
+    branches: ['**']
+  pull_request:
+jobs:
+  test-sqlite:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node: [20, 22]
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+      - run: npm ci
+      - name: Tests
+        run: |
+          set +e
+          npm test > /tmp/t.log 2>&1; rc=$?
+          summary=$(grep -E "✗|AssertionError|Error:" -A3 /tmp/t.log | head -c 3500 | sed ':a;N;$!ba;s/%/%25/g;s/\r/%0D/g;s/\n/%0A/g')
+          [ $rc -ne 0 ] && echo "::error title=tests failed::$summary"
+          tail -n 15 /tmp/t.log
+          exit $rc
+      - name: Test under a sub-path (cPanel style)
+        run: |
+          set +e
+          TEST_BASE_PATH=/school npm test > /tmp/t.log 2>&1; rc=$?
+          summary=$(grep -E "✗|AssertionError|Error:" -A3 /tmp/t.log | head -c 3500 | sed ':a;N;$!ba;s/%/%25/g;s/\r/%0D/g;s/\n/%0A/g')
+          [ $rc -ne 0 ] && echo "::error title=tests failed::$summary"
+          tail -n 15 /tmp/t.log
+          exit $rc
+
+  test-mysql:
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: root
+        ports: ['3306:3306']
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -proot"
+          --health-interval=5s --health-timeout=5s --health-retries=20
+    env:
+      TEST_DB: mysql
+      TEST_LOG_SERVER: '1'
+      MYSQL_HOST: 127.0.0.1
+      MYSQL_PORT: 3306
+      MYSQL_USER: root
+      MYSQL_PASSWORD: root
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - name: Integration tests on MySQL 8
+        run: |
+          rc=0
+          for f in v2 v2.year v21 v21.ops v21.auth v21.ux v21.settings; do
+            node test/$f.test.js > /tmp/$f.log 2>&1 || rc=1
+            esc() { head -c 3400 | sed ':a;N;$!ba;s/%/%25/g;s/\r/%0D/g;s/\n/%0A/g'; }
+            echo "::notice title=mysql $f fails::$(grep -E '✗' -A12 /tmp/$f.log | grep -v '^\s*$' | grep -vE '^ *at |✓' | cut -c1-300 | esc)"
+            echo "::notice title=mysql $f server::$(grep -E 'SERVERLOG' /tmp/$f.log | esc)"
+          done
+          exit $rc

@@ -1,0 +1,12 @@
+<div class="page-head">
+  <div><div class="crumbs"><a href="<%= u(rbase) %>"><%= def.title %></a> / <%= row ? 'ویرایش' : 'افزودن' %></div><h1><%= title %></h1></div>
+</div>
+<form method="post" class="card" action="<%= u(rbase) %><%= row ? '/' + row.id + '/edit' : '/new' %>" autocomplete="off">
+  <input type="hidden" name="_csrf" value="<%= csrf %>">
+  <% if (errors.length) { %><div class="alert error"><%- icon('circle-x', 18) %><ul><% errors.forEach(function(e){ %><li><%= e %></li><% }) %></ul></div><% } %>
+  <% if (def.formNote) { %><div class="alert info"><%- icon('info', 18) %><div><%= def.formNote %></div></div><% } %>
+  <div class="form-grid">
+    <% def.fields.forEach(function(f){ if (f.readonly || (f.showIf && !f.showIf({ user: user, query: currentQuery }))) return; %><%- include('../partials/field', { f: f, vals: vals, options: options }) %><% }) %>
+  </div>
+  <div class="form-actions"><button class="btn primary" type="submit"><%- icon('save', 17) %> ذخیره</button><a class="btn" href="<%= u(rbase) %>">انصراف</a></div>
+</form>

@@ -1,0 +1,15 @@
+<div class="page-head"><div><div class="crumbs"><a href="<%= u('/students') %>">دانش‌آموزان</a> / <%= row ? 'ویرایش' : 'ثبت‌نام' %></div><h1><%= title %></h1></div></div>
+<form method="post" enctype="multipart/form-data" action="<%= u('/students/' + (row ? row.id + '/edit' : 'new')) %>?_csrf=<%= csrf %>" autocomplete="off">
+  <% if (errors.length) { %><div class="alert error"><%- icon('circle-x', 18) %><ul><% errors.forEach(function(e){ %><li><%= e %></li><% }) %></ul></div><% } %>
+  <% if (!row) { %><div class="alert info"><%- icon('info', 18) %><div>برای دانش‌آموز به‌صورت خودکار پنل کاربری ساخته می‌شود. نام کاربری = شماره دانش‌آموزی و رمز اولیه بر اساس تنظیمات (پیش‌فرض: کد ملی) است.</div></div><% } %>
+  <% groups.forEach(function(g, gi){ %>
+  <fieldset><legend><%- icon(g.icon, 16) %> <%= g.title %></legend>
+    <% if (gi === 0) { %><div class="field" style="margin-bottom:1rem;display:flex;gap:1rem;align-items:center"><span class="avatar lg"><% if (row && row.photo) { %><img src="<%= fileUrl('photos', row.photo) %>" alt=""><% } else { %><%- icon('user-round', 36) %><% } %></span><div style="flex:1"><label>عکس دانش‌آموز</label><input type="file" name="photo" accept="image/*"><div class="hint">حداکثر ۲ مگابایت (JPG/PNG)</div></div></div><% } %>
+    <div class="form-grid">
+    <% g.fields.forEach(function(f){ var opts = {}; if (f.opts) opts[f.name] = f.opts; else if (f.rel === 'classrooms') opts[f.name] = options.classrooms; else if (f.rel === 'routes') opts[f.name] = options.routes; %>
+      <%- include('../partials/field', { f: f, vals: vals, options: opts }) %>
+    <% }) %></div>
+  </fieldset>
+  <% }) %>
+  <div class="form-actions" style="border:0"><button class="btn primary" type="submit"><%- icon('save', 17) %> ذخیره پرونده</button><a class="btn" href="<%= u(row ? '/students/' + row.id : '/students') %>">انصراف</a></div>
+</form>

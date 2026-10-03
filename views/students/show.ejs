@@ -1,0 +1,116 @@
+<div class="page-head">
+  <span class="avatar lg"><% if (s.photo) { %><img src="<%= fileUrl('photos', s.photo) %>" alt=""><% } else { %><%= initials(s.first_name + ' ' + s.last_name) %><% } %></span>
+  <div><div class="crumbs"><% if (user.role !== 'student') { %><a href="<%= u('/students') %>">دانش‌آموزان</a> / <% } %>پرونده دانش‌آموزی</div>
+    <h1><%= s.first_name %> <%= s.last_name %> <%- pill(L.studentStatus[s.status] || s.status, badges_map.studentStatus[s.status]) %></h1>
+    <div class="muted">شماره دانش‌آموزی: <span class="num"><%= fa(s.student_code) %></span> — کلاس: <%= s.class_name || 'بدون کلاس' %><% if (age !== null) { %> — سن: <%= fa(age) %> سال<% } %></div></div>
+  <div class="actions">
+    <% if (user.role !== 'student') { %><a class="btn" href="<%= u('/students/' + s.id + '/print') %>"><%- icon('printer', 16) %> چاپ پرونده</a><% } %>
+    <% if (mgrFlag) { %><a class="btn" href="<%= u('/students/' + s.id + '/card') %>"><%- icon('id-card', 16) %> کارت</a><a class="btn primary" href="<%= u('/students/' + s.id + '/edit') %>"><%- icon('pencil', 16) %> ویرایش</a><% } %></div>
+</div>
+<div class="tabs"><% tabs.forEach(function(t){ %><a class="<%= tab === t[0] ? 'active' : '' %>" href="?tab=<%= t[0] %>"><%= t[1] %></a><% }) %></div>
+
+<% if (tab === 'overview') { %>
+<div class="grid g2">
+  <% groups.slice(0, 3).forEach(function(g){ %><div class="card"><h3><%- icon(g.icon, 18) %> <%= g.title %></h3><dl class="kv"><%- include('_kv', { g: g, disp: disp }) %></dl>
+    <% if (g.title === 'اطلاعات تحصیلی') { %><% if (homeroom) { %><dl class="kv" style="margin-top:.45rem"><dt>معلم راهنما</dt><dd><%= homeroom.full_name %></dd></dl><% } %><% if (route) { %><dl class="kv"><dt>سرویس</dt><dd><%= route.name %> — <%= route.driver_name %> <span class="ltr"><%= fa(route.driver_phone || '') %></span></dd></dl><% } %><% } %></div><% }) %>
+  <div class="card"><h3><%- icon('users-round', 18) %> اولیا و تماس‌های ضروری</h3>
+    <table class="t"><thead><tr><th>نسبت</th><th>نام</th><th>شغل</th><th>تماس</th></tr></thead><tbody>
+      <tr><td>پدر</td><td><%= s.father_name || '—' %></td><td><%= s.father_job || '—' %></td><td class="ltr num"><%= s.father_phone ? fa(s.father_phone) : '—' %></td></tr>
+      <tr><td>مادر</td><td><%= s.mother_name || '—' %></td><td><%= s.mother_job || '—' %></td><td class="ltr num"><%= s.mother_phone ? fa(s.mother_phone) : '—' %></td></tr>
+      <% if (s.guardian_name) { %><tr><td>سرپرست (<%= s.guardian_relation || '' %>)</td><td><%= s.guardian_name %></td><td>—</td><td class="ltr num"><%= fa(s.guardian_phone || '—') %></td></tr><% } %>
+      <tr><td>اضطراری</td><td colspan="2"><%= s.emergency_contact || '—' %></td><td class="ltr num"><%= s.emergency_phone ? fa(s.emergency_phone) : '—' %></td></tr></tbody></table>
+    <dl class="kv" style="margin-top:.8rem"><%- include('_kv', { g: { fields: groups[3].fields.filter(function(f){ return ['father_education','mother_education','siblings_count','family_status','father_national_id','mother_national_id'].indexOf(f.name) >= 0; }) }, disp: disp }) %></dl></div>
+  <div class="card"><h3><%- icon('heart-pulse', 18) %> سلامت و بیمه</h3><dl class="kv"><%- include('_kv', { g: groups[4], disp: disp }) %></dl><% if (disp.blood_type !== '—') { %><div class="muted small" style="margin-top:.5rem">گروه خونی: <span class="ltr"><%= s.blood_type %></span></div><% } %></div>
+  <% if (s.notes) { %><div class="card"><h3><%- icon('notebook-pen', 18) %> توضیحات</h3><p style="white-space:pre-wrap"><%= s.notes %></p></div><% } %>
+</div>
+<% if (typeof parentAccounts !== 'undefined') { %><%- include('_parents_card') %><% } %>
+<% if (mgrFlag) { %>
+<div class="card"><h3><%- icon('settings', 18) %> عملیات مدیریتی</h3>
+  <div style="display:flex;gap:.6rem;flex-wrap:wrap">
+    <form method="post" action="<%= u('/students/' + s.id + '/reset-password') %>" data-confirm="رمز عبور دانش‌آموز بازنشانی شود؟"><input type="hidden" name="_csrf" value="<%= csrf %>"><button class="btn"><%- icon('key-round', 16) %> بازنشانی رمز</button></form>
+    <form method="post" action="<%= u('/students/' + s.id + '/status') %>" style="display:flex;gap:.4rem"><input type="hidden" name="_csrf" value="<%= csrf %>"><select name="status" style="width:auto"><% Object.keys(L.studentStatus).forEach(function(k){ %><option value="<%= k %>" <%= s.status === k ? 'selected' : '' %>><%= L.studentStatus[k] %></option><% }) %></select><button class="btn">تغییر وضعیت</button></form>
+    <form method="post" action="<%= u('/students/' + s.id + '/delete') %>" data-confirm="حذف دانش‌آموز، حساب کاربری و تمام سوابق او (حضور و غیاب، نمرات، مالی و ...) قطعی است. ادامه می‌دهید؟"><input type="hidden" name="_csrf" value="<%= csrf %>"><button class="btn danger"><%- icon('trash-2', 16) %> حذف دانش‌آموز</button></form>
+  </div></div>
+<% } %>
+<% } %>
+
+<% if (tab === 'attendance') { %>
+<div class="grid g4" style="margin-bottom:1rem">
+<% ['present','absent','late','excused'].forEach(function(k){ %><div class="card stat <%= k === 'present' ? 'green' : k === 'absent' ? 'red' : k === 'late' ? 'amber' : '' %>" style="margin:0"><div><div class="v"><%= fa(att[k] || 0) %></div><div class="l"><%= L.attendance[k] %></div></div></div><% }) %></div>
+<div class="card flush"><div class="card-title">آخرین ۳۰ رکورد</div><% if (!attList.length) { %><div class="empty">سابقه‌ای ثبت نشده است.</div><% } else { %><div class="table-wrap"><table class="t"><thead><tr><th>تاریخ</th><th>روز</th><th>وضعیت</th><th>توضیح</th></tr></thead><tbody><% attList.forEach(function(a){ %><tr><td><%= d(a.date) %></td><td><%= J.WEEKDAYS[J.dow(a.date)] %></td><td><%- pill(L.attendance[a.status], badges_map.attendance[a.status]) %></td><td><%= a.note || '' %></td></tr><% }) %></tbody></table></div><% } %></div>
+<% } %>
+
+<% if (tab === 'grades') { %>
+<% if (!report || !me || (me.overall === null && !(report.partial && Object.keys(me.subjects).length))) { %><div class="card empty">برای این دانش‌آموز نمره‌ای ثبت یا منتشر نشده است.</div><% } else { %>
+<% if (report.partial) { %><div class="alert info" style="margin-bottom:1rem"><%- icon('info', 18) %><div>فقط نمرات دروس شما نمایش داده می‌شود (معدل کل و رتبه فقط برای معلم راهنما و مدیریت قابل مشاهده است).</div></div><% } else { %>
+<div class="grid g3" style="margin-bottom:1rem">
+  <div class="card stat" style="margin:0"><div><div class="v"><%= me.overall === null ? '—' : fa(me.overall) %></div><div class="l">معدل (از <%= fa(report.scale) %>)</div></div></div>
+  <% if (showRank) { %><div class="card stat green" style="margin:0"><div><div class="v"><%= me.rank ? fa(me.rank) + ' از ' + fa(report.rankedCount) : '—' %></div><div class="l">رتبه در کلاس</div></div></div>
+  <div class="card stat amber" style="margin:0"><div><div class="v"><%= classAvg === null ? '—' : fa(classAvg) %></div><div class="l">میانگین کلاس</div></div></div><% } %></div><% } %>
+<div class="card flush"><div class="table-wrap"><table class="t"><thead><tr><th>درس</th><th>معلم</th><th>تعداد ارزشیابی</th><th>میانگین</th><th>وضعیت</th></tr></thead><tbody>
+<% report.subjects.forEach(function(c){ var r = me.subjects[c.id]; %><tr><td><b><%= c.name %></b></td><td><%= c.teacher_name || '—' %></td><td><%= r ? fa(r.count) : '—' %></td><td class="num"><%= r ? fa(r.avg) : '—' %></td><td><%- r ? (r.passed ? pill('قبول', 'green') : pill('مردود', 'red')) : '' %></td></tr><% }) %>
+</tbody></table></div></div>
+<% if (enabled('grades')) { %><a class="btn" href="<%= u('/grades/report-card/' + s.id) %>"><%- icon('award', 16) %> مشاهده/چاپ کارنامه</a><% } %>
+<% } %><% } %>
+
+<% if (tab === 'behavior') { %>
+<div class="grid g2">
+<% if (typeof discipline !== 'undefined') { %><div class="card flush"><div class="card-title"><%- icon('gavel', 18) %> انضباطی و تشویق <span class="badge <%= behaviorScore >= 18 ? 'green' : behaviorScore >= 14 ? 'amber' : 'red' %>" style="margin-right:auto">نمره رفتار: <%= fa(behaviorScore) %></span></div>
+<% if (!discipline.length) { %><div class="empty">موردی ثبت نشده است.</div><% } else { %><table class="t"><tbody><% discipline.forEach(function(x){ %><tr><td><%- pill(L.disciplineType[x.type], x.type === 'positive' ? 'green' : 'red') %></td><td><b><%= x.title %></b><div class="muted small"><%= x.action_taken || '' %></div></td><td class="num"><%= x.points > 0 ? '+' : '' %><%= fa(x.points) %></td><td class="muted small"><%= d(x.record_date) %></td></tr><% }) %></tbody></table><% } %></div><% } %>
+<% if (typeof health !== 'undefined') { %><div class="card flush"><div class="card-title"><%- icon('stethoscope', 18) %> سوابق بهداشتی</div><% if (!health.length) { %><div class="empty">موردی ثبت نشده است.</div><% } else { %><table class="t"><tbody><% health.forEach(function(x){ %><tr><td><%- pill(L.healthType[x.type] || x.type, 'blue') %></td><td><%= x.description %><div class="muted small"><%= x.action_taken || '' %></div></td><td class="muted small"><%= d(x.record_date) %></td></tr><% }) %></tbody></table><% } %></div><% } %>
+<% if (typeof meetings !== 'undefined') { %><div class="card flush"><div class="card-title"><%- icon('users-round', 18) %> جلسات اولیا</div><% if (!meetings.length) { %><div class="empty">جلسه‌ای ثبت نشده است.</div><% } else { %><table class="t"><tbody><% meetings.forEach(function(x){ %><tr><td><%= d(x.meeting_date) %> <%= fa(x.meeting_time || '') %></td><td><%= x.purpose %><div class="muted small"><%= x.with_whom %></div></td><td><%- pill(L.meetingStatus[x.status], x.status === 'held' ? 'green' : x.status === 'scheduled' ? 'blue' : 'gray') %></td></tr><% }) %></tbody></table><% } %></div><% } %>
+</div>
+<% } %>
+
+<% if (tab === 'documents') { %>
+<% if (mgrFlag) { %><form class="card" method="post" enctype="multipart/form-data" action="<%= u('/students/' + s.id + '/documents') %>?_csrf=<%= csrf %>"><h3><%- icon('upload', 18) %> بارگذاری مدرک</h3>
+  <div class="form-grid c3"><div class="field"><label>عنوان</label><input type="text" name="title" placeholder="مثلاً کارت ملی پدر"></div><div class="field"><label>دسته</label><select name="category"><% Object.keys(L.docCategory).forEach(function(k){ %><option value="<%= k %>"><%= L.docCategory[k] %></option><% }) %></select></div><div class="field"><label>فایل (حداکثر ۵ مگابایت)</label><input type="file" name="file" required></div></div>
+  <div class="form-actions" style="border:0;margin-top:.5rem"><button class="btn primary"><%- icon('upload', 16) %> بارگذاری</button></div></form><% } %>
+<div class="card flush"><% if (!docs.length) { %><div class="empty"><%- icon('folder-open', 42) %><div>مدرکی بارگذاری نشده است.</div></div><% } else { %><table class="t"><thead><tr><th>عنوان</th><th>دسته</th><th>حجم</th><th>تاریخ</th><th></th></tr></thead><tbody><% docs.forEach(function(x){ %><tr><td><%- icon('file-text', 16) %> <%= x.title %></td><td><%= L.docCategory[x.category] || '' %></td><td class="num"><%= fa(Math.max(1, Math.round((x.size || 0) / 1024))) %> KB</td><td><%= d(x.created_at) %></td><td class="actions"><a class="btn sm ghost" href="<%= fileUrl('documents', x.file_name) %>"><%- icon('download', 15) %> دانلود</a><% if (mgrFlag) { %><form method="post" style="display:inline" action="<%= u('/students/' + s.id + '/documents/' + x.id + '/delete') %>" data-confirm="مدرک حذف شود؟"><input type="hidden" name="_csrf" value="<%= csrf %>"><button class="btn sm ghost" style="color:var(--red)"><%- icon('trash-2', 15) %></button></form><% } %></td></tr><% }) %></tbody></table><% } %></div>
+<% } %>
+
+<% if (tab === 'tickets') { %>
+<div class="card flush"><% if (!tickets.length) { %><div class="empty"><%- icon('life-buoy', 42) %><div>تیکتی وجود ندارد.</div></div><% } else { %><table class="t"><tbody><% tickets.forEach(function(t){ %><tr><td><a href="<%= u('/tickets/' + t.id) %>"><%= t.subject %></a></td><td><%= L.ticketCategory[t.category] %></td><td><%- pill(L.ticketStatus[t.status], badges_map.ticketStatus[t.status]) %></td><td class="muted small"><%= dt(t.created_at) %></td></tr><% }) %></tbody></table><% } %></div>
+<% } %>
+
+<% if (tab === 'finance') { %>
+<div class="card flush"><% if (!fees.length) { %><div class="empty">صورت‌حسابی ثبت نشده است.</div><% } else { %><div class="table-wrap"><table class="t"><thead><tr><th>عنوان</th><th>مبلغ</th><th>تخفیف</th><th>پرداخت‌شده</th><th>مانده</th><th>سررسید</th></tr></thead><tbody><% fees.forEach(function(f){ var net = f.amount - (f.discount || 0); var rem = Math.max(0, net - Number(f.paid)); %><tr><td><%= f.title %></td><td class="num"><%= money(f.amount) %></td><td class="num"><%= money(f.discount || 0) %></td><td class="num" style="color:var(--green)"><%= money(f.paid) %></td><td class="num" style="color:<%= rem ? 'var(--red)' : 'var(--green)' %>"><%= rem ? money(rem) : 'تسویه' %></td><td><%= d(f.due_date) %></td></tr><% }) %></tbody></table></div><% } %></div>
+<% } %>
+
+<% if (tab === 'notes') { %>
+<form class="card" method="post" action="<%= u('/students/' + s.id + '/notes') %>"><input type="hidden" name="_csrf" value="<%= csrf %>"><h3>افزودن یادداشت محرمانه</h3><textarea name="body" required placeholder="یادداشت فقط برای مدیر، معاون و معلمان قابل مشاهده است..." style="min-height:80px"></textarea><div class="form-actions" style="border:0;margin-top:.5rem"><button class="btn primary"><%- icon('plus', 16) %> ثبت یادداشت</button></div></form>
+<div class="card flush"><% if (!notes.length) { %><div class="empty">یادداشتی ثبت نشده است.</div><% } else { %><ul class="list" style="padding:0 1.2rem"><% notes.forEach(function(n){ %><li><div class="grow"><div style="white-space:pre-wrap"><%= n.body %></div><div class="muted small"><%= n.author || '—' %> — <%= dt(n.created_at) %></div></div><% if (mgrFlag || n.author_id === user.id) { %><form method="post" action="<%= u('/students/' + s.id + '/notes/' + n.id + '/delete') %>" data-confirm="حذف شود؟"><input type="hidden" name="_csrf" value="<%= csrf %>"><button class="btn sm ghost" style="color:var(--red)"><%- icon('trash-2', 15) %></button></form><% } %></li><% }) %></ul><% } %></div>
+<% } %>
+
+<% if (tab === 'history') { %>
+<div class="card flush"><h3 style="padding:1rem 1rem 0"><%- icon('trending-up', 18) %> سوابق تحصیلی سال‌های گذشته</h3>
+<% if (!records.length) { %><div class="empty"><%- icon('layers', 38) %><div>هنوز سابقه‌ای بایگانی نشده است. سوابق پس از «پایان سال تحصیلی» اینجا ثبت می‌شود.</div></div><% } else { %>
+<div class="table-wrap"><table class="t"><thead><tr><th>سال</th><th>پایه / کلاس</th><th>معدل</th><th>رتبه</th><th>غیبت</th><th>تأخیر</th><th>نتیجه</th></tr></thead><tbody>
+<% records.forEach(function(r){ %><tr><td><b><%= r.year_title %></b></td><td><%= r.grade_level || '' %> — <%= r.classroom_name %></td><td><%= r.overall === null ? '—' : fa(r.overall) %></td><td><%= r.rank_no ? fa(r.rank_no) + ' از ' + fa(r.ranked_count) : '—' %></td><td><%= fa(r.absent_days || 0) %></td><td><%= fa(r.late_count || 0) %></td><td><%- pill(({promoted:'ارتقا',retained:'تکرار پایه',graduated:'فارغ‌التحصیل'})[r.result] || r.result, ({promoted:'green',retained:'amber',graduated:'blue'})[r.result]) %></td></tr><% }) %></tbody></table></div><% } %></div>
+<% if (records.length) { %><div class="grid g2"><div class="card"><h3>روند معدل</h3><%- chart %></div><div class="card"><h3>روند غیبت</h3><%- absChart %></div></div><% } %>
+<% } %>
+
+<% if (tab === 'guardians') { %>
+<div class="card flush"><h3 style="padding:1rem 1rem 0"><%- icon('handshake', 18) %> اولیا و افراد مجاز به تحویل گرفتن دانش‌آموز</h3>
+<div class="table-wrap"><table class="t"><thead><tr><th>نام</th><th>نسبت</th><th>تلفن</th><th>کد ملی</th><th>مجاز به تحویل</th><th>قیم قانونی</th><th></th></tr></thead><tbody>
+<% if (!guardians.length) { %><tr><td colspan="7" class="muted" style="text-align:center">فردی ثبت نشده است. پدر و مادر در تب «مشخصات» هستند؛ اینجا افراد دیگر (مثلاً راننده یا عمو) را ثبت کنید.</td></tr><% } %>
+<% guardians.forEach(function(g){ %><tr><td><b><%= g.name %></b></td><td><%= g.relation || '—' %></td><td class="ltr num"><%= g.phone ? fa(g.phone) : '—' %></td><td class="ltr num"><%= g.national_id ? fa(g.national_id) : '—' %></td><td><%- g.can_pickup ? pill('مجاز', 'green') : pill('غیرمجاز', 'red') %></td><td><%= g.is_legal ? 'بله' : '—' %></td>
+<td><% if (mgrFlag) { %><form method="post" action="<%= u('/students/' + s.id + '/guardians/' + g.id + '/delete') %>" data-confirm="حذف شود؟"><input type="hidden" name="_csrf" value="<%= csrf %>"><button class="btn sm ghost" style="color:var(--red)"><%- icon('trash-2', 15) %></button></form><% } %></td></tr><% }) %></tbody></table></div></div>
+<% if (mgrFlag) { %><form method="post" class="card" action="<%= u('/students/' + s.id + '/guardians') %>"><input type="hidden" name="_csrf" value="<%= csrf %>"><h3>افزودن فرد مجاز</h3><div class="form-grid">
+<div class="field"><label>نام و نام خانوادگی *</label><input type="text" name="name" required maxlength="120"></div><div class="field"><label>نسبت</label><input type="text" name="relation" maxlength="40" placeholder="عمو، مادربزرگ، راننده…"></div>
+<div class="field"><label>تلفن</label><input type="text" class="ltr" name="phone" maxlength="20"></div><div class="field"><label>کد ملی</label><input type="text" class="ltr" name="national_id" maxlength="10"></div>
+<div class="field"><label class="check"><input type="checkbox" name="can_pickup" value="1" checked> مجاز به تحویل گرفتن دانش‌آموز</label></div><div class="field"><label class="check"><input type="checkbox" name="is_legal" value="1"> قیم/سرپرست قانونی</label></div>
+<div class="field full"><label>توضیحات</label><input type="text" name="notes" maxlength="250"></div></div><div class="form-actions"><button class="btn primary"><%- icon('plus', 16) %> افزودن</button></div></form><% } %>
+<% if (typeof exits !== 'undefined') { %>
+<div class="card flush"><h3 style="padding:1rem 1rem 0"><%- icon('door-open', 18) %> برگه‌های خروج و دیرکرد<% if (mgrFlag) { %> <a class="btn sm primary" style="float:left" href="<%= u('/exits?student_id=' + s.id) %>">صدور برگه</a><% } %></h3>
+<div class="table-wrap"><table class="t"><thead><tr><th>تاریخ</th><th>ساعت</th><th>نوع</th><th>علت</th><th>تحویل‌گیرنده</th><th>صادرکننده</th></tr></thead><tbody>
+<% if (!exits.length) { %><tr><td colspan="6" class="muted" style="text-align:center">برگه‌ای صادر نشده است.</td></tr><% } %>
+<% exits.forEach(function(e){ %><tr><td><%= ld(e.permit_date) %></td><td class="num"><%= e.permit_time ? fa(e.permit_time) : '—' %></td><td><%= e.kind === 'exit' ? 'خروج زودهنگام' : 'ورود با تأخیر' %></td><td><%= e.reason || '—' %></td><td><%= e.picked_up_by || '—' %></td><td><%= e.approved_name || '—' %></td></tr><% }) %></tbody></table></div></div><% } %>
+<% } %>
+
+<% if (tab === 'changes') { %>
+<div class="card flush"><h3 style="padding:1rem 1rem 0"><%- icon('history', 18) %> تاریخچه‌ی تغییرات پرونده</h3>
+<div class="table-wrap"><table class="t"><thead><tr><th>زمان</th><th>فیلد</th><th>مقدار قبلی</th><th>مقدار جدید</th><th>توسط</th></tr></thead><tbody>
+<% if (!changes.length) { %><tr><td colspan="5" class="muted" style="text-align:center">تغییری ثبت نشده است.</td></tr><% } %>
+<% changes.forEach(function(c){ var f = fieldLabels[c.field] || (c.field === 'classroom' ? 'کلاس' : c.field); %><tr><td class="muted small"><%= dt(c.created_at) %></td><td><b><%= f %></b></td><td><%= c.old_value || '—' %></td><td><%= c.new_value || '—' %></td><td><%= c.user_name || '—' %></td></tr><% }) %></tbody></table></div></div>
+<% } %>

@@ -1,0 +1,27 @@
+<% var v = (vals[f.name] === undefined || vals[f.name] === null) ? '' : vals[f.name]; %>
+<div class="field <%= f.full || f.type === 'textarea' ? 'full' : '' %>">
+  <% if (f.type === 'checkbox') { %>
+    <label class="check"><input type="checkbox" name="<%= f.name %>" value="1" <%= (v === 1 || v === '1' || v === true || v === 'on') ? 'checked' : '' %>> <%= f.label %></label>
+  <% } else { %>
+    <label for="f_<%= f.name %>"><%= f.label %><% if (f.required) { %> <span class="req">*</span><% } %></label>
+    <% if (f.type === 'textarea') { %>
+      <textarea id="f_<%= f.name %>" name="<%= f.name %>" <%= f.required ? 'required' : '' %>><%= v %></textarea>
+    <% } else if (f.type === 'select') { %>
+      <select id="f_<%= f.name %>" name="<%= f.name %>" <%= f.required ? 'required' : '' %>>
+        <% if (!f.required || f.emptyLabel) { %><option value=""><%= f.emptyLabel || '— انتخاب کنید —' %></option><% } %>
+        <% (options[f.name] || []).forEach(function(o){ %><option value="<%= o[0] %>" <%= String(o[0]) === String(v) ? 'selected' : '' %>><%= o[1] %></option><% }) %>
+      </select>
+    <% } else if (f.type === 'date') { %>
+      <input id="f_<%= f.name %>" class="jdate ltr" type="text" name="<%= f.name %>" value="<%= v %>" placeholder="۱۴۰۵/۰۷/۰۹" autocomplete="off" inputmode="numeric" <%= f.required ? 'required' : '' %>>
+    <% } else if (f.type === 'number') { %>
+      <input id="f_<%= f.name %>" class="digits ltr" type="text" inputmode="decimal" name="<%= f.name %>" value="<%= v %>" <%= f.required ? 'required' : '' %>>
+    <% } else if (f.type === 'time') { %>
+      <input id="f_<%= f.name %>" class="ltr digits" type="text" name="<%= f.name %>" value="<%= v %>" placeholder="08:30" maxlength="5" inputmode="numeric">
+    <% } else if (f.type === 'color') { %>
+      <input id="f_<%= f.name %>" type="color" name="<%= f.name %>" value="<%= v || '#2563eb' %>">
+    <% } else { %>
+      <input id="f_<%= f.name %>" type="<%= f.type === 'tel' ? 'tel' : 'text' %>" name="<%= f.name %>" value="<%= v %>" <%= f.ltr || f.type === 'tel' ? 'class=ltr' : '' %> <%= f.maxlength ? 'maxlength=' + f.maxlength : '' %> <%= f.required ? 'required' : '' %> autocomplete="off">
+    <% } %>
+    <% if (f.hint) { %><div class="hint"><%= f.hint %></div><% } %>
+  <% } %>
+</div>

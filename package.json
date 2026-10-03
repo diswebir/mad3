@@ -1,0 +1,44 @@
+{
+  "name": "mad3-school-management",
+  "version": "2.1.0",
+  "description": "سامانه مدیریت مدرسه (Node.js) با ویزارد نصب و سازگار با cPanel",
+  "main": "app.js",
+  "private": true,
+  "license": "UNLICENSED",
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "start": "node app.js",
+    "dev": "node --watch app.js",
+    "test": "npm run test:smoke && npm run test:v2 && npm run test:v21",
+    "demo": "node scripts/install-demo.js",
+    "reset:admin": "node scripts/reset-admin.js",
+    "reset:install": "node scripts/reset-install.js --yes --uploads --backups",
+    "reset:demo": "node scripts/reset-install.js --yes --uploads --reinstall-demo",
+    "build:assets": "node scripts/build-assets.js",
+    "test:smoke": "node test/smoke.test.js",
+    "test:v2": "node test/v2.unit.test.js && node test/v2.test.js && node test/v2.year.test.js",
+    "test:v21": "node test/v21.test.js && node test/v21.ops.test.js && node test/v21.auth.test.js && node test/v21.ux.test.js && node test/v21.settings.test.js"
+  },
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "compression": "^1.7.4",
+    "ejs": "^3.1.10",
+    "express": "^4.19.2",
+    "express-session": "^1.18.0",
+    "helmet": "^7.1.0",
+    "jalaali-js": "^1.2.7",
+    "knex": "^3.1.0",
+    "multer": "^2.0.2",
+    "mysql2": "^3.9.7",
+    "qrcode": "^1.5.4"
+  },
+  "optionalDependencies": {
+    "better-sqlite3": "^11.10.0"
+  },
+  "devDependencies": {
+    "lucide-static": "^0.460.0",
+    "vazirmatn": "^33.0.3"
+  }
+}

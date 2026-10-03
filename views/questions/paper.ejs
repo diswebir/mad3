@@ -1,0 +1,14 @@
+<div class="page-head no-print"><div><div class="crumbs"><a href="<%= u('/papers') %>">برگه‌های امتحانی</a></div><h1><%= p.title %></h1></div>
+<div class="actions"><a class="btn <%= key ? '' : 'primary' %>" href="?">برگه‌ی دانش‌آموز</a><a class="btn <%= key ? 'primary' : '' %>" href="?key=1">کلید پاسخ</a><button class="btn" data-print><%- icon('printer', 16) %> چاپ</button></div></div>
+<div class="card" style="max-width:820px;margin:auto">
+<div style="text-align:center;border-bottom:2px solid var(--text);padding-bottom:.6rem"><h2 style="margin:0"><%= S('school_name') %></h2><div><b><%= p.title %></b><%= key ? ' — کلید پاسخ' : '' %></div>
+<div class="muted">درس: <%= cs.subject_name %> — کلاس: <%= cs.class_name %><% if (p.exam_date) { %> — تاریخ: <%= d(p.exam_date) %><% } %> — مدت: <%= fa(p.duration) %> دقیقه — بارم کل: <%= fa(total) %></div></div>
+<% if (!key) { %><div style="display:flex;justify-content:space-between;margin:.8rem 0"><span>نام و نام خانوادگی: ……………………………</span><span>شماره دانش‌آموزی: …………………</span></div><% } %>
+<% if (p.instructions && !key) { %><div class="muted" style="margin-bottom:.8rem"><b>راهنما:</b> <%= p.instructions %></div><% } %>
+<ol style="padding-inline-start:1.4rem">
+<% list.forEach(function(q, i){ %><li style="margin-bottom:1rem;break-inside:avoid"><div style="display:flex;justify-content:space-between;gap:1rem"><span style="white-space:pre-wrap"><%= q.text %></span><b class="num" style="white-space:nowrap">(<%= fa(Number(q.paperScore)) %> نمره)</b></div>
+<% if (q.type === 'mcq') { %><div style="display:grid;grid-template-columns:1fr 1fr;gap:.2rem .8rem;margin-top:.3rem"><% q.opts.forEach(function(o, oi){ %><div style="<%= key && String(oi) === String(q.answer) ? 'font-weight:700;color:var(--green)' : '' %>"><%= fa(oi + 1) %>) <%= o %></div><% }) %></div>
+<% } else if (q.type === 'tf') { %><div style="margin-top:.3rem">□ صحیح &nbsp;&nbsp; □ غلط<% if (key) { %> — <b style="color:var(--green)"><%= q.answer === 'true' ? 'صحیح' : 'غلط' %></b><% } %></div>
+<% } else if (!key) { %><div style="height:<%= q.type === 'short' ? '1.6' : '4' %>rem;border-bottom:1px dotted var(--border)"></div><% } %>
+<% if (key && (q.type === 'short' || q.type === 'descriptive')) { %><div class="muted" style="margin-top:.3rem;white-space:pre-wrap"><b>پاسخ:</b> <%= q.answer || '—' %></div><% } %></li><% }) %></ol>
+<div style="text-align:center;margin-top:1rem">موفق باشید</div></div>

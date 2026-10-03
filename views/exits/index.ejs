@@ -1,0 +1,19 @@
+<div class="page-head"><div><h1><%- icon('door-open', 24) %> برگه‌های خروج و دیرکرد</h1><div class="muted"><%= ld(date) %></div></div>
+<form method="get" class="actions"><input class="jdate ltr" type="text" name="date" value="<%= J.isoToJString(date) %>" data-autosubmit style="width:130px" autocomplete="off"></form></div>
+<% if (canIssue) { %>
+<% if (!student) { %><div class="card"><h3>صدور برگه‌ی جدید — انتخاب دانش‌آموز</h3><form method="get" class="toolbar"><select name="class_id" data-autosubmit><option value="">کلاس…</option><% classes.forEach(function(c){ %><option value="<%= c.id %>" <%= classId === c.id ? 'selected' : '' %>><%= c.name %></option><% }) %></select>
+<% if (students.length) { %><select name="student_id" data-autosubmit><option value="">دانش‌آموز…</option><% students.forEach(function(s){ %><option value="<%= s.id %>"><%= s.first_name %> <%= s.last_name %></option><% }) %></select><% } %></form></div>
+<% } else { %>
+<form method="post" action="<%= u('/exits') %>" class="card" style="max-width:760px"><input type="hidden" name="_csrf" value="<%= csrf %>"><input type="hidden" name="student_id" value="<%= student.id %>">
+<h3>صدور برگه برای <%= student.first_name %> <%= student.last_name %> <span class="muted small">(<%= student.class_name || '—' %>)</span></h3>
+<div class="form-grid"><div class="field"><label>نوع</label><select name="kind"><option value="exit">خروج زودهنگام</option><option value="late">مجوز ورود با تأخیر</option></select></div>
+<div class="field"><label>تاریخ</label><input class="jdate ltr" type="text" name="permit_date" value="<%= J.isoToJString(J.todayISO()) %>" autocomplete="off"></div>
+<div class="field"><label>ساعت</label><input type="time" class="ltr" name="permit_time" value="<%= J.nowHM() %>"></div>
+<div class="field"><label>تحویل‌گیرنده (برای خروج)</label><input type="text" name="picked_up_by" list="pickers" maxlength="120" autocomplete="off"><datalist id="pickers"><% [student.father_name, student.mother_name, student.guardian_name].filter(Boolean).forEach(function(n){ %><option value="<%= n %>"><% }) %><% guardians.forEach(function(g){ %><option value="<%= g.name %>"><% }) %></datalist></div>
+<div class="field full"><label>علت *</label><input type="text" name="reason" required maxlength="250" placeholder="مثلاً نوبت پزشک"></div></div>
+<div class="form-actions"><button class="btn primary"><%- icon('check', 16) %> صدور برگه</button><a class="btn" href="<%= u('/exits') %>">انصراف</a></div></form>
+<% } %><% } %>
+<div class="card flush"><div class="table-wrap"><table class="t"><thead><tr><th>ساعت</th><th>دانش‌آموز</th><th>کلاس</th><th>نوع</th><th>علت</th><th>تحویل‌گیرنده</th><th>صادرکننده</th><th></th></tr></thead><tbody>
+<% if (!rows.length) { %><tr><td colspan="8" class="muted" style="text-align:center">برگه‌ای برای این روز صادر نشده است.</td></tr><% } %>
+<% rows.forEach(function(e){ %><tr><td class="num"><%= e.permit_time ? fa(e.permit_time) : '—' %></td><td><a href="<%= u('/students/' + e.student_id + '?tab=guardians') %>"><%= e.first_name %> <%= e.last_name %></a></td><td><%= e.class_name || '—' %></td><td><%- e.kind === 'exit' ? pill('خروج', 'amber') : pill('تأخیر', 'blue') %></td><td><%= e.reason %></td><td><%= e.picked_up_by || '—' %></td><td><%= e.approved_name %></td>
+<td><% if (user.role === 'admin') { %><form method="post" action="<%= u('/exits/' + e.id + '/delete') %>" data-confirm="حذف شود؟"><input type="hidden" name="_csrf" value="<%= csrf %>"><button class="btn sm ghost" style="color:var(--red)"><%- icon('trash-2', 15) %></button></form><% } %></td></tr><% }) %></tbody></table></div></div>

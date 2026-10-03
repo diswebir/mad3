@@ -1,0 +1,13 @@
+<div class="wizard">
+  <div class="center" style="margin-bottom:1.2rem"><div class="logo" style="width:64px;height:64px;margin:0 auto .6rem;border-radius:18px;background:var(--primary);color:#fff;display:grid;place-items:center"><%- icon('school', 34) %></div><h1>ویزارد نصب سامانه مدیریت مدرسه</h1><p class="muted">در چند مرحله کوتاه سامانه را راه‌اندازی کنید.</p></div>
+  <%- include('_steps') %>
+  <form method="post" class="card">
+    <input type="hidden" name="_csrf" value="<%= csrf %>">
+    <h2>بررسی پیش‌نیازها</h2>
+    <% if (typeof error !== 'undefined') { %><div class="alert error"><%= error %></div><% } %>
+    <ul class="list req-list">
+      <% reqs.forEach(function(r){ %><li><%- r.ok ? '<span style="color:var(--green)">' + icon('circle-check', 20) + '</span>' : (r.optional ? '<span style="color:var(--amber)">' + icon('triangle-alert', 20) + '</span>' : '<span style="color:var(--red)">' + icon('circle-x', 20) + '</span>') %><div><%= r.label %><% if (!r.ok && r.hint) { %><div class="muted small"><%= r.hint %></div><% } %></div></li><% }) %>
+    </ul>
+    <div class="form-actions"><button class="btn primary" type="submit">ادامه <%- icon('chevron-left', 16) %></button><a class="btn" href="<%= u('/install') %>">بررسی دوباره</a></div>
+  </form>
+</div>

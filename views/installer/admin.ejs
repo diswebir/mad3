@@ -1,0 +1,16 @@
+<div class="wizard">
+  <h1 class="center">حساب مدیر سامانه</h1>
+  <%- include('_steps') %>
+  <form method="post" class="card" autocomplete="off">
+    <input type="hidden" name="_csrf" value="<%= csrf %>">
+    <% if (typeof errors !== 'undefined' && errors.length) { %><div class="alert error"><ul><% errors.forEach(function(e){ %><li><%= e %></li><% }) %></ul></div><% } %>
+    <div class="form-grid">
+      <div class="field"><label>نام و نام خانوادگی <span class="req">*</span></label><input type="text" name="full_name" value="<%= admin.full_name || '' %>" required></div>
+      <div class="field"><label>نام کاربری <span class="req">*</span></label><input type="text" class="ltr" name="username" value="<%= admin.username || '' %>" required></div>
+      <div class="field"><label>رمز عبور <span class="req">*</span></label><input type="password" class="ltr" name="password" required minlength="8" autocomplete="new-password"><div class="hint">حداقل ۸ نویسه</div></div>
+      <div class="field"><label>تکرار رمز عبور <span class="req">*</span></label><input type="password" class="ltr" name="password2" required autocomplete="new-password"></div>
+      <div class="field full"><label>ایمیل (اختیاری)</label><input type="text" class="ltr" name="email" value="<%= admin.email || '' %>"></div>
+    </div>
+    <div class="form-actions"><button class="btn primary" type="submit">ادامه <%- icon('chevron-left', 16) %></button><a class="btn ghost" href="<%= u('/install/school') %>">بازگشت</a></div>
+  </form>
+</div>
