@@ -145,6 +145,12 @@ function createRouter(onComplete) {
       await modulesReg.load();
       if (st.demo) await seed.seedDemo(k);
       config.markInstalled();
+      try { // قفل دامنه: دامنه‌ای که ویزارد با آن باز شده صریحاً ثبت می‌شود (نه اولین درخواست تصادفی)
+        const DL = require('../lib/domainLock'); const mode = ['this', 'manual', 'off'].includes(req.body.domain_lock) ? req.body.domain_lock : 'this'; const h = DL.normalize(req.headers.host);
+        if (mode === 'this' && !DL.isLoopback(h) && DL.validHost(h)) await DL.write({ enabled: true, hosts: [h], by: 'installer' });
+        else if (mode === 'off') await DL.write({ enabled: false, hosts: [], by: 'installer' });
+        else if (mode === 'manual') config.update({ domainLockMode: 'manual' });
+      } catch (e) { console.error('[installer] domain lock', e.message); }
       const demoUsed = !!st.demo;
       const adminName = st.admin.username; const superName = st.super.username;
       try { fs.unlinkSync(config.STATE_FILE); } catch (_) { /* ignore */ }

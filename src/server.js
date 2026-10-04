@@ -23,6 +23,7 @@ async function bootMain() {
   const r = express.Router();
   r.use(express.urlencoded({ extended: false, limit: '1mb', parameterLimit: 10000 }));
   r.use((req, res, next) => { if (req.body && typeof req.body === 'object') req.body = mw.noPassNormalize(req.body); next(); });
+  r.use(require('./lib/metrics').middleware);
   // با چند پردازش (Passenger) تنظیمات/ماژول‌ها را هر چند ثانیه از پایگاه داده تازه می‌کنیم
   let lastRefresh = Date.now();
   r.use((req, res, next) => {
@@ -51,12 +52,23 @@ function startJobs() {
   state.timers.push(t);
 }
 
+/**
+ * اعتماد به پراکسی برای تشخیص IP کاربر. پیش‌فرض ۱ (یک پراکسی جلوی برنامه؛ مثل Apache/LiteSpeed در cPanel): IP از آخرین هاپ معتبر خوانده می‌شود
+ * و مهاجم با هدر X-Forwarded-For ساختگی نمی‌تواند قفل ورود را دور بزند. مقدارها: عدد (تعداد پراکسی)، true/false، یا فهرست
+ * زیرشبکه‌ها مثل «loopback, 10.0.0.0/8». پشت دو پراکسی (مثلاً Cloudflare + Apache) مقدار ۲ بگذارید.
+ */
+function trustProxy(v) {
+  if (v === undefined || v === null || v === '') return 1;
+  if (v === true || v === false) return v; const t = String(v).trim().toLowerCase();
+  if (t === 'true') return true; if (t === 'false' || t === '0') return false; if (/^\d+$/.test(t)) return Number(t); return String(v).trim();
+}
+
 async function createApp() {
   config.ensureDirs();
   const app = express();
   const cfg = config.load();
   app.disable('x-powered-by');
-  app.set('trust proxy', true);
+  app.set('trust proxy', trustProxy(process.env.TRUST_PROXY !== undefined ? process.env.TRUST_PROXY : cfg.trustProxy));
   app.set('view engine', 'ejs');
   app.set('views', path.join(config.ROOT, 'views'));
   if (process.env.NODE_ENV === 'production') app.enable('view cache');
@@ -100,4 +112,4 @@ async function createApp() {
   if (config.isInstalled()) await bootMain();
   return app;
 }
-module.exports = { createApp, state };
+module.exports = { trustProxy, createApp, state };

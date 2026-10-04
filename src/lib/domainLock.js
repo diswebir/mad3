@@ -1,7 +1,10 @@
 'use strict';
 /**
  * قفل دامنه: این نصب فقط روی دامنه‌(های) ثبت‌شده کار می‌کند.
- *  - اولین درخواست پس از نصب (با دامنه‌ی غیر از localhost) به‌صورت خودکار دامنه را ثبت و قفل می‌کند.
+ *  - حالت ثبت (mode): auto (پیش‌فرض: اولین دامنه‌ی غیر از localhost ثبت و قفل می‌شود) · manual (هیچ‌چیز خودکار قفل نمی‌شود؛ سوپر ادمین دستی ثبت می‌کند)
+ *    · off (بدون قفل). با متغیر محیطی DOMAIN_LOCK=auto|manual|off یا کلید domainLockMode در config.json مقدار پیش‌فرض نصب‌های بدون سابقه‌ی قفل تعیین می‌شود.
+ *  - ویزارد نصب دامنه‌ای را که با آن باز شده در پایان نصب صریحاً ثبت می‌کند (نه اولین درخواست تصادفی، مثل پایش سرور یا پیش‌نمایش).
+ *  - الگوی زیردامنه: *.example.ir همه‌ی زیردامنه‌ها را مجاز می‌کند (نه خود example.ir).
  *  - قفل هم در data/config.json و هم در پایگاه داده نگه‌داری می‌شود (حذف یکی کافی نیست).
  *  - در دامنه‌ی دیگر فقط یک صفحه‌ی «دامنه مجاز نیست» با فرم ورود سوپر ادمین نمایش داده می‌شود؛
  *    سوپر ادمین می‌تواند همان‌جا دامنه‌ی جدید را مجاز کند.
@@ -12,6 +15,7 @@ const config = require('../config');
 const db = require('../db');
 const settings = require('../settings');
 const svc = require('../services');
+const RL = require('./ratelimit');
 
 const KEY = 'domain_lock';
 const normalize = (h) => {
@@ -22,7 +26,13 @@ const normalize = (h) => {
   return h.replace(/^www\./, '').replace(/\.$/, '');
 };
 const isLoopback = (h) => ['localhost', '127.0.0.1', '::1', ''].includes(normalize(h));
-const validHost = (h) => /^(?=.{3,253}$)([a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z0-9-]{2,63}$/.test(h) || /^\d{1,3}(\.\d{1,3}){3}$/.test(h) || h === 'localhost';
+const DOMAIN_RE = /^(?=.{3,253}$)([a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z0-9-]{2,63}$/;
+const validHost = (h) => { h = String(h || ''); if (h.startsWith('*.')) return DOMAIN_RE.test(h.slice(2)); return DOMAIN_RE.test(h) || /^\d{1,3}(\.\d{1,3}){3}$/.test(h) || h === 'localhost'; };
+/** تطبیق نام میزبان با یک ورودی فهرست (دقیق یا الگوی *.example.ir) */
+const matches = (h, entry) => (entry.startsWith('*.') ? h.length > entry.length - 1 && h.endsWith(entry.slice(1)) : h === entry);
+const allowed = (h, hosts) => hosts.some((e) => matches(h, e));
+/** حالت پیش‌فرض برای نصب‌هایی که هنوز سابقه‌ی قفل ندارند */
+const defaultMode = () => { const m = String(process.env.DOMAIN_LOCK || (config.load() || {}).domainLockMode || 'auto').toLowerCase(); return ['auto', 'manual', 'off'].includes(m) ? m : 'auto'; };
 
 function dbLock() { try { const v = settings.get(KEY); return v ? JSON.parse(v) : null; } catch (_) { return null; } }
 function fileLock() { try { return config.load().domainLock || null; } catch (_) { return null; } }
@@ -39,9 +49,9 @@ function state() {
 /** آیا این دامنه مجاز است؟ { ok, bind } — bind یعنی هنوز هیچ قفلی ثبت نشده و باید دامنه‌ی فعلی ثبت شود */
 function evaluate(host) {
   const h = normalize(host); const st = state();
-  if (!st.recorded) return { ok: true, bind: !isLoopback(h) };
+  if (!st.recorded) return { ok: true, bind: defaultMode() === 'auto' && !isLoopback(h) };
   if (!st.enforced) return { ok: true, bind: false };
-  return { ok: st.active.every((r) => r.hosts.includes(h)), bind: false };
+  return { ok: st.active.every((r) => allowed(h, r.hosts)), bind: false };
 }
 
 async function write(rec) {
@@ -66,12 +76,9 @@ function token(req, shift = 0) {
 }
 const tokenOk = (req, t) => !!t && [0, 1].some((s) => { const a = Buffer.from(String(t)); const b = Buffer.from(token(req, s)); return a.length === b.length && crypto.timingSafeEqual(a, b); });
 
-const attempts = new Map();
-function throttled(ip) {
-  const now = Date.now(); const rec = (attempts.get(ip) || []).filter((t) => now - t < 10 * 60000);
-  attempts.set(ip, rec); return rec.length >= 5;
-}
-const note = (ip) => { const rec = attempts.get(ip) || []; rec.push(Date.now()); attempts.set(ip, rec); };
+/** محدودیت تلاش اشتباه ورود سوپر ادمین (۵ بار در ۱۰ دقیقه؛ شمارنده در پایگاه‌داده) */
+const throttled = async (ip) => (await RL.status('domain_auth', RL.normIp(ip))).locked;
+const note = (ip) => RL.fail('domain_auth', RL.normIp(ip), { limit: 5, windowMs: 600000, lockMs: 600000, progressive: false, ip });
 
 function page(req, res, { error = '', ok = '' } = {}) {
   const base = config.load().basePath || '';
@@ -100,15 +107,15 @@ ${error ? `<div class="e">${esc(error)}</div>` : ''}${ok ? `<div class="k">${esc
 async function authorize(req, res) {
   const b = req.body || {}; const h = hostOf(req); const ip = req.ip || '';
   if (!tokenOk(req, b.t)) return page(req, res, { error: 'نشانه‌ی امنیتی فرم منقضی شده است؛ صفحه را تازه‌سازی کنید.' });
-  if (throttled(ip)) return page(req, res, { error: 'تلاش‌های ناموفق زیاد بود؛ چند دقیقه بعد دوباره امتحان کنید.' });
+  if (await throttled(ip)) return page(req, res, { error: 'تلاش‌های ناموفق زیاد بود؛ چند دقیقه بعد دوباره امتحان کنید.' });
   const u = await db.get()('users').where({ username: String(b.username || '').toLowerCase(), role: 'superadmin', active: 1 }).first();
-  if (!u || !svc.verify(String(b.password || ''), u.password_hash)) { note(ip); return page(req, res, { error: 'نام کاربری یا رمز عبور سوپر ادمین نادرست است.' }); }
+  if (!(await svc.verifyAsync(b.password, u && u.password_hash)) || !u) { await note(ip); return page(req, res, { error: 'نام کاربری یا رمز عبور سوپر ادمین نادرست است.' }); }
   if (!validHost(h)) return page(req, res, { error: 'نام دامنه معتبر نیست.' });
   const st = state();
   const hosts = b.mode === 'replace' ? [h] : [...new Set([...st.hosts, h])];
   await write({ enabled: true, hosts, by: u.username });
   try { await db.get()('audit_logs').insert({ user_id: u.id, user_name: u.full_name, action: 'domain_authorize', entity: 'domain', entity_id: h, details: `${b.mode === 'replace' ? 'جایگزینی' : 'افزودن'} دامنه: ${h}`.slice(0, 1000), ip }); } catch (_) { /* ignore */ }
-  attempts.delete(ip);
+  await RL.clear('domain_auth', RL.normIp(ip));
   res.redirect(303, (config.load().basePath || '') + '/');
 }
 
@@ -129,4 +136,4 @@ async function setLock({ enabled, hosts, by }) {
   return write({ enabled: !!enabled && list.length > 0, hosts: list, by });
 }
 
-module.exports = { normalize, isLoopback, validHost, state, evaluate, guard, setLock, write, bindFirst, KEY };
+module.exports = { normalize, isLoopback, validHost, matches, allowed, defaultMode, state, evaluate, guard, setLock, write, bindFirst, KEY };

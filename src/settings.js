@@ -68,6 +68,37 @@ const DEFS = [
   { key: 'min_password_length', group: 'security', label: 'حداقل طول رمز عبور', type: 'number', def: '6', min: 4, max: 32 },
   { key: 'max_login_attempts', group: 'security', label: 'حداکثر تلاش ناموفق ورود', type: 'number', def: '5', min: 3, max: 20 },
   { key: 'lockout_minutes', group: 'security', label: 'مدت قفل موقت ورود (دقیقه)', type: 'number', def: '10', min: 1, max: 1440 },
+  { key: 'lock_window_minutes', group: 'security', label: 'پنجره‌ی شمارش تلاش‌های ناموفق (دقیقه)', type: 'number', def: '15', min: 1, max: 1440, hint: 'تلاش‌های ناموفق فقط در این بازه با هم شمرده می‌شوند.' },
+  { key: 'lock_ip_multiplier', group: 'security', label: 'ضریب قفل کل IP', type: 'number', def: '5', min: 1, max: 50, hint: 'کل یک IP پس از «حداکثر تلاش × این ضریب» خطای ناموفق (با نام‌های کاربری مختلف) قفل می‌شود.' },
+  { key: 'lock_progressive', group: 'security', label: 'قفل پلکانی (هر بار تکرار، مدت قفل دو برابر)', type: 'checkbox', def: '1' },
+  { key: 'lock_max_minutes', group: 'security', label: 'سقف مدت قفل پلکانی (دقیقه)', type: 'number', def: '1440', min: 1, max: 10080 },
+  { key: 'lock_strike_reset_hours', group: 'security', label: 'آرامش لازم برای صفرشدن پلکان (ساعت)', type: 'number', def: '24', min: 1, max: 720 },
+  { key: 'lock_trusted_ips', group: 'security', label: 'IPهای مورداعتماد (هرگز قفل نمی‌شوند؛ با ویرگول یا سطر جدا)', type: 'textarea', def: '', hint: 'مثلاً IP ثابت مدرسه. اگر چند کاربر پشت یک IP هستند، این گزینه را با احتیاط استفاده کنید.' },
+  { key: 'lock_notify_admin', group: 'security', label: 'اعلان درون‌برنامه‌ای به مدیر و سوپر ادمین هنگام قفل‌شدن یک حساب/IP', type: 'checkbox', def: '1' },
+  { key: 'otp_max_attempts', group: 'security', label: 'حداکثر حدس کد پیامکی برای هر کد', type: 'number', def: '5', min: 3, max: 10 },
+  { key: 'otp_cooldown_seconds', group: 'security', label: 'فاصله‌ی ارسال دوباره‌ی کد (ثانیه)', type: 'number', def: '60', min: 30, max: 600 },
+  { key: 'otp_per_user_hour', group: 'security', label: 'حداکثر کد در ساعت برای هر کاربر', type: 'number', def: '5', min: 1, max: 20 },
+  { key: 'otp_per_ip_hour', group: 'security', label: 'حداکثر درخواست کد در ساعت برای هر IP', type: 'number', def: '30', min: 5, max: 500 },
+  // پشتیبان بیرون از هاست (فقط سوپر ادمین)
+  { key: 'offsite_enabled', group: 'offsite', section: 'عمومی', label: 'ارسال پشتیبان به مقصد بیرون از هاست', type: 'checkbox', def: '0', hint: 'نسخه‌های پشتیبان (data/backups) به یک مقصد دیگر هم کپی می‌شوند تا با خرابی هاست از بین نروند.' },
+  { key: 'offsite_type', group: 'offsite', label: 'نوع مقصد', type: 'select', def: 's3', options: [['s3', 'S3 و سازگارها (آروان، لیارا، Wasabi، Backblaze، MinIO، AWS)'], ['webdav', 'WebDAV (نکست‌کلود، ownCloud و …)'], ['folder', 'پوشه‌ی دیگر روی همین سرور (مثلاً دیسک متصل)']] },
+  { key: 'offsite_kinds', group: 'offsite', label: 'کدام نسخه‌ها ارسال شوند؟', type: 'select', def: 'auto_manual', options: [['auto', 'فقط پشتیبان خودکار روزانه'], ['auto_manual', 'خودکار و دستی'], ['all', 'همه (شامل پیش از ارتقا و پیش از بازیابی)']] },
+  { key: 'offsite_keep', group: 'offsite', label: 'تعداد نسخه‌ی نگه‌داری‌شده در مقصد (برای هر نوع؛ ۰ = هرگز حذف نشود)', type: 'number', def: '14', min: 0, max: 365 },
+  { key: 'offsite_prefix', group: 'offsite', label: 'پوشه/پیشوند در مقصد', type: 'text', def: 'school-backups', hint: 'فقط حروف لاتین، عدد، - و _ و /' },
+  { key: 'offsite_encrypt', group: 'offsite', label: 'رمزنگاری نسخه‌ها پیش از ارسال (AES-256)', type: 'checkbox', def: '1', hint: 'قویاً پیشنهاد می‌شود؛ چون پشتیبان شامل اطلاعات شخصی دانش‌آموزان است.' },
+  { key: 'offsite_passphrase', group: 'offsite', label: 'عبارت رمز (خالی = بدون تغییر؛ حداقل ۸ نویسه)', type: 'secret', def: '', hint: 'این عبارت در پشتیبان ذخیره نمی‌شود. آن را جای امن دیگری هم نگه دارید؛ بدون آن، نسخه‌های رمزنگاری‌شده قابل بازیابی نیستند.' },
+  { key: 'offsite_alert', group: 'offsite', label: 'اعلان به سوپر ادمین هنگام شکست ارسال (حداکثر روزی یک بار)', type: 'checkbox', def: '1' },
+  { key: 'offsite_s3_endpoint', group: 'offsite', section: 'S3 و سازگارها', label: 'نشانی سرویس (Endpoint)', type: 'text', def: '', hint: 'مثال: https://s3.ir-thr-at1.arvanstorage.ir  یا  https://s3.amazonaws.com' },
+  { key: 'offsite_s3_region', group: 'offsite', label: 'ناحیه (Region)', type: 'text', def: 'us-east-1', hint: 'آروان: ir-thr-at1 · AWS: مثل eu-central-1 · MinIO: us-east-1' },
+  { key: 'offsite_s3_bucket', group: 'offsite', label: 'نام Bucket', type: 'text', def: '' },
+  { key: 'offsite_s3_key', group: 'offsite', label: 'کلید دسترسی (Access Key)', type: 'text', def: '' },
+  { key: 'offsite_s3_secret', group: 'offsite', label: 'کلید محرمانه (Secret Key؛ خالی = بدون تغییر)', type: 'secret', def: '' },
+  { key: 'offsite_s3_pathstyle', group: 'offsite', label: 'نشانی به‌صورت مسیر (Path-style)', type: 'checkbox', def: '1', hint: 'برای MinIO و بیشتر سرویس‌های ایرانی روشن بماند. برای AWS با دامنه‌ی bucket خاموش کنید.' },
+  { key: 'offsite_dav_url', group: 'offsite', section: 'WebDAV', label: 'نشانی WebDAV', type: 'text', def: '', hint: 'مثال نکست‌کلود: https://cloud.example.ir/remote.php/dav/files/USER' },
+  { key: 'offsite_dav_user', group: 'offsite', label: 'نام کاربری', type: 'text', def: '' },
+  { key: 'offsite_dav_pass', group: 'offsite', label: 'رمز عبور (خالی = بدون تغییر؛ بهتر است رمز برنامه باشد)', type: 'secret', def: '' },
+  { key: 'offsite_dir', group: 'offsite', section: 'پوشه‌ی دیگر', label: 'مسیر کامل پوشه', type: 'text', def: '', hint: 'مثال: /home/CPANELUSER/offsite-backups — خارج از public_html و بیرون از پوشه‌ی data.' },
+  { key: 'offsite_state', group: 'offsite', label: 'وضعیت ارسال', type: 'hidden', def: '' },
   // پیامک (ippanel)
   { key: 'sms_enabled', group: 'sms', label: 'فعال‌سازی ارسال پیامک', type: 'checkbox', def: '0' },
   { key: 'sms_provider', group: 'sms', label: 'سرویس‌دهنده پیامک', type: 'select', def: 'log', options: [['log', 'آزمایشی (فقط ثبت در گزارش، بدون ارسال)'], ['ippanel', 'ippanel (edge.ippanel.com)']], hint: 'در حالت آزمایشی هیچ پیامکی ارسال نمی‌شود و فقط در گزارش پیامک‌ها ثبت می‌شود.' },
@@ -125,11 +156,11 @@ DEFS.push(...birthdayDefs());
  */
 const SUPER_KEYS = new Set(['show_demo_logins', 'otp_demo_show_code']);
 for (const d of DEFS) {
-  d.super = d.group === 'security' || d.group === 'system' || SUPER_KEYS.has(d.key)
+  d.super = d.group === 'security' || d.group === 'system' || d.group === 'offsite' || SUPER_KEYS.has(d.key)
     || (d.group === 'sms' && !/^sms_on_/.test(d.key)) || /^bd_(pattern|params)_/.test(d.key);
 }
 const isSuperKey = (key) => { const d = DEFS.find((x) => x.key === key); return !!(d && d.super); };
-const GROUPS = { general: 'اطلاعات مدرسه', academic: 'تنظیمات آموزشی', reportcard: 'کارنامه و قالب چاپ', attendance: 'حضور و غیاب', tickets: 'تیکت‌ها', students: 'دانش‌آموزان', birthday: 'تولد و تبریک', finance: 'مالی', hr: 'منابع انسانی', sms: 'پیامک (ippanel)', security: 'امنیت', appearance: 'ظاهر', system: 'نگهداری و پشتیبان' };
+const GROUPS = { general: 'اطلاعات مدرسه', academic: 'تنظیمات آموزشی', reportcard: 'کارنامه و قالب چاپ', attendance: 'حضور و غیاب', tickets: 'تیکت‌ها', students: 'دانش‌آموزان', birthday: 'تولد و تبریک', finance: 'مالی', hr: 'منابع انسانی', sms: 'پیامک (ippanel)', security: 'امنیت', appearance: 'ظاهر', system: 'نگهداری و پشتیبان', offsite: 'پشتیبان بیرونی' };
 
 let cache = null;
 async function load() {

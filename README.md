@@ -57,12 +57,12 @@ src/lib/gradesCalc.js  محاسبه میانگین، معدل و رتبه
 views/                 قالب‌های EJS
 public/                CSS، JS، فونت وزیرمتن
 data/                  تنظیمات، SQLite، فایل‌های بارگذاری‌شده (خارج از Git)
-docs/                  امکانات و راهنمای cPanel
+docs/                  امکانات، راهنمای cPanel، سوپر ادمین، پشتیبان بیرونی و کارایی
 test/smoke.test.js     تست یکپارچه (نصب، نقش‌ها، سناریوها)
 ```
 
 ## پیکربندی
-تنظیمات نصب در `data/config.json` ذخیره می‌شود؛ متغیرهای محیطی (`DB_*`, `BASE_PATH`, `SESSION_SECRET`, `SCHOOL_DATA_DIR`, `SECURE_COOKIES`) اولویت دارند. جزئیات در [docs/CPANEL.md](docs/CPANEL.md).
+تنظیمات نصب در `data/config.json` ذخیره می‌شود؛ متغیرهای محیطی (`DB_*`, `BASE_PATH`, `SESSION_SECRET`, `SCHOOL_DATA_DIR`, `SECURE_COOKIES`, `TRUST_PROXY`, `DOMAIN_LOCK`) اولویت دارند. جزئیات در [docs/CPANEL.md](docs/CPANEL.md).
 
 ساخت سوپر ادمین: `npm run super:create -- <user> <pass>` (یا هنگام نصب / `/super/setup`).
 

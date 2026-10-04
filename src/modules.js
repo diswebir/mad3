@@ -85,11 +85,14 @@ const MODULES = [
   { key: 'settings', title: 'تنظیمات و کاربران', icon: 'settings', core: true, desc: 'تنظیمات مدرسه، کاربران، ماژول‌ها', nav: [
     { label: 'کاربران', href: '/users', icon: 'users', roles: ['admin'], section: 'system' },
     { label: 'تنظیمات', href: '/settings', icon: 'settings', roles: ['admin'], section: 'system' },
+    { label: 'امنیت و قفل‌ها', href: '/security', icon: 'shield-check', roles: ['admin'], section: 'system' },
     ] },
   { key: 'superadmin', title: 'پنل سوپر ادمین', icon: 'shield-check', core: true, hidden: true, desc: 'قفل دامنه، ماژول‌ها، پیامک و تنظیمات فنی (فقط سوپر ادمین)', nav: [
     { label: 'پنل سوپر ادمین', href: '/super', icon: 'shield-check', roles: ['admin'], section: 'super', super: true },
     { label: 'ماژول‌ها', href: '/modules', icon: 'puzzle', roles: ['admin'], section: 'super', super: true },
     { label: 'قفل دامنه', href: '/super/domain', icon: 'lock', roles: ['admin'], section: 'super', super: true },
+    { label: 'پشتیبان بیرونی', href: '/super/offsite', icon: 'cloud-upload', roles: ['admin'], section: 'super', super: true },
+    { label: 'سلامت و کارایی', href: '/super/health', icon: 'activity', roles: ['admin'], section: 'super', super: true },
     { label: 'تنظیمات فنی و پیامک', href: '/settings?tab=sms', icon: 'smartphone', roles: ['admin'], section: 'super', super: true },
     { label: 'پرونده‌ی فروش و پشتیبانی', href: '/super/billing', icon: 'wallet', roles: ['admin'], section: 'super', super: true }] },
 ];

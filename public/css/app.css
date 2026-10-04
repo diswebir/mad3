@@ -339,3 +339,34 @@ button.is-busy::after{content:"";display:inline-block;width:.9em;height:.9em;mar
 .to-top[hidden]{display:none}
 @media print{.to-top,.skip-link{display:none!important}}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;transition-duration:.01ms!important;scroll-behavior:auto!important}}
+
+/* ===== v2.3.1: انتخاب قفل دامنه در ویزارد ===== */
+.dl-pick{border:1px solid var(--border);border-radius:12px;padding:.8rem 1rem;margin-top:1rem;display:grid;gap:.5rem}
+.dl-pick legend{padding:0 .5rem;font-weight:700;display:flex;gap:.3rem;align-items:center}
+.dl-pick label{display:flex;gap:.5rem;align-items:flex-start;cursor:pointer;line-height:1.8}
+.dl-pick input{margin-top:.5rem}
+
+/* ---- صفحه‌ی ساخت سوپر ادمین ---- */
+.auth.setup .hero{gap:1.1rem}.auth.setup .hero p{opacity:.92;max-width:34rem;line-height:1.9}
+.logo-badge{width:68px;height:68px;border-radius:20px;background:rgba(255,255,255,.16);display:grid;place-items:center;box-shadow:inset 0 0 0 1px rgba(255,255,255,.25)}
+.steps{list-style:none;margin:.4rem 0 0;padding:0;display:grid;gap:.8rem;position:relative}
+.steps li{display:flex;gap:.8rem;align-items:center;opacity:.6}.steps li.on{opacity:1}
+.steps .n{width:2.1rem;height:2.1rem;border-radius:50%;background:rgba(255,255,255,.18);display:grid;place-items:center;font-weight:700;flex:none;box-shadow:inset 0 0 0 1px rgba(255,255,255,.3)}
+.steps li.on .n{background:#fff;color:var(--primary)}.steps small{display:block;opacity:.85;font-size:.8rem}
+.once{margin-top:auto;padding:.7rem .9rem;border-radius:12px;background:rgba(0,0,0,.18);font-size:.85rem;display:flex;gap:.5rem;align-items:center}
+.auth.setup .box .inner{max-width:440px}
+.auth.setup .field label{display:flex;align-items:center;gap:.35rem}
+.how{margin-top:.45rem;font-size:.85rem;border:1px dashed var(--border);border-radius:10px;padding:.4rem .7rem;background:var(--bg-soft,rgba(0,0,0,.02))}
+.how summary{cursor:pointer;color:var(--primary);font-weight:600}.how ul{margin:.3rem 0;padding-inline-start:1.1rem;line-height:1.9}.how p{margin:.4rem 0}
+.how code{background:rgba(0,0,0,.06);padding:.1rem .45rem;border-radius:6px;font-size:.82rem;user-select:all}
+.hint{font-size:.78rem;color:var(--muted);margin-top:.3rem}.hint.bad{color:var(--red)}.hint.good{color:var(--green,#16a34a)}
+.pw-meter{margin-top:.5rem}.pw-meter .bar{height:6px;border-radius:99px;background:var(--border);overflow:hidden}
+.pw-meter .bar i{display:block;height:100%;width:0;border-radius:99px;background:var(--red);transition:width .25s,background .25s}
+.pw-meter .lbl{font-size:.78rem;margin-top:.3rem;color:var(--muted)}
+.pw-meter .rules{list-style:none;margin:.4rem 0 0;padding:0;display:grid;grid-template-columns:1fr 1fr;gap:.15rem .8rem;font-size:.78rem;color:var(--muted)}
+.pw-meter .rules li::before{content:"○";margin-inline-end:.35rem}.pw-meter .rules li.ok{color:var(--green,#16a34a)}.pw-meter .rules li.ok::before{content:"✔"}
+.pw-meter[data-level="1"] .bar i{width:25%;background:var(--red)}.pw-meter[data-level="2"] .bar i{width:50%;background:#f59e0b}
+.pw-meter[data-level="3"] .bar i{width:75%;background:#65a30d}.pw-meter[data-level="4"] .bar i{width:100%;background:#16a34a}
+@media(max-width:1000px){.auth.setup .hero{display:none}.auth.setup .box{padding:1.2rem}}
+.auth.setup .field{margin-bottom:1.05rem}.auth.setup .field>input+.how,.auth.setup .field>input+.hint{margin-top:.45rem}
+.how code{direction:ltr;unicode-bidi:isolate;display:inline-block}

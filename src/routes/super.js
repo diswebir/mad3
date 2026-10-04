@@ -2,6 +2,8 @@
 /** پنل «سوپر ادمین»: قفل دامنه، ماژول‌ها، پیامک، حالت تعمیر، پرونده‌ی فروش و پشتیبانی. مدیر مدرسه به هیچ‌کدام دسترسی ندارد. */
 const express = require('express');
 const os = require('os');
+const fs = require('fs');
+const path = require('path');
 const db = require('../db');
 const config = require('../config');
 const settings = require('../settings');
@@ -15,7 +17,7 @@ const { requireRole, requireSuper } = require('../middleware');
 const router = express.Router();
 
 /* ---------- راه‌اندازی اولیه‌ی سوپر ادمین (فقط وقتی هنوز وجود ندارد؛ با توکن فایل سرور) ---------- */
-const tries = new Map();
+const RL = require('../lib/ratelimit');
 function setup(r) {
   r.get('/super/setup', async (req, res, next) => {
     try {
@@ -27,12 +29,11 @@ function setup(r) {
     try {
       const k = db.get(); const b = req.body; const ip = req.ip || '';
       if (await SA.exists(k)) return res.status(404).view('error', { code: 404, title: 'صفحه یافت نشد', message: 'نشانی درخواستی وجود ندارد.' }, 'bare');
-      const now = Date.now(); const rec = (tries.get(ip) || []).filter((t) => now - t < 600000);
-      if (rec.length >= 5) { tries.set(ip, rec); return res.status(429).view('super/setup', { title: 'ساخت حساب سوپر ادمین', error: 'تلاش‌های ناموفق زیاد بود؛ چند دقیقه بعد دوباره امتحان کنید.', vals: {} }, 'bare'); }
-      const fail = (error) => { rec.push(now); tries.set(ip, rec); return res.view('super/setup', { title: 'ساخت حساب سوپر ادمین', error, vals: { username: b.username } }, 'bare'); };
-      if (!SA.tokenOk(b.token)) return fail('توکن راه‌اندازی نادرست است. محتوای فایل data/super-setup.token را وارد کنید.');
-      if (b.password !== b.password2) return fail('تکرار رمز عبور مطابقت ندارد.');
-      try { await SA.create(k, { username: String(b.username || ''), password: String(b.password || ''), full_name: 'سوپر ادمین' }); } catch (e) { return fail(e.message); }
+      if ((await RL.status('super_setup', RL.normIp(ip))).locked) { return res.status(429).view('super/setup', { title: 'ساخت حساب سوپر ادمین', error: 'تلاش‌های ناموفق زیاد بود؛ ده دقیقه بعد دوباره امتحان کنید.', vals: {} }, 'bare'); }
+      const fail = async (error) => { await RL.fail('super_setup', RL.normIp(ip), { limit: 5, windowMs: 600000, lockMs: 600000, progressive: false, ip }); return res.view('super/setup', { title: 'ساخت حساب سوپر ادمین', error, vals: { username: b.username } }, 'bare'); };
+      if (!SA.tokenOk(b.token)) return await fail('توکن راه‌اندازی نادرست است. محتوای فایل data/super-setup.token را وارد کنید.');
+      if (b.password !== b.password2) return await fail('تکرار رمز عبور مطابقت ندارد.');
+      try { await SA.create(k, { username: String(b.username || ''), password: String(b.password || ''), full_name: 'سوپر ادمین' }); } catch (e) { return await fail(e.message); }
       SA.removeToken();
       req.flash('success', 'حساب سوپر ادمین ساخته شد. اکنون وارد شوید.'); res.redirect('/login');
     } catch (e) { next(e); }
@@ -40,6 +41,56 @@ function setup(r) {
 }
 
 router.use('/super', requireRole('admin'), requireSuper);
+
+/* ---------- سلامت و کارایی ---------- */
+router.get('/super/health', async (req, res, next) => {
+  try {
+    const M = require('../lib/metrics'); const k = db.get(); const cfgNow = config.load(); const t0 = process.hrtime.bigint();
+    await k.raw('select 1'); const pingMs = Number(process.hrtime.bigint() - t0) / 1e6;
+    let dbBytes = null; if (cfgNow.db.client !== 'mysql') { try { dbBytes = fs.statSync(cfgNow.db.filename || path.join(config.DATA_DIR, 'school.sqlite')).size; } catch (_) { /* مسیر ناشناخته */ } }
+    let dirBytes = (d) => { let n = 0; try { for (const f of fs.readdirSync(d)) { const st = fs.statSync(path.join(d, f)); n += st.isFile() ? st.size : 0; } } catch (_) { /* ندارد */ } return n; };
+    const counts = {}; for (const t of ['users', 'students', 'attendance', 'tickets', 'audit_logs', 'sessions', 'rate_limits', 'notifications']) { try { counts[t] = Number((await k(t).count({ c: '*' }).first()).c); } catch (_) { counts[t] = null; } }
+    res.view('super/health', { title: 'سلامت و کارایی', m: M.snapshot(), pingMs, dbBytes, dbClient: cfgNow.db.client, counts, backupBytes: dirBytes(require('../lib/backupTools').DIR()), uploadBytes: dirBytes(path.join(config.DATA_DIR, 'uploads')), metricsOn: process.env.METRICS !== '0' });
+  } catch (e) { next(e); }
+});
+router.post('/super/health/reset', (req, res) => { require('../lib/metrics').reset(); req.flash('success', 'شمارنده‌های کارایی صفر شد.'); res.redirect('/super/health'); });
+
+/* ---------- پشتیبان بیرون از هاست ---------- */
+router.get('/super/offsite', async (req, res, next) => {
+  try {
+    const O = require('../lib/offsite'); const B = require('../lib/backupTools'); const c = O.cfg(); const st = O.state();
+    let remote = null; let remoteError = '';
+    if (req.query.remote === '1') { try { remote = await O.remoteList(); } catch (e) { remoteError = String(e.message || e).slice(0, 250); } }
+    const local = B.list().map((f) => ({ ...f, sent: st.uploaded[f.name] || null, wanted: c.kinds === 'all' || f.kind === 'auto' || (c.kinds === 'auto_manual' && f.kind === 'manual') }));
+    res.view('super/offsite', { title: 'پشتیبان بیرونی', c, st, errs: O.validate(c), local, remote, remoteError });
+  } catch (e) { next(e); }
+});
+router.post('/super/offsite/test', async (req, res, next) => {
+  try {
+    const r = await require('../lib/offsite').test(); await svc.audit(req, 'offsite_test', 'system', null, r.ok ? 'موفق' : r.error);
+    req.flash(r.ok ? 'success' : 'error', r.ok ? `اتصال موفق بود (${r.label}، ${r.ms} میلی‌ثانیه؛ ${r.remoteCount} نسخه در مقصد).` : 'اتصال ناموفق: ' + r.error); res.redirect('/super/offsite');
+  } catch (e) { next(e); }
+});
+router.post('/super/offsite/sync', async (req, res, next) => {
+  try {
+    const O = require('../lib/offsite'); const B = require('../lib/backupTools');
+    if (!O.cfg().enabled) { req.flash('error', 'ابتدا ارسال بیرونی را در تنظیمات فعال کنید.'); return res.redirect('/super/offsite'); }
+    let r;
+    if (req.body.fresh === '1') { const f = await B.save(db.get(), 'manual'); B.prune(); const p = await O.push(f.name); r = { sent: p.ok ? 1 : 0, failed: p.ok ? 0 : 1, error: p.error }; }
+    else r = await O.syncPending({ max: 5, force: req.body.force === '1' });
+    await svc.audit(req, 'offsite_sync', 'system', null, JSON.stringify(r));
+    if (r.skipped) req.flash('error', 'ارسال بیرونی غیرفعال است.');
+    else if (r.failed) req.flash('error', `ارسال ناموفق: ${r.error || (O.state().last_error || 'خطای نامشخص')}`);
+    else req.flash('success', r.sent ? `${r.sent} نسخه ارسال شد.` : 'نسخه‌ی ارسال‌نشده‌ای نبود.');
+    res.redirect('/super/offsite');
+  } catch (e) { next(e); }
+});
+router.post('/super/offsite/download', async (req, res, next) => {
+  try {
+    const r = await require('../lib/offsite').download(String(req.body.name || '')); await svc.audit(req, 'offsite_download', 'system', null, r.name);
+    req.flash('success', r.existed ? 'این نسخه از قبل در پوشه‌ی پشتیبان‌های سرور هست.' : 'نسخه دریافت و رمزگشایی شد؛ از صفحه‌ی «پشتیبان‌گیری» می‌توانید آن را بازیابی کنید.'); res.redirect('/backup');
+  } catch (e) { req.flash('error', String(e.message || e).slice(0, 250)); res.redirect('/super/offsite?remote=1'); }
+});
 
 /* ---------- پرونده‌ی فروش و پشتیبانی ---------- */
 const BKEYS = ['sa_client', 'sa_contact', 'sa_sale_price', 'sa_sale_date', 'sa_plan', 'sa_plan_fee', 'sa_next_due', 'sa_notes'];
@@ -96,7 +147,7 @@ router.post('/super/domain/remove', async (req, res, next) => {
   try {
     const h = DL.normalize(req.body.host); const st = DL.state(); const cur = DL.normalize(req.headers.host);
     const rest = st.hosts.filter((x) => x !== h);
-    if (!rest.length || (h === cur && !rest.includes(cur))) { req.flash('error', h === cur ? 'این دامنه همین‌جاست؛ حذف آن شما را بیرون می‌اندازد. ابتدا دامنه‌ی جایگزین را اضافه کنید، سپس از آن دامنه این را حذف کنید.' : 'دست‌کم یک دامنه باید باقی بماند (یا قفل را غیرفعال کنید).'); return res.redirect('/super/domain'); }
+    if (!rest.length || (DL.allowed(cur, st.hosts) && !DL.allowed(cur, rest))) { req.flash('error', DL.matches(cur, h) ? 'این دامنه همین‌جاست؛ حذف آن شما را بیرون می‌اندازد. ابتدا دامنه‌ی جایگزین را اضافه کنید، سپس از آن دامنه این را حذف کنید.' : 'دست‌کم یک دامنه باید باقی بماند (یا قفل را غیرفعال کنید).'); return res.redirect('/super/domain'); }
     await saveLock(req, res, { enabled: true, hosts: rest }, `دامنه‌ی «${h}» حذف شد.`, `حذف دامنه: ${h}`);
   } catch (e) { next(e); }
 });

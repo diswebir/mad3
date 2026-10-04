@@ -5,8 +5,31 @@ const db = require('./db');
 const settings = require('./settings');
 const { invalidateBadges } = require('./middleware');
 
-const hash = (p) => bcrypt.hashSync(p, 10);
-const verify = (p, h) => bcrypt.compareSync(p, h);
+/**
+ * هش رمز عبور: scrypt (کتابخانه‌ی داخلی Node، اجرای بومی در thread pool؛ حلقه‌ی رویداد را قفل نمی‌کند).
+ * قالب: $s1$N$r$salt$hash. هش‌های قدیمی bcrypt ($2a/$2b) هنوز تأیید می‌شوند و با اولین ورود موفق به‌صورت خودکار ارتقا می‌یابند.
+ */
+const crypto0 = require('crypto'); const { promisify } = require('util'); const scryptAsync = promisify(crypto0.scrypt);
+const SC = { N: 16384, r: 8, p: 1, keylen: 32 };
+const sopts = (N, r) => ({ N, r, p: SC.p, maxmem: 128 * N * r * 2 });
+const legacy = (h) => /^\$2[aby]\$/.test(String(h || ''));
+function hash(p) { const salt = crypto0.randomBytes(16); const dk = crypto0.scryptSync(String(p), salt, SC.keylen, sopts(SC.N, SC.r)); return `$s1$${SC.N}$${SC.r}$${salt.toString('base64')}$${dk.toString('base64')}`; }
+async function hashAsync(p) { const salt = crypto0.randomBytes(16); const dk = await scryptAsync(String(p), salt, SC.keylen, sopts(SC.N, SC.r)); return `$s1$${SC.N}$${SC.r}$${salt.toString('base64')}$${dk.toString('base64')}`; }
+const parse = (h) => { const m = /^\$s1\$(\d+)\$(\d+)\$([A-Za-z0-9+/=]+)\$([A-Za-z0-9+/=]+)$/.exec(String(h || '')); return m ? { N: Number(m[1]), r: Number(m[2]), salt: Buffer.from(m[3], 'base64'), dk: Buffer.from(m[4], 'base64') } : null; };
+function verify(p, h) {
+  if (legacy(h)) return bcrypt.compareSync(String(p || ''), h);
+  const x = parse(h); if (!x) return false;
+  const dk = crypto0.scryptSync(String(p || ''), x.salt, x.dk.length, sopts(x.N, x.r)); return dk.length === x.dk.length && crypto0.timingSafeEqual(dk, x.dk);
+}
+// نسخه‌ی ناهمگام (برای ورود): بدون قفل‌کردن حلقه‌ی رویداد. برای نام کاربری ناموجود/بدون هش هم یک بررسی کامل انجام می‌شود تا زمان پاسخ وجود حساب را لو ندهد.
+async function verifyAsync(p, h) {
+  p = String(p || '');
+  if (legacy(h)) return bcrypt.compare(p, h);
+  const x = parse(h) || parse(DUMMY); const dk = await scryptAsync(p, x.salt, x.dk.length, sopts(x.N, x.r));
+  return !!parse(h) && dk.length === x.dk.length && crypto0.timingSafeEqual(dk, x.dk);
+}
+const needsRehash = (h) => legacy(h);
+const DUMMY = hash('dummy-password-for-timing');
 function randomPassword(len = 8) {
   const chars = 'abcdefghjkmnpqrstuvwxyzACDEFGHJKLMNPQRTUVWXYZ23456789';
   let s = ''; const b = crypto.randomBytes(len);
@@ -110,4 +133,4 @@ function audienceFilter(qb, user, classIds, alias = 't', hasClass = true) {
   });
 }
 
-module.exports = { gradeScope, killSessions, audienceFilter, canViewTicket, nowStr, hash, verify, randomPassword, randomDigits, audit, notify, managerIds, accessibleClassIds, homeroomClassIds, nextStudentCode, uniqueUsername, validNationalId, validPhone, validTime };
+module.exports = { verifyAsync, hashAsync, needsRehash, gradeScope, killSessions, audienceFilter, canViewTicket, nowStr, hash, verify, randomPassword, randomDigits, audit, notify, managerIds, accessibleClassIds, homeroomClassIds, nextStudentCode, uniqueUsername, validNationalId, validPhone, validTime };

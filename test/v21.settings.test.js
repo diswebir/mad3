@@ -17,7 +17,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
     assert.deepStrictEqual(tabs.slice().sort(), Object.keys(settings.GROUPS).sort(), 'هر گروه باید تب داشته باشد');
     for (const tb of tabs) {
       const r = await sup.get('/settings?tab=' + tb); assert.strictEqual(r.status, 200, tb); assert.ok(new RegExp(`data-tab="${tb}" class?`).test(r.text) || r.text.includes(`name="_group" value="${tb}"`), tb);
-      const names = [...r.text.matchAll(/<(?:input|select|textarea)[^>]*\bname="([a-z_]+)"/g)].map((m) => m[1]).filter((n) => !['_csrf', '_group', 'logo'].includes(n));
+      const names = [...r.text.matchAll(/<(?:input|select|textarea)[^>]*\bname="([a-z0-9_]+)"/g)].map((m) => m[1]).filter((n) => !['_csrf', '_group', 'logo'].includes(n));
       const own = settings.DEFS.filter((d) => d.group === tb && d.type !== 'hidden').map((d) => d.key);
       for (const n of names) assert.ok(own.includes(n) || n === 'confirm_orphans' || n === 'q', `فیلد ${n} در تب ${tb} نباید باشد`);
       if (tb !== 'system') for (const o of own) assert.ok(names.includes(o), `فیلد ${o} در تب ${tb} نیست`);

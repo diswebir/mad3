@@ -1,20 +1,37 @@
-<div class="auth">
+<div class="auth setup">
   <div class="hero">
-    <div class="logo" style="width:64px;height:64px;border-radius:18px;background:rgba(255,255,255,.18);display:grid;place-items:center"><%- icon('shield-check', 30) %></div>
+    <div class="logo-badge"><%- icon('shield-check', 32) %></div>
     <h1>ساخت حساب سوپر ادمین</h1>
-    <p>حسابی بالاتر از مدیر مدرسه، برای تنظیمات فنی و قفل دامنه</p>
+    <p>حسابی بالاتر از مدیر مدرسه؛ فقط صاحب سامانه به آن دسترسی دارد و تنظیمات فنی، ماژول‌ها، قفل دامنه، پشتیبان‌گیری و پرونده‌ی پشتیبانی را اداره می‌کند.</p>
+    <ol class="steps">
+      <li class="on"><span class="n">۱</span><div><b>اثبات مالکیت سرور</b><small>توکنی که فقط روی هاست خوانده می‌شود</small></div></li>
+      <li class="on"><span class="n">۲</span><div><b>نام کاربری و رمز</b><small>رمزی متفاوت از رمز مدیر مدرسه</small></div></li>
+      <li><span class="n">۳</span><div><b>ورود و راه‌اندازی</b><small>قفل دامنه و پشتیبان را تنظیم کنید</small></div></li>
+    </ol>
+    <div class="once"><%- icon('lock', 16) %> این صفحه فقط یک بار کار می‌کند؛ پس از ساخت حساب برای همیشه بسته می‌شود.</div>
   </div>
   <div class="box"><div class="inner">
     <h2>راه‌اندازی یک‌باره</h2>
-    <p class="muted">توکن راه‌اندازی در فایل <span class="ltr">data/super-setup.token</span> روی سرور ذخیره شده است. پس از ساخت حساب، این صفحه برای همیشه بسته می‌شود.</p>
+    <p class="muted" style="margin-top:0">اطلاعات حساب مالک سامانه را وارد کنید.</p>
     <% if (error) { %><div class="alert error"><%- icon('circle-x', 18) %><div><%= error %></div></div><% } %>
-    <form method="post" action="<%= u('/super/setup') %>" autocomplete="off">
+    <form method="post" action="<%= u('/super/setup') %>" autocomplete="off" id="setupForm" novalidate>
       <input type="hidden" name="_csrf" value="<%= csrf %>">
-      <div class="field"><label>توکن راه‌اندازی</label><input class="ltr" name="token" required autocomplete="off"></div>
-      <div class="field"><label>نام کاربری سوپر ادمین</label><input class="ltr" name="username" required value="<%= vals.username || '' %>" autocomplete="off"></div>
-      <div class="field"><label>رمز عبور (حداقل ۸ نویسه)</label><input class="ltr" type="password" name="password" required minlength="8" autocomplete="new-password"></div>
-      <div class="field"><label>تکرار رمز عبور</label><input class="ltr" type="password" name="password2" required autocomplete="new-password"></div>
-      <button class="btn primary block" type="submit" style="margin-top:1rem"><%- icon('shield-check', 17) %> ساخت حساب</button>
+      <div class="field"><label for="st-token"><%- icon('key-round', 15) %> توکن راه‌اندازی</label><input id="st-token" type="text" class="ltr" name="token" required autocomplete="off" spellcheck="false" placeholder="۳۲ نویسه‌ی لاتین/عدد" data-token-clean="1" maxlength="64">
+        <details class="how"><summary>توکن را از کجا بیاورم؟</summary>
+          <p>روی سرور فایلی با این مسیر ساخته شده که فقط شما به آن دسترسی دارید:</p>
+          <p><code class="ltr">data/super-setup.token</code></p>
+          <ul><li><b>cPanel:</b> مدیریت فایل ← پوشه‌ی برنامه ← <span class="ltr">data</span> ← فایل را باز (Edit) کنید و متن را کپی کنید.</li>
+            <li><b>SSH:</b> <code class="ltr">cat data/super-setup.token</code></li></ul>
+          <p class="muted small">اگر ترجیح می‌دهید از صفحه‌ی وب استفاده نکنید: <code class="ltr">npm run super:create -- USER PASS</code></p></details></div>
+      <div class="field"><label for="st-user"><%- icon('user', 15) %> نام کاربری</label><input id="st-user" type="text" class="ltr" name="username" required value="<%= vals.username || '' %>" autocomplete="off" spellcheck="false" pattern="[A-Za-z0-9_.\-]{3,30}" placeholder="مثلاً owner" data-user-check="1">
+        <div class="hint" id="st-user-hint">۳ تا ۳۰ نویسه‌ی لاتین، عدد، نقطه، خط تیره یا زیرخط. از «admin» استفاده نکنید.</div></div>
+      <div class="field"><label for="st-pass"><%- icon('lock', 15) %> رمز عبور</label><input id="st-pass" class="ltr" type="password" name="password" required minlength="8" autocomplete="new-password" data-pw-meter="pwMeter">
+        <div class="pw-meter" id="pwMeter" aria-live="polite"><div class="bar"><i></i></div><div class="lbl">قدرت رمز: <b>—</b></div>
+          <ul class="rules"><li data-rule="len">حداقل ۸ نویسه</li><li data-rule="mix">ترکیب حرف و عدد</li><li data-rule="case">حرف کوچک و بزرگ</li><li data-rule="sym">یک نماد (مثل # یا !)</li></ul></div></div>
+      <div class="field"><label for="st-pass2"><%- icon('lock-keyhole', 15) %> تکرار رمز عبور</label><input id="st-pass2" class="ltr" type="password" name="password2" required autocomplete="new-password" data-match="st-pass">
+        <div class="hint" id="st-match" hidden></div></div>
+      <button class="btn primary block" type="submit" style="margin-top:1rem"><%- icon('shield-check', 17) %> ساخت حساب و ادامه</button>
     </form>
+    <p class="muted small" style="margin-top:1rem;text-align:center">رمز را در جای امن نگه دارید؛ بازیابی آن فقط با دسترسی به سرور ممکن است: <bdi class="ltr">create-super.js --change</bdi></p>
   </div></div>
 </div>

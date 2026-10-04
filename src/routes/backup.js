@@ -20,7 +20,7 @@ router.get('/backup', async (req, res, next) => {
   try {
     const k = db.get(); const counts = {};
     for (const t of ['users', 'students', 'teachers', 'attendance', 'tickets']) counts[t] = Number((await k(t).count({ c: '*' }).first()).c);
-    res.view('backup/index', { title: 'پشتیبان‌گیری', counts, sqlite: config.load().db.client !== 'mysql', files: B.list(), autoOn: settings.bool('auto_backup_enabled'), keep: settings.num('auto_backup_keep') || 7, lastAuto: B.list().find((f) => f.kind === 'auto') || null });
+    res.view('backup/index', { title: 'پشتیبان‌گیری', off: (() => { const o = require('../lib/offsite'); const st = o.state(); return { on: o.cfg().enabled, type: o.cfg().type, ok: st.last_ok_at, err: st.last_error }; })(), counts, sqlite: config.load().db.client !== 'mysql', files: B.list(), autoOn: settings.bool('auto_backup_enabled'), keep: settings.num('auto_backup_keep') || 7, lastAuto: B.list().find((f) => f.kind === 'auto') || null });
   } catch (e) { next(e); }
 });
 router.post('/backup/download', async (req, res, next) => {
@@ -32,7 +32,9 @@ router.post('/backup/download', async (req, res, next) => {
 router.post('/backup/now', async (req, res, next) => {
   try {
     const r = await B.save(db.get(), 'manual'); B.prune(); await svc.audit(req, 'backup', 'system', null, `ذخیره روی سرور: ${r.name}`);
-    req.flash('success', 'پشتیبان روی سرور ذخیره شد.'); res.redirect('/backup');
+    const off = require('../lib/offsite'); let extra = '';
+    if (off.cfg().enabled) { const o = await off.afterSave(r.name); if (o) extra = o.ok ? ' و به مقصد بیرونی هم ارسال شد.' : ' ولی ارسال بیرونی ناموفق بود: ' + o.error; }
+    req.flash(extra.includes('ناموفق') ? 'warn' : 'success', 'پشتیبان روی سرور ذخیره شد' + (extra || '.')); res.redirect('/backup');
   } catch (e) { next(e); }
 });
 router.get('/backup/files/:name', (req, res) => {
@@ -70,7 +72,7 @@ router.post('/backup/restore', (req, res, next) => {
       if (err || !req.file) { req.flash('error', 'فایل پشتیبان را انتخاب کنید.'); return res.redirect('/backup'); }
       if (req.query._csrf !== req.session.csrf) return res.status(403).view('error', { code: 403, title: 'درخواست نامعتبر', message: 'نشانه امنیتی نامعتبر است.' });
       if (req.body.confirm !== 'RESTORE') { req.flash('error', 'برای تأیید، عبارت RESTORE را تایپ کنید.'); return res.redirect('/backup'); }
-      let data; try { data = B.read(req.file.buffer); } catch (_) { req.flash('error', 'فایل JSON معتبر نیست.'); return res.redirect('/backup'); }
+      let data; try { data = B.read(req.file.buffer, req.body.passphrase); } catch (e) { req.flash('error', /عبارت رمز|رمزنگاری/.test(e.message) ? e.message : 'فایل پشتیبان معتبر نیست.'); return res.redirect('/backup'); }
       if (!B.validShape(data)) { req.flash('error', 'این فایل، پشتیبان این سامانه نیست.'); return res.redirect('/backup'); }
       await doRestore(req, res, data, 'upload');
     } catch (e) { next(e); }

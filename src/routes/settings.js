@@ -17,7 +17,7 @@ router.use(['/settings/system', '/settings/cron'], requireSuper);
 const TABS = [
   ['general', 'اطلاعات مدرسه', 'school'], ['academic', 'آموزشی', 'graduation-cap'], ['reportcard', 'کارنامه', 'file-text'], ['attendance', 'حضور و غیاب', 'calendar-check'],
   ['tickets', 'تیکت‌ها', 'life-buoy'], ['students', 'دانش‌آموزان', 'users'], ['birthday', 'تولد', 'cake'], ['finance', 'مالی', 'wallet'], ['hr', 'منابع انسانی', 'user-cog'],
-  ['sms', 'پیامک و کد تأیید', 'smartphone'], ['security', 'امنیت', 'shield-check'], ['appearance', 'ظاهر و ورود', 'palette'], ['system', 'نگهداری، پشتیبان و cron', 'database-backup'],
+  ['sms', 'پیامک و کد تأیید', 'smartphone'], ['security', 'امنیت', 'shield-check'], ['appearance', 'ظاهر و ورود', 'palette'], ['system', 'نگهداری، پشتیبان و cron', 'database-backup'], ['offsite', 'پشتیبان بیرونی', 'cloud-upload'],
 ];
 /** تنظیمات قابل‌دسترسی کاربر: مدیر مدرسه فقط کلیدهای غیر super را می‌بیند */
 const defsOf = (tab, user) => settings.DEFS.filter((d) => d.type !== 'hidden' && d.group === tab && (!d.super || (user && user.isSuper)));
@@ -57,6 +57,11 @@ function collect(req, defs) {
       if (d.key === 'sms_otp_param' && !/^[A-Za-z_]\w{0,30}$/.test(v || '')) { errors.push('«نام متغیر کد» باید لاتین باشد (مثل code).'); continue; }
       if (d.key === 'sms_from_number' && v && !/^\+?\d{3,15}$/.test(v)) { errors.push('«شماره ارسال‌کننده» نامعتبر است (مثل +983000505).'); continue; }
       if (d.key === 'sms_base_url' && v && !/^https?:\/\/[^\s]+$/.test(v)) { errors.push('«نشانی پایه API» باید با http:// یا https:// شروع شود.'); continue; }
+      if (d.key === 'lock_trusted_ips' && v && !v.split(/[\s,;،]+/).filter(Boolean).every((x) => require('net').isIP(x))) { errors.push('«IPهای مورداعتماد» باید آدرس IP معتبر باشند (با ویرگول یا سطر جدا).'); continue; }
+      if (/^offsite_(s3_endpoint|dav_url)$/.test(d.key) && v && !/^https?:\/\/[^\s]+$/.test(v)) { errors.push(`«${d.label}» باید با http:// یا https:// شروع شود.`); continue; }
+      if (d.key === 'offsite_prefix' && v && !/^[A-Za-z0-9_\-/]{1,80}$/.test(v)) { errors.push('«پوشه/پیشوند» فقط حروف لاتین، عدد، - و _ و / می‌پذیرد.'); continue; }
+      if (d.key === 'offsite_passphrase' && v && v.length < 8) { errors.push('«عبارت رمز» حداقل ۸ نویسه باشد.'); continue; }
+      if (d.key === 'offsite_s3_bucket' && v && !/^[a-z0-9][a-z0-9.\-]{1,61}[a-z0-9]$/.test(v)) { errors.push('«نام Bucket» نامعتبر است (حروف کوچک لاتین، عدد، نقطه و خط تیره).'); continue; }
       if (d.key === 'term_weights' && v && !/^\d+(\.\d+)?(\s*[,،]\s*\d+(\.\d+)?)*$/.test(v)) { errors.push('«ضریب نوبت‌ها» باید مثل ۱,۲ باشد.'); continue; }
       if (d.key === 'rc_levels' && v && !v.split(/\r?\n/).filter(Boolean).every((l) => /^\d{1,3}\s*\|\s*\S+/.test(l.trim()))) { errors.push('«سطوح توصیفی» باید سطر به سطر به‌شکل «۹۰|عالی» باشد.'); continue; }
       if (d.type === 'number') { const n = Number(v); if (isNaN(n) || (d.min !== undefined && n < d.min) || (d.max !== undefined && n > d.max)) { errors.push(`«${d.label}» باید عددی بین ${d.min} و ${d.max} باشد.`); continue; } v = String(n); }
@@ -78,6 +83,7 @@ router.post('/settings', async (req, res, next) => {
     const defs = group ? defsOf(group, req.user) : settings.DEFS.filter((d) => d.type !== 'hidden' && (!d.super || req.user.isSuper));
     const { out, errors } = collect(req, defs); const tab = group || 'general';
     const mergedValues = { ...settings.all(), ...req.body };
+    if (!errors.length && group === 'offsite') { const O = require('../lib/offsite'); const c = O.cfg((k) => (k in out ? out[k] : settings.get(k))); if (c.enabled) errors.push(...O.validate(c)); }
     if (errors.length) return renderTab(req, res, tab, { errors, values: mergedValues });
     // تغییر روزهای هفته‌ی مدرسه: اگر ساعت‌های برنامه در روزهای حذف‌شده بمانند، تأیید صریح لازم است
     if (out.week_days !== undefined && out.week_days !== settings.get('week_days') && req.body.confirm_orphans !== '1') {

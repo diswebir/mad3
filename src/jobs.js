@@ -47,6 +47,8 @@ async function run() {
   }
   if (modules.isEnabled('grades')) await step('scores_autolock', () => require('./lib/scoreLock').autoLock());
   if (modules.isEnabled('backup')) await step('backup', async () => { const r = await require('./lib/backupTools').dailyJob(); return r ? r.name : null; });
+  if (modules.isEnabled('backup')) await step('offsite', async () => { const r = await require('./lib/offsite').syncPending(); return r.skipped ? 'off' : `${r.sent} ارسال، ${r.failed} ناموفق`; });
+  await step('ratelimit', () => require('./lib/ratelimit').purge());
   await step('fee_reminders', () => remindInstallments());
   if (modules.isEnabled('birthdays')) await step('birthdays', async () => { const r = await require('./lib/birthdays').run(); return r.skipped || r.sent; });
   return out;

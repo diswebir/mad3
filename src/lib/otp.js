@@ -13,9 +13,9 @@ const sms = require('./sms');
 const config = require('../config');
 const { toEn } = require('../utils/fa');
 
-const MAX_ATTEMPTS = 5; const COOLDOWN_MS = 60 * 1000; const PER_USER_HOUR = 5; const PER_IP_HOUR = 30;
-const ipHits = new Map(); const identHits = new Map();
-setInterval(() => { const n = Date.now(); for (const m of [ipHits, identHits]) for (const [k, v] of m) if (v.filter((t) => n - t < 3600000).length === 0) m.delete(k); }, 600000).unref();
+const RL = require('./ratelimit');
+/** حدها از تنظیمات سوپر ادمین (تب امنیت) خوانده می‌شوند؛ شمارنده‌ها در پایگاه‌داده‌اند */
+const lim = () => ({ maxAttempts: settings.num('otp_max_attempts') || 5, cooldownMs: (settings.num('otp_cooldown_seconds') || 60) * 1000, perUserHour: settings.num('otp_per_user_hour') || 5, perIpHour: settings.num('otp_per_ip_hour') || 30 });
 
 const ttlMs = () => (settings.num('otp_ttl_minutes') || 5) * 60000;
 const nowStr = (d = new Date()) => d.toISOString().replace('T', ' ').slice(0, 19);
@@ -29,12 +29,6 @@ const parentLoginOn = () => available() && settings.bool('sms_otp_parent_login')
 
 const hmac = (uid, purpose, code) => crypto.createHmac('sha256', String(config.load().sessionSecret || 'dev-secret')).update(`${uid}|${purpose}|${code}`).digest('hex');
 const safeEq = (a, b) => { const x = Buffer.from(a); const y = Buffer.from(b); return x.length === y.length && crypto.timingSafeEqual(x, y); };
-
-function hit(map, key, windowMs, limit) {
-  const n = Date.now(); const arr = (map.get(key) || []).filter((t) => n - t < windowMs);
-  if (arr.length >= limit) { map.set(key, arr); return false; }
-  arr.push(n); map.set(key, arr); return true;
-}
 
 /** پیدا کردن حساب بر اساس نام کاربری یا شماره‌ی موبایل */
 async function findUser(identifier, purpose) {
@@ -66,16 +60,17 @@ const mask = (e) => (e ? '0' + e.slice(3, 6) + '•••' + e.slice(-3) : '');
 async function request(purpose, identifier, ip) {
   if (!available()) return { ok: false, error: 'ارسال کد پیامکی در این مدرسه فعال نیست.' };
   const idKey = purpose + '|' + String(identifier || '').trim().toLowerCase();
-  if (!hit(ipHits, ip || '-', 3600000, PER_IP_HOUR)) return { ok: false, error: 'تعداد درخواست‌های شما زیاد بوده است؛ کمی بعد دوباره تلاش کنید.' };
-  const last = (identHits.get(idKey) || [])[0];
-  if (last && Date.now() - last < COOLDOWN_MS) return { ok: false, wait: Math.ceil((COOLDOWN_MS - (Date.now() - last)) / 1000), error: 'برای ارسال دوباره‌ی کد کمی صبر کنید.' };
-  identHits.set(idKey, [Date.now()]);
+  const L = lim();
+  const ipR = await RL.hit('otp_ip', RL.normIp(ip) || '-', { windowMs: 3600000, limit: L.perIpHour, ip });
+  if (!ipR.ok) return { ok: false, error: 'تعداد درخواست‌های شما زیاد بوده است؛ کمی بعد دوباره تلاش کنید.' };
+  const idR = await RL.hit('otp_ident', idKey, { windowMs: L.cooldownMs, limit: 1, ip });
+  if (!idR.ok) return { ok: false, wait: Math.ceil(idR.retryMs / 1000), error: 'برای ارسال دوباره‌ی کد کمی صبر کنید.' };
   const k = db.get(); const u = await findUser(identifier, purpose);
   if (!u) return { ok: true, uid: 0 };
   const phone = await phoneFor(u); if (!phone) return { ok: true, uid: 0 };
   const hourAgo = nowStr(new Date(Date.now() - 3600000));
   const recent = Number((await k('otp_codes').where({ user_id: u.id }).where('created_at', '>', hourAgo).count({ c: '*' }).first()).c);
-  if (recent >= PER_USER_HOUR) return { ok: true, uid: u.id, throttled: true };
+  if (recent >= L.perUserHour) return { ok: true, uid: u.id, throttled: true };
   await k('otp_codes').where({ user_id: u.id, purpose }).whereNull('used_at').update({ used_at: nowStr() });
   const code = String(crypto.randomInt(100000, 1000000));
   await k('otp_codes').insert({ user_id: u.id, purpose, code_hash: hmac(u.id, purpose, code), phone, expires_at: nowStr(new Date(Date.now() + ttlMs())), attempts: 0, ip: String(ip || '').slice(0, 60), created_at: nowStr() });
@@ -93,6 +88,7 @@ async function verify(purpose, uid, code) {
   if (!uid || code.length !== 6) return { ok: false, error: 'کد واردشده نادرست یا منقضی است.' };
   const row = await k('otp_codes').where({ user_id: uid, purpose }).whereNull('used_at').orderBy('id', 'desc').first();
   if (!row || row.expires_at < nowStr()) return { ok: false, error: 'کد واردشده نادرست یا منقضی است.' };
+  const MAX_ATTEMPTS = lim().maxAttempts;
   if (row.attempts >= MAX_ATTEMPTS) { await k('otp_codes').where({ id: row.id }).update({ used_at: nowStr() }); return { ok: false, error: 'تعداد تلاش‌ها بیش از حد مجاز بود. کد جدید درخواست کنید.' }; }
   if (!safeEq(hmac(uid, purpose, code), row.code_hash)) {
     await k('otp_codes').where({ id: row.id }).update({ attempts: row.attempts + 1 });
@@ -104,4 +100,4 @@ async function verify(purpose, uid, code) {
 
 async function cleanup() { return db.get()('otp_codes').where('created_at', '<', nowStr(new Date(Date.now() - 86400000))).del(); }
 
-module.exports = { available, parentLoginOn, request, verify, cleanup, findUser, phoneFor, mask, _reset: () => { ipHits.clear(); identHits.clear(); } };
+module.exports = { available, parentLoginOn, request, verify, cleanup, findUser, phoneFor, mask, _reset: () => db.get()('rate_limits').whereIn('bucket', ['otp_ip', 'otp_ident']).del() };

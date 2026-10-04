@@ -24,6 +24,9 @@ const seed = require('../src/seed');
   await settings.load(); await modules.load();
   if (!process.argv.includes('--no-demo')) await seed.seedDemo(k);
   config.markInstalled();
+  // دمو: قفل دامنه خاموش (وگرنه اولین درخواست غیر localhost — مثلاً پیش‌نمایش/پایش — دامنه را قفل می‌کند). با DOMAIN_LOCK=auto|manual می‌شود عوض کرد.
+  const lockMode = String(process.env.DOMAIN_LOCK || 'off').toLowerCase();
+  if (lockMode === 'off') await require('../src/lib/domainLock').write({ enabled: false, hosts: [], by: 'demo' }); else config.update({ domainLockMode: lockMode });
   console.log(`نصب انجام شد. ورود مدیر: ${admin.username} / ${admin.password}\nسوپر ادمین: ${superAdmin.username} / ${superAdmin.password}  (برای نصب واقعی حتماً SUPERADMIN_PASSWORD را تعیین کنید)`);
   await db.close(); process.exit(0);
 })().catch((e) => { console.error(e); process.exit(1); });

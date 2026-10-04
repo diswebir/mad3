@@ -6,23 +6,18 @@ const svc = require('../services');
 const J = require('../utils/jalali');
 const otp = require('../lib/otp');
 
-const attempts = new Map(); // key -> {count, until}
-function lockOne(key) {
-  const a = attempts.get(key);
-  if (a && a.until && a.until > Date.now()) return Math.ceil((a.until - Date.now()) / 60000);
-  if (a && a.until && a.until <= Date.now()) attempts.delete(key);
-  return 0;
+const RL = require('../lib/ratelimit');
+/** اعلان قفل‌شدن به مدیر و سوپر ادمین (اختیاری، در تنظیمات امنیت) */
+async function notifyLock(ev) {
+  try {
+    if (!settings.bool('lock_notify_admin')) return;
+    const ids = (await db.get()('users').whereIn('role', ['admin', 'superadmin']).where({ active: 1 }).select('id')).map((x) => x.id);
+    const who = ev.bucket === 'login_ip' ? 'کل یک IP' : ev.meta === 'otp' ? 'کد پیامکی' : `نام کاربری «${ev.meta || '؟'}»`;
+    await svc.notify(ids, 'قفل موقت ورود', `${who} به‌دلیل تلاش‌های ناموفق متعدد ${ev.minutes} دقیقه قفل شد (${String(ev.key).split('|')[0]}).`, '/security');
+  } catch (_) { /* اعلان اختیاری است */ }
 }
-// قفل هم برای «آدرس + نام کاربری» و هم برای کل آدرس IP (جلوگیری از حدس رمز با نام‌های کاربری متعدد)
-const lockInfo = (ip, user) => Math.max(lockOne(ip + '|' + user), lockOne('ip|' + ip));
-function bump(key, limit) {
-  const a = attempts.get(key) || { count: 0, until: 0 };
-  a.count++;
-  if (a.count >= limit) { a.until = Date.now() + (settings.num('lockout_minutes') || 10) * 60000; a.count = 0; }
-  attempts.set(key, a);
-}
-function fail(ip, user) { const max = settings.num('max_login_attempts') || 5; bump(ip + '|' + user, max); bump('ip|' + ip, max * 5); }
-setInterval(() => { const n = Date.now(); for (const [k, v] of attempts) if (v.until && v.until < n) attempts.delete(k); }, 600000).unref();
+const lockInfo = (ip, user) => RL.loginLocked(ip, user);
+const fail = (ip, user) => RL.loginFail(ip, user, notifyLock);
 
 module.exports = function (r) {
   // لوگوی مدرسه باید در صفحه ورود هم نمایش داده شود
@@ -43,13 +38,14 @@ module.exports = function (r) {
     try {
       const username = String(req.body.username || '').trim().toLowerCase();
       const password = String(req.body.password || '');
-      const locked = lockInfo(req.ip, username);
+      const locked = await lockInfo(req.ip, username);
       const render = (error) => res.status(401).view('auth/login', { title: 'ورود', demo: null, error, username, otpParent: otp.parentLoginOn() }, 'bare');
       if (locked) return render(`به دلیل تلاش‌های ناموفق متعدد، ورود تا ${locked} دقیقه دیگر مسدود است.`);
       const u = username ? await db.get()('users').whereRaw('lower(username) = ?', [username]).first() : null;
-      if (!u || !svc.verify(password, u.password_hash)) { fail(req.ip, username); await svc.audit({ ip: req.ip }, 'login_failed', 'user', null, username); return render('نام کاربری یا رمز عبور نادرست است.'); }
+      if (!(await svc.verifyAsync(password, u && u.password_hash)) || !u) { const f = await fail(req.ip, username); await svc.audit({ ip: req.ip }, 'login_failed', 'user', null, username); return render(f.locked ? `به دلیل تلاش‌های ناموفق متعدد، ورود تا ${f.minutes} دقیقه دیگر مسدود است.` : 'نام کاربری یا رمز عبور نادرست است.' + (f.attemptsLeft > 0 && f.attemptsLeft <= 2 ? ` (${f.attemptsLeft} تلاش دیگر تا قفل موقت)` : '')); }
       if (!u.active) return render('حساب کاربری شما غیرفعال است. با مدیریت مدرسه تماس بگیرید.');
-      attempts.delete(req.ip + '|' + username);
+      await RL.loginOk(req.ip, username);
+      if (svc.needsRehash(u.password_hash)) svc.hashAsync(password).then((h) => db.get()('users').where({ id: u.id }).update({ password_hash: h })).catch(() => {}); // ارتقای بی‌صدای هش bcrypt قدیمی به scrypt
       startSession(req, res, next, u, 'password');
     } catch (e) { next(e); }
   });
@@ -82,7 +78,7 @@ module.exports = function (r) {
       try {
         const o = req.session.otp; if (req.user || !o || o.purpose !== purpose || Date.now() - o.at > 30 * 60000) return res.redirect(base);
         const bad = (error) => verifyView(res.status(400), { error, demo: o.demo, masked: o.masked });
-        const lk = lockInfo(req.ip, 'otp'); if (lk) return bad(`به دلیل تلاش‌های ناموفق متعدد، تا ${lk} دقیقه دیگر مسدود هستید.`);
+        const lk = await lockInfo(req.ip, 'otp'); if (lk) return bad(`به دلیل تلاش‌های ناموفق متعدد، تا ${lk} دقیقه دیگر مسدود هستید.`);
         let pw = '';
         if (purpose === 'reset') {
           pw = String(req.body.password || ''); const min = settings.num('min_password_length') || 6;
@@ -90,9 +86,9 @@ module.exports = function (r) {
           if (pw !== String(req.body.password2 || '')) return bad('تکرار رمز عبور یکسان نیست.');
         }
         const v = await otp.verify(purpose, o.uid, req.body.code);
-        if (!v.ok) { fail(req.ip, 'otp'); return bad(v.error + (v.left !== undefined ? ` (${v.left} تلاش باقی مانده)` : '')); }
+        if (!v.ok) { await fail(req.ip, 'otp'); return bad(v.error + (v.left !== undefined ? ` (${v.left} تلاش باقی مانده)` : '')); }
         const usr = await db.get()('users').where({ id: o.uid }).first(); if (!usr || !usr.active) return bad('حساب کاربری فعال نیست.');
-        attempts.delete(req.ip + '|otp');
+        await RL.loginOk(req.ip, 'otp');
         if (purpose === 'reset') {
           await db.get()('users').where({ id: usr.id }).update({ password_hash: svc.hash(pw), must_change_password: 0 });
           await svc.killSessions(usr.id);

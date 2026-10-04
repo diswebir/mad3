@@ -41,6 +41,7 @@ async function forManager(u, today, school) {
   if (M('backup') && u.isSuper) {
     const list = backupTools.list(); const last = list.reduce((m, f) => Math.max(m, f.mtime || 0), 0); const old = !last || (Date.now() - last) > 7 * 86400000;
     add('backup', 'database-backup', 'پشتیبان‌گیری از سامانه (بیش از ۷ روز گذشته یا وجود ندارد)', old ? 1 : 0, '/backup', 'danger');
+    try { const O = require('./offsite'); if (O.cfg().enabled) { const st = O.state(); add('offsite', 'cloud-upload', 'ارسال پشتیبان به مقصد بیرونی ناموفق بوده است', st.last_error ? 1 : 0, '/super/offsite', 'danger'); } } catch (_) { /* اختیاری */ }
   }
   if (u.isSuper) { // یادآوری سررسید پشتیبانی (فقط سوپر ادمین)
     const st = settings.all(); const plan = st.sa_plan; const due = st.sa_next_due;

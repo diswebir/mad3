@@ -13,7 +13,7 @@ module.exports = function mountRoutes(r) {
   r.use(requireAuth);
   r.use(require('./parents').parentGuard);
   r.use(require('../permissions').guard);
-  const list = ['files', 'dashboard', 'profile', 'users', 'settings', 'students', 'teachers', 'classes', 'attendance', 'tickets', 'grades', 'homework', 'timetable', 'finance', 'library', 'reports', 'backup', 'super', 'audit', 'parents', 'scheduling', 'bells', 'holidays', 'birthdays', 'gradeimport', 'questions', 'messages', 'promotion', 'exits', 'analytics', 'hr', 'extras'];
+  const list = ['files', 'dashboard', 'profile', 'users', 'settings', 'students', 'teachers', 'classes', 'attendance', 'tickets', 'grades', 'homework', 'timetable', 'finance', 'library', 'reports', 'backup', 'super', 'audit', 'security', 'parents', 'scheduling', 'bells', 'holidays', 'birthdays', 'gradeimport', 'questions', 'messages', 'promotion', 'exits', 'analytics', 'hr', 'extras'];
   for (const name of list) { if (require('fs').existsSync(require('path').join(__dirname, name + '.js'))) r.use(require('./' + name)); }
   require('../resources').mountAll(r);
 };

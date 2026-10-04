@@ -12,6 +12,7 @@
     <form method="post" action="<%= u('/super/domain/add') %>" style="margin-top:1rem"><input type="hidden" name="_csrf" value="<%= csrf %>">
       <div class="field"><label>افزودن دامنه‌ی مجاز</label><div class="copy-row"><input class="ltr" type="text" name="host" placeholder="school.example.ir" required autocomplete="off"><button class="btn primary" type="submit"><%- icon('plus', 15) %> افزودن</button></div><div class="hint">بدون http:// ؛ «www.» به‌صورت خودکار معادل دامنه‌ی اصلی است.</div></div>
     </form>
+    <p class="muted small" style="margin-top:.5rem">الگوی زیردامنه هم پذیرفته می‌شود: <span class="ltr">*.example.ir</span> همه‌ی زیردامنه‌ها (نه خود example.ir) را مجاز می‌کند؛ مناسب سایت آزمایشی/پیش‌نمایش.</p>
     <% if (lock.hosts.indexOf(host) < 0) { %><form method="post" action="<%= u('/super/domain/add') %>"><input type="hidden" name="_csrf" value="<%= csrf %>"><input type="hidden" name="host" value="<%= host %>"><button class="btn" type="submit"><%- icon('check', 15) %> مجاز کردن دامنه‌ی فعلی (<span class="ltr"><%= host %></span>)</button></form><% } %>
   </div>
   <div class="card"><h3><%- icon('settings', 18) %> وضعیت قفل</h3>

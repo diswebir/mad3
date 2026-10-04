@@ -1,6 +1,7 @@
 'use strict';
 /** تست نسخه‌ی ۲٫۳ — سوپر ادمین: سطح دسترسی، تفکیک تنظیمات، قفل دامنه، حفاظت حساب، ساخت/تغییر رمز، پرونده‌ی فروش */
 const http = require('http'); const fs = require('fs'); const path = require('path'); const { spawnSync } = require('child_process');
+process.env.DOMAIN_LOCK = 'auto'; // رفتار نصب واقعی (اولین دامنه‌ی غیر از localhost قفل می‌شود)؛ نصب دمو به‌طور پیش‌فرض قفل را خاموش می‌کند
 const { boot, t, done, assert, flash, inproc, setSettings } = require('./helpers');
 
 const hreq = (base, p, host, method = 'GET', body) => new Promise((resolve, reject) => {

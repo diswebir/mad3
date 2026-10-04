@@ -9,9 +9,9 @@ const settings = require('../settings');
 const J = require('../utils/jalali');
 
 const DIR = () => path.join(config.DATA_DIR, 'backups');
-const SKIP = ['sessions', 'otp_codes']; // نشست‌ها و کدهای یک‌بارمصرف هرگز پشتیبان گرفته نمی‌شوند
+const SKIP = ['sessions', 'otp_codes', 'rate_limits']; // نشست‌ها، کدهای یک‌بارمصرف و قفل‌ها هرگز پشتیبان گرفته نمی‌شوند
 const tables = () => require('../schema').TABLES.filter((t) => !SKIP.includes(t));
-const secretKeys = () => settings.DEFS.filter((d) => d.type === 'secret').map((d) => d.key);
+const secretKeys = () => [...settings.DEFS.filter((d) => d.type === 'secret').map((d) => d.key), 'offsite_state']; // کلیدهای محرمانه و وضعیت ارسال بیرونی در پشتیبان نمی‌آیند و هنگام بازیابی حفظ می‌شوند
 const NAME_RE = /^(auto|manual|pre-promotion|pre-restore)-\d{8}-\d{6}\.json\.gz$/;
 
 /** محتوای کامل پایگاه داده. کلیدهای محرمانه (مثل کلید API پیامک) در فایل نمی‌آیند. */
@@ -45,7 +45,10 @@ function prune({ keepAuto = settings.num('auto_backup_keep') || 7, keepOther = 1
   return removed;
 }
 const pathOf = (name) => (NAME_RE.test(String(name)) ? path.join(DIR(), name) : null);
-function read(buf) { const raw = buf[0] === 0x1f && buf[1] === 0x8b ? zlib.gunzipSync(buf) : buf; return JSON.parse(raw.toString('utf8')); }
+function read(buf, pass) {
+  const BC = require('./backupCrypto'); if (BC.isEncrypted(buf)) buf = BC.decrypt(buf, pass); // نسخه‌ی رمزنگاری‌شده‌ی بیرونی (.enc)
+  const raw = buf[0] === 0x1f && buf[1] === 0x8b ? zlib.gunzipSync(buf) : buf; return JSON.parse(raw.toString('utf8'));
+}
 const validShape = (d) => !!d && d.app === 'school-management' && !!d.tables && !!d.tables.users;
 
 /** بازیابی کامل در یک تراکنش. کلیدهای محرمانه‌ی فعلی (مثل کلید API پیامک) حفظ می‌شوند. */
@@ -66,6 +69,8 @@ async function dailyJob(k = db.get(), today = J.todayISO()) {
   if (!settings.bool('auto_backup_enabled')) return null;
   const key = `backup:${today}`;
   try { await k('job_runs').insert({ job: 'backup', run_key: key }); } catch (_) { return null; } // امروز انجام شده/در حال انجام
-  const r = await save(k, 'auto'); prune(); return r;
+  const r = await save(k, 'auto'); prune();
+  try { await require('./offsite').afterSave(r.name); } catch (_) { /* خطای ارسال بیرونی پشتیبان محلی را باطل نمی‌کند؛ در اجرای بعدی تکرار می‌شود */ }
+  return r;
 }
 module.exports = { dump, save, list, prune, pathOf, read, validShape, restore, dailyJob, DIR, NAME_RE, secretKeys };

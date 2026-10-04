@@ -23,6 +23,29 @@
   if (side && window.MutationObserver) new MutationObserver(function () { document.body.classList.toggle('menu-open', side.classList.contains('open')); }).observe(side, { attributes: true, attributeFilter: ['class'] });
   /* آیتم فعال منو در دید بماند */
   var act = side && side.querySelector('a.active'); if (act && act.scrollIntoView) { try { act.scrollIntoView({ block: 'center' }); } catch (e) { } }
+  /* سنجش قدرت رمز، تطابق تکرار رمز و بررسی نام کاربری (صفحه‌ی ساخت سوپر ادمین) */
+  $$('[data-pw-meter]').forEach(function (inp) {
+    var box = document.getElementById(inp.dataset.pwMeter); if (!box) return; var lbl = box.querySelector('.lbl b');
+    var names = ['خیلی ضعیف', 'ضعیف', 'متوسط', 'خوب', 'عالی'];
+    function run() {
+      var v = inp.value, r = { len: v.length >= 8, mix: /[A-Za-z]/.test(v) && /\d/.test(v), 'case': /[a-z]/.test(v) && /[A-Z]/.test(v), sym: /[^A-Za-z0-9]/.test(v) };
+      var lvl = v ? (r.len ? 1 + (r.mix ? 1 : 0) + (r['case'] ? 1 : 0) + (r.sym ? 1 : 0) : 0) : -1; if (v.length >= 12 && lvl >= 2) lvl = Math.min(4, lvl + 1);
+      Object.keys(r).forEach(function (k) { var li = box.querySelector('[data-rule=' + k + ']'); if (li) li.classList.toggle('ok', r[k]); });
+      box.setAttribute('data-level', lvl < 0 ? 0 : Math.max(1, lvl)); if (lbl) lbl.textContent = lvl < 0 ? '—' : names[Math.max(0, lvl)];
+      inp.dispatchEvent(new Event('pwchange'));
+    }
+    inp.addEventListener('input', run); run();
+  });
+  $$('[data-match]').forEach(function (inp) {
+    var src = document.getElementById(inp.dataset.match), out = document.getElementById('st-match'); if (!src || !out) return;
+    function run() { if (!inp.value) { out.hidden = true; return; } var ok = inp.value === src.value; out.hidden = false; out.className = 'hint ' + (ok ? 'good' : 'bad'); out.textContent = ok ? '✔ رمزها یکسان است' : 'رمزها یکسان نیست'; }
+    inp.addEventListener('input', run); src.addEventListener('input', run);
+  });
+  $$('[data-user-check]').forEach(function (inp) {
+    var hint = document.getElementById('st-user-hint'); if (!hint) return;
+    inp.addEventListener('input', function () { var v = inp.value.trim().toLowerCase(), ok = /^[a-z0-9_.\-]{3,30}$/.test(v); hint.classList.toggle('bad', !!v && !ok); hint.classList.toggle('good', ok && v !== 'admin'); if (v === 'admin') { hint.classList.add('bad'); hint.classList.remove('good'); } });
+  });
+  $$('[data-token-clean]').forEach(function (inp) { inp.addEventListener('input', function () { var c = inp.value.replace(/\s+/g, ''); if (c !== inp.value) inp.value = c; }); });
   /* نمایش/پنهان‌کردن رمز عبور + هشدار Caps Lock */
   $$('input[type=password]').forEach(function (inp) {
     if (inp.dataset.noToggle) return;
