@@ -82,7 +82,7 @@ function defs(db) {
       },
       afterSave: async (id, d, req, isNew) => {
         if (!isNew) return;
-        const k = k0(); let q = k('users').where({ active: 1 }).whereNot('id', req.user.id);
+        const k = k0(); let q = k('users').where({ active: 1 }).whereNot('id', req.user.id).whereNot('role', 'superadmin');
         if (d.audience === 'teachers') q = q.where({ role: 'teacher' });
         else if (d.audience === 'students') q = q.where({ role: 'student' });
         else if (d.audience === 'class') q = q.where({ role: 'student' }).whereIn('id', k('students').where({ classroom_id: d.classroom_id }).select('user_id'));

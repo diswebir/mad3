@@ -33,12 +33,21 @@ router.get('/attendance', staff, async (req, res, next) => {
     const cls = classes.find((c) => c.id === classId);
     const periods = require('../lib/bell').periodsFor({ day: J.dow(date), grade: cls && cls.grade_level }); // زنگ‌های همان روز و پایه
     const period = mode === 'periodic' ? Math.min(Math.max(parseInt(req.query.period, 10) || 1, 1), Math.max(1, periods.length)) : 0;
-    const data = { title: 'ثبت حضور و غیاب', classes, cls, date, mode, periods, period, STATUSES, today: J.todayISO() };
+    const data = { title: 'ثبت حضور و غیاب', classes, cls, date, mode, periods, period, STATUSES, today: J.todayISO(), slots: [], slot: null, perStudent: {}, prefilled: false };
     if (cls) {
       data.students = await k('students').where({ classroom_id: cls.id, status: 'active' }).orderBy('last_name').orderBy('first_name').select('id', 'first_name', 'last_name', 'student_code', 'father_phone', 'mother_phone');
       const ex = await k('attendance').where({ classroom_id: cls.id, date, period });
       data.existing = Object.fromEntries(ex.map((a) => [a.student_id, a]));
       data.recorded = ex.length > 0;
+      if (mode === 'periodic') {
+        data.slots = await require('../lib/attendanceView').slots(k, cls, date, periods); data.slot = data.slots.find((x) => x.n === period) || null;
+        for (const r of await k('attendance').where({ classroom_id: cls.id, date }).where('period', '>', 0)) (data.perStudent[r.student_id] = data.perStudent[r.student_id] || {})[r.period] = r.status;
+        // زنگ تازه: وضعیت زنگ قبل پیش‌فرض می‌شود (کسی که زنگ اول غایب بوده معمولاً زنگ دوم هم نیست)
+        if (!ex.length && period > 1) {
+          const prev = await k('attendance').where({ classroom_id: cls.id, date, period: period - 1 });
+          if (prev.length) { data.existing = Object.fromEntries(prev.map((a) => [a.student_id, { status: a.status === 'late' ? 'present' : a.status, note: null }])); data.prefilled = true; }
+        }
+      }
       data.offDay = await require('../lib/calendar').offDay(date, k);
       data.future = date > J.todayISO();
       const perm = await rules.canRecord(req.user, cls, date, period, { homeroomIds: req.user.role === 'teacher' ? await svc.homeroomClassIds(req.user) : [] });

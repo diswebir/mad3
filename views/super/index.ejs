@@ -1,0 +1,35 @@
+<div class="page-head"><div><h1><%- icon('shield-check', 24) %> پنل سوپر ادمین</h1><div class="muted">کنترل فنی سامانه — مدیر مدرسه به این بخش‌ها دسترسی ندارد.</div></div></div>
+
+<% if (due && due.level !== 'green') { %><div class="alert <%= due.level === 'red' ? 'error' : 'warn' %>"><%- icon('wallet', 18) %><div>سررسید پشتیبانی <%= due.days < 0 ? fa(-due.days) + ' روز گذشته است' : fa(due.days) + ' روز دیگر است' %> (<%= d(nextDue) %>). <a href="<%= u('/super/billing') %>">پرونده‌ی فروش و پشتیبانی</a></div></div><% } %>
+<% if (maintenance) { %><div class="alert warn"><%- icon('triangle-alert', 18) %><div><b>حالت تعمیر فعال است</b>؛ کاربران دیگر نمی‌توانند وارد شوند.</div></div><% } %>
+
+<div class="grid g3">
+  <a class="card stat" href="<%= u('/super/domain') %>" style="text-decoration:none;color:inherit"><span class="ico"><%- icon(lock.enforced ? 'lock' : 'lock-open', 22) %></span><div><div class="v"><%= lock.enforced ? 'قفل فعال' : 'بدون قفل' %></div><div class="l ltr" style="text-align:right"><%= lock.hosts.length ? lock.hosts.join('، ') : host %></div></div></a>
+  <a class="card stat" href="<%= u('/modules') %>" style="text-decoration:none;color:inherit"><span class="ico"><%- icon('puzzle', 22) %></span><div><div class="v"><%= fa(modsOn) %> از <%= fa(modsAll) %></div><div class="l">ماژول فعال</div></div></a>
+  <a class="card stat" href="<%= u('/settings?tab=sms') %>" style="text-decoration:none;color:inherit"><span class="ico"><%- icon('smartphone', 22) %></span><div><div class="v"><%= sms.enabled ? 'پیامک فعال' : 'پیامک غیرفعال' %></div><div class="l"><%= sms.provider === 'ippanel' ? 'ippanel' : 'حالت آزمایشی' %> — کلید API: <%= sms.key ? 'ثبت‌شده' : 'ثبت‌نشده' %> — کد یکبارمصرف: <%= sms.otp ? (sms.pattern ? 'آماده' : 'بدون الگو') : 'خاموش' %></div></div></a>
+</div>
+
+<div class="grid g2" style="margin-top:1rem">
+  <div class="card"><h3><%- icon('power', 18) %> تعلیق / حالت تعمیر</h3>
+    <p class="muted">با فعال‌کردن حالت تعمیر فقط سوپر ادمین می‌تواند وارد شود (مثلاً هنگام به‌روزرسانی یا قطع قرارداد پشتیبانی).</p>
+    <form method="post" action="<%= u('/super/maintenance') %>"><input type="hidden" name="_csrf" value="<%= csrf %>">
+      <div class="field"><label>پیامی که کاربران می‌بینند</label><textarea name="message" rows="2"><%= maintenanceMsg %></textarea></div>
+      <div class="form-actions"><% if (maintenance) { %><button class="btn primary" name="on" value="0"><%- icon('power', 16) %> پایان حالت تعمیر</button><% } else { %><button class="btn danger" name="on" value="1" data-confirm="کاربران مدرسه دیگر نمی‌توانند وارد شوند. ادامه می‌دهید؟"><%- icon('power', 16) %> فعال‌سازی حالت تعمیر</button><% } %></div>
+    </form></div>
+  <div class="card"><h3><%- icon('monitor-check', 18) %> وضعیت سامانه</h3>
+    <dl class="kv" style="grid-template-columns:120px 1fr"><dt>نسخه</dt><dd class="ltr" style="text-align:right"><%= info.version %></dd><dt>پایگاه داده</dt><dd class="ltr" style="text-align:right"><%= info.db %></dd><dt>Node.js</dt><dd class="ltr" style="text-align:right"><%= info.node %></dd><dt>سیستم</dt><dd class="ltr" style="text-align:right"><%= info.platform %></dd><dt>زمان فعالیت</dt><dd><%= fa(info.uptime) %> دقیقه</dd><dt>کاربران مدرسه</dt><dd><%= fa(users) %></dd><dt>پشتیبان‌ها</dt><dd><%= fa(info.backups) %> نسخه<% if (info.lastBackup) { %> — آخرین: <%= dt(new Date(info.lastBackup).toISOString().replace('T',' ').slice(0,19)) %><% } %></dd></dl>
+    <div class="form-actions"><a class="btn" href="<%= u('/settings/system') %>"><%- icon('monitor-check', 16) %> جزئیات</a><a class="btn" href="<%= u('/backup') %>"><%- icon('database-backup', 16) %> پشتیبان‌گیری</a></div></div>
+</div>
+
+<div class="card" style="margin-top:1rem"><h3><%- icon('layout-grid', 18) %> دسترسی‌های سوپر ادمین</h3>
+  <div class="shortcut-row" style="display:flex;gap:.6rem;flex-wrap:wrap">
+    <a class="btn" href="<%= u('/super/domain') %>"><%- icon('lock', 16) %> قفل دامنه</a>
+    <a class="btn" href="<%= u('/modules') %>"><%- icon('puzzle', 16) %> ماژول‌ها</a>
+    <a class="btn" href="<%= u('/settings?tab=sms') %>"><%- icon('smartphone', 16) %> پیامک و کد تأیید</a>
+    <a class="btn" href="<%= u('/settings?tab=security') %>"><%- icon('shield-check', 16) %> امنیت</a>
+    <a class="btn" href="<%= u('/settings?tab=system') %>"><%- icon('database-backup', 16) %> نگهداری، پشتیبان و cron</a>
+    <a class="btn" href="<%= u('/super/billing') %>"><%- icon('wallet', 16) %> پرونده‌ی فروش و پشتیبانی</a>
+    <a class="btn" href="<%= u('/audit') %>"><%- icon('history', 16) %> گزارش فعالیت‌ها</a>
+  </div>
+  <p class="muted small" style="margin-top:.8rem">مدیر مدرسه فقط تنظیمات «مدیریت مدرسه» (اطلاعات مدرسه، آموزشی، کارنامه، ظاهر، متن پیام‌ها و کلیدهای اعلان پیامکی) را می‌بیند.</p>
+</div>

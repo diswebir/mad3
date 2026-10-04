@@ -63,7 +63,14 @@ async function waitUp() { for (let i = 0; i < 80; i++) { try { const r = await f
   await t('تنظیم SQLite', async () => { const p = await w.get('/install/db'); const r = await w.req('POST', '/install/db', { _csrf: w.csrf(p.text), client: 'sqlite' }); ok(r); assert.ok(/اطلاعات مدرسه/.test(r.text)); });
   await t('اطلاعات مدرسه', async () => { const p = await w.get('/install/school'); const r = await w.req('POST', '/install/school', { _csrf: w.csrf(p.text), school_name: 'مدرسه تست', school_type: 'متوسطه اول', periods_count: '6', week_days: ['0', '1', '2', '3', '4'], student_code_prefix: '1405' }); ok(r); assert.ok(/حساب مدیر/.test(r.text)); });
   await t('رمز ضعیف مدیر رد می‌شود', async () => { const p = await w.get('/install/admin'); const r = await w.req('POST', '/install/admin', { _csrf: w.csrf(p.text), username: 'admin', full_name: 'مدیر تست', password: '123', password2: '123' }); assert.ok(/حداقل ۸/.test(r.text)); });
-  await t('حساب مدیر', async () => { const p = await w.get('/install/admin'); const r = await w.req('POST', '/install/admin', { _csrf: w.csrf(p.text), username: 'admin', full_name: 'مدیر تست', password: 'Admin#12345', password2: 'Admin#12345' }); ok(r); assert.ok(/انتخاب ماژول/.test(r.text)); });
+  await t('سوپر ادمین الزامی است و باید با مدیر متفاوت باشد', async () => {
+    const post = async (extra) => { const p = await w.get('/install/admin'); return w.req('POST', '/install/admin', { _csrf: w.csrf(p.text), username: 'admin', full_name: 'مدیر تست', password: 'Admin#12345', password2: 'Admin#12345', ...extra }); };
+    assert.ok(/نام کاربری سوپر ادمین/.test((await post({})).text), 'بدون سوپر ادمین');
+    assert.ok(/متفاوت/.test((await post({ super_username: 'admin', super_password: 'Super#12345', super_password2: 'Super#12345' })).text), 'نام کاربری یکسان');
+    assert.ok(/متفاوت/.test((await post({ super_username: 'super', super_password: 'Admin#12345', super_password2: 'Admin#12345' })).text), 'رمز یکسان');
+    assert.ok(/حداقل ۸/.test((await post({ super_username: 'super', super_password: '123', super_password2: '123' })).text), 'رمز کوتاه');
+  });
+  await t('حساب مدیر', async () => { const p = await w.get('/install/admin'); const r = await w.req('POST', '/install/admin', { _csrf: w.csrf(p.text), username: 'admin', full_name: 'مدیر تست', password: 'Admin#12345', password2: 'Admin#12345', super_username: 'super', super_password: 'Super#12345', super_password2: 'Super#12345' }); ok(r); assert.ok(/انتخاب ماژول/.test(r.text)); });
   await t('انتخاب ماژول‌ها و دمو', async () => { const p = await w.get('/install/modules'); const mods = require('../src/modules').MODULES.map((m) => m.key); const r = await w.req('POST', '/install/modules', { _csrf: w.csrf(p.text), modules: mods, demo: '1' }); ok(r); assert.ok(/تأیید و نصب/.test(r.text)); });
   await t('نصب نهایی', async () => { const p = await w.get('/install/finish'); const r = await w.req('POST', '/install/finish', { _csrf: w.csrf(p.text) }); ok(r); assert.ok(/نصب با موفقیت/.test(r.text), r.text.replace(/<[^>]+>/g, ' ').slice(0, 300)); });
   await t('پس از نصب ویزارد در دسترس نیست', async () => { const r = await new Client().get('/install'); assert.ok(!/ویزارد نصب سامانه/.test(r.text)); });
@@ -75,13 +82,16 @@ async function waitUp() { for (let i = 0; i < 80; i++) { try { const r = await f
   await t('دسترسی بدون ورود هدایت می‌شود', async () => { const r = await new Client().req('GET', '/students', null, { follow: false }); assert.equal(r.status, 302); });
 
   let admin = (await login('admin', 'Admin#12345')).c;
+  let sup = (await login('super', 'Super#12345')).c;
   console.log('\n● مدیر');
   const adminPages = ['/', '/students', '/students?q=احمدی', '/students/1', '/students/1?tab=attendance', '/students/1?tab=grades', '/students/1?tab=behavior', '/students/1?tab=documents', '/students/1?tab=tickets', '/students/1?tab=finance', '/students/1?tab=notes', '/students/1/edit', '/students/new', '/students/import', '/students/1/print', '/students/1/card', '/students/export.csv',
     '/teachers', '/teachers/1', '/teachers/new', '/teachers/1/edit', '/classes', '/classes/1', '/classes/1/edit', '/classes/new', '/classes/1/print', '/subjects', '/subjects/new', '/academic-years',
     '/attendance', '/attendance/report', '/attendance/report?class_id=2&format=csv', '/attendance/absentees', '/tickets', '/tickets?view=todo', '/tickets/1', '/tickets/new', '/grades', '/grades/cs/1', '/grades/assessments/1', '/grades/class/1', '/grades/report-card/1',
     '/homework', '/homework/1', '/homework/new', '/timetable', '/timetable?class_id=1&edit=1', '/timetable?teacher_id=1', '/calendar', '/events', '/events/new', '/exams', '/exams/new', '/announcements', '/announcements/new', '/discipline', '/discipline/new', '/health', '/health/new', '/meetings', '/meetings/new',
     '/finance', '/finance/debtors', '/finance/fees/new', '/finance/fees/1', '/finance/receipt/1', '/library/books', '/library/books/new', '/library/loans', '/transport', '/transport/new', '/reports', '/reports/students.csv', '/audit', '/backup', '/users', '/users/new', '/settings', '/settings/system', '/modules', '/notifications', '/profile', '/profile/password', '/search?q=احمد', '/files/documents/demo-doc-14050001.txt'];
-  for (const p of adminPages) await t(p, async () => ok(await admin.get(p)));
+  const SUPER_ONLY = ['/backup', '/settings/system', '/modules', '/super', '/super/domain', '/super/billing'];
+  for (const p of [...adminPages, '/super', '/super/domain', '/super/billing']) await t(p, async () => ok(await (SUPER_ONLY.includes(p) ? sup : admin).get(p)));
+  await t('مدیر مدرسه به بخش‌های سوپر ادمین دسترسی ندارد', async () => { for (const p of SUPER_ONLY) assert.equal((await admin.get(p)).status, 403, p); });
 
   console.log('\n● معلم');
   let teacher = (await login('t.ahmadi', 'teacher123')).c;
@@ -130,9 +140,9 @@ async function waitUp() { for (let i = 0; i < 80; i++) { try { const r = await f
     const bad = await teacher.req('POST', '/grades/assessments/1/scores', { ...form, [`score[${ids[0]}]`]: '999' }); assert.ok(/باید بین/.test(bad.text));
   });
   await t('غیرفعال‌کردن ماژول تیکت', async () => {
-    let r = await admin.post('/modules/tickets/toggle', {}, '/modules'); ok(r);
+    let r = await sup.post('/modules/tickets/toggle', {}, '/modules'); ok(r);
     r = await student.get('/tickets'); assert.equal(r.status, 404); assert.ok(!/href="\/tickets"/.test((await student.get('/')).text));
-    r = await admin.post('/modules/tickets/toggle', {}, '/modules'); ok(r); ok(await student.get('/tickets'));
+    r = await sup.post('/modules/tickets/toggle', {}, '/modules'); ok(r); ok(await student.get('/tickets'));
   });
   await t('ثبت‌نام دانش‌آموز جدید با پنل کاربری', async () => {
     const page = await admin.get('/students/new'); const token = admin.csrf(page.text);
@@ -160,7 +170,7 @@ async function waitUp() { for (let i = 0; i < 80; i++) { try { const r = await f
     r = await admin.post(`/finance/fees/${id}/pay`, { amount: '999999999999', method: 'cash' }, '/finance/fees/' + id); assert.ok(/بیشتر از مانده/.test(r.text));
   });
   await t('پشتیبان‌گیری JSON', async () => {
-    const page = await admin.get('/backup'); const r = await admin.req('POST', '/backup/download', { _csrf: admin.csrf(page.text) }); assert.equal(r.status, 200); const j = JSON.parse(r.text); assert.ok(j.tables.users.length > 80);
+    const page = await sup.get('/backup'); const r = await sup.req('POST', '/backup/download', { _csrf: sup.csrf(page.text) }); assert.equal(r.status, 200); const j = JSON.parse(r.text); assert.ok(j.tables.users.length > 80);
   });
   await t('تغییر رمز اجباری با رمز اولیه', async () => {
     let r = await admin.post('/students/1/reset-password', {}, '/students/1'); const pw = /رمز جدید دانش‌آموز: (\S+)/.exec(r.text)[1];
@@ -240,10 +250,10 @@ async function waitUp() { for (let i = 0; i < 80; i++) { try { const r = await f
     ok(await teacher.get('/timetable?mode=class&class_id=1')); ok(await teacher.get('/attendance?class_id=1&period=2'));
   });
   await t('بازیابی از پشتیبان', async () => {
-    let page = await admin.get('/backup'); const b = await admin.req('POST', '/backup/download', { _csrf: admin.csrf(page.text) });
-    const bad = await admin.multipart('/backup/restore', { confirm: 'no' }, { field: 'file', name: 'b.json', content: b.text }); assert.ok(/RESTORE/.test(bad.text));
-    const r = await admin.multipart('/backup/restore', { confirm: 'RESTORE' }, { field: 'file', name: 'b.json', content: b.text }); ok(r); assert.ok(/ورود به حساب/.test(r.text), 'پس از بازیابی باید به ورود برگردد');
-    admin = (await login('admin', 'Admin#12345')).c; ok(await admin.get('/students'));
+    let page = await sup.get('/backup'); const b = await sup.req('POST', '/backup/download', { _csrf: sup.csrf(page.text) });
+    const bad = await sup.multipart('/backup/restore', { confirm: 'no' }, { field: 'file', name: 'b.json', content: b.text }); assert.ok(/RESTORE/.test(bad.text));
+    const r = await sup.multipart('/backup/restore', { confirm: 'RESTORE' }, { field: 'file', name: 'b.json', content: b.text }); ok(r); assert.ok(/ورود به حساب/.test(r.text), 'پس از بازیابی باید به ورود برگردد');
+    admin = (await login('admin', 'Admin#12345')).c; sup = (await login('super', 'Super#12345')).c; ok(await admin.get('/students'));
     teacher = (await login('t.ahmadi', 'teacher123')).c; student = (await login('14050001', 'NewPass123')).c;
   });
 
@@ -255,13 +265,13 @@ async function waitUp() { for (let i = 0; i < 80; i++) { try { const r = await f
   });
   await t('خاموش‌کردن همه ماژول‌های اختیاری: هیچ صفحه‌ای از کار نمی‌افتد', async () => {
     const opt = require('../src/modules').MODULES.filter((m) => !m.core).map((m) => m.key);
-    for (const k of opt) { const r = await admin.post(`/modules/${k}/toggle`, {}, '/modules'); ok(r); }
+    for (const k of opt) { const r = await sup.post(`/modules/${k}/toggle`, {}, '/modules'); ok(r); }
     const shouldBe404 = ['/tickets', '/attendance', '/grades', '/homework', '/finance', '/library/books', '/reports', '/backup', '/audit', '/calendar', '/exams', '/discipline'];
     for (const p of shouldBe404) { const r = await admin.get(p); assert.equal(r.status, 404, p + ' → ' + r.status); }
     for (const c of [admin, teacher, student]) { ok(await c.get('/')); }
     for (const tab of ['overview', 'notes']) ok(await admin.get('/students/1?tab=' + tab));
     ok(await admin.get('/students/1')); ok(await admin.get('/classes/1')); ok(await admin.get('/teachers/1')); ok(await admin.get('/students')); ok(await admin.get('/students/new')); ok(await admin.get('/search?q=احمد')); ok(await teacher.get('/classes')); ok(await student.get('/students/me'));
-    for (const k of opt) { const r = await admin.post(`/modules/${k}/toggle`, {}, '/modules'); ok(r); }
+    for (const k of opt) { const r = await sup.post(`/modules/${k}/toggle`, {}, '/modules'); ok(r); }
     ok(await admin.get('/tickets')); ok(await student.get('/finance'));
   });
   console.log('\n● بازبینی منطق و امنیت');

@@ -19,6 +19,7 @@ async function bootMain() {
   await settings.load();
   await modules.load();
   await require('./migrate').run();
+  await require('./lib/superadmin').boot(db.get()).catch((e) => console.error('[super]', e.message));
   const r = express.Router();
   r.use(express.urlencoded({ extended: false, limit: '1mb', parameterLimit: 10000 }));
   r.use((req, res, next) => { if (req.body && typeof req.body === 'object') req.body = mw.noPassNormalize(req.body); next(); });
@@ -29,6 +30,7 @@ async function bootMain() {
     lastRefresh = Date.now();
     Promise.all([settings.load(), modules.load()]).then(() => next(), next);
   });
+  r.use(require('./lib/domainLock').guard); // قفل دامنه: پیش از هر مسیر دیگر (جز /healthz و فایل‌های ایستا)
   r.use(require('./routes/cron').router); // بدون نشست/CSRF؛ فقط با توکن
   r.use(mw.sessionMiddleware(cfg));
   r.use(mw.flash);

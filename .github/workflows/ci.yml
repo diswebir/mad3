@@ -61,7 +61,7 @@ jobs:
       - name: Integration tests on MySQL 8
         run: |
           rc=0
-          for f in v2 v2.year v21 v21.ops v21.auth v21.ux v21.settings v22.birthdays v22.firstlogin; do
+          for f in v2 v2.year v21 v21.ops v21.auth v21.ux v21.settings v22.birthdays v22.firstlogin v23.super v23.ui; do
             node test/$f.test.js > /tmp/$f.log 2>&1 || rc=1
             esc() { head -c 3400 | sed ':a;N;$!ba;s/%/%25/g;s/\r/%0D/g;s/\n/%0A/g'; }
             echo "::notice title=mysql $f fails::$(grep -E '✗' -A12 /tmp/$f.log | grep -v '^\s*$' | grep -vE '^ *at |✓' | cut -c1-300 | esc)"

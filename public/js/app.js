@@ -16,6 +16,39 @@
     if (t) { var d = $('.dropdown', t.parentNode); if (d) d.classList.toggle('open'); }
   });
 
+
+  /* ===== v2.3: بهبودهای تجربه‌ی کاربری ===== */
+  /* بستن منوی موبایل با Esc و قفل اسکرول پشت آن */
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && side) side.classList.remove('open'); });
+  if (side && window.MutationObserver) new MutationObserver(function () { document.body.classList.toggle('menu-open', side.classList.contains('open')); }).observe(side, { attributes: true, attributeFilter: ['class'] });
+  /* آیتم فعال منو در دید بماند */
+  var act = side && side.querySelector('a.active'); if (act && act.scrollIntoView) { try { act.scrollIntoView({ block: 'center' }); } catch (e) { } }
+  /* نمایش/پنهان‌کردن رمز عبور + هشدار Caps Lock */
+  $$('input[type=password]').forEach(function (inp) {
+    if (inp.dataset.noToggle) return;
+    var wrap = document.createElement('span'); wrap.className = 'pw-wrap'; inp.parentNode.insertBefore(wrap, inp); wrap.appendChild(inp);
+    var b = document.createElement('button'); b.type = 'button'; b.className = 'pw-toggle'; b.textContent = 'نمایش'; b.setAttribute('aria-label', 'نمایش رمز عبور');
+    b.addEventListener('click', function () { var show = inp.type === 'password'; inp.type = show ? 'text' : 'password'; b.textContent = show ? 'پنهان' : 'نمایش'; });
+    wrap.appendChild(b);
+    var warn = document.createElement('div'); warn.className = 'caps-warn'; warn.hidden = true; warn.textContent = 'Caps Lock روشن است'; wrap.parentNode.insertBefore(warn, wrap.nextSibling);
+    inp.addEventListener('keyup', function (e) { if (e.getModifierState) warn.hidden = !e.getModifierState('CapsLock'); });
+    inp.addEventListener('blur', function () { warn.hidden = true; });
+  });
+  /* دکمه‌ی ارسال: حالت «در حال ارسال…» */
+  document.addEventListener('submit', function (e) {
+    if (e.defaultPrevented) return; var b = e.submitter || e.target.querySelector('button[type=submit]');
+    if (b && !b.hasAttribute('data-no-busy') && b.tagName === 'BUTTON') { setTimeout(function () { b.classList.add('is-busy'); }, 0); setTimeout(function () { b.classList.remove('is-busy'); }, 4000); }
+  });
+  /* هشدار خروج از فرم تغییر‌یافته (فرم‌های دارای data-dirty-warn) */
+  $$('form[data-dirty-warn]').forEach(function (f) {
+    var dirty = false; f.addEventListener('input', function () { dirty = true; }); f.addEventListener('submit', function () { dirty = false; });
+    window.addEventListener('beforeunload', function (e) { if (dirty) { e.preventDefault(); e.returnValue = ''; } });
+  });
+  /* دکمه‌ی بازگشت به بالا */
+  var top = document.createElement('button'); top.type = 'button'; top.className = 'to-top'; top.hidden = true; top.setAttribute('aria-label', 'بازگشت به بالا'); top.textContent = '↑';
+  top.addEventListener('click', function () { window.scrollTo({ top: 0, behavior: 'smooth' }); }); document.body.appendChild(top);
+  window.addEventListener('scroll', function () { top.hidden = window.scrollY < 600; }, { passive: true });
+
   /* حالت تیره */
   var tt = $('#theme-toggle');
   if (tt) tt.addEventListener('click', function () {

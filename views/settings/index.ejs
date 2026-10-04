@@ -1,7 +1,8 @@
-<div class="page-head"><h1><%- icon('settings', 24) %> تنظیمات سامانه</h1><div class="actions"><a class="btn" href="<%= u('/settings/system') %>"><%- icon('monitor-check', 16) %> وضعیت سامانه</a><a class="btn" href="<%= u('/modules') %>"><%- icon('puzzle', 16) %> ماژول‌ها</a></div></div>
+<div class="page-head"><h1><%- icon('settings', 24) %> تنظیمات سامانه</h1><% if (user.isSuper) { %><div class="actions"><a class="btn" href="<%= u('/super') %>"><%- icon('shield-check', 16) %> پنل سوپر ادمین</a><a class="btn" href="<%= u('/settings/system') %>"><%- icon('monitor-check', 16) %> وضعیت سامانه</a><a class="btn" href="<%= u('/modules') %>"><%- icon('puzzle', 16) %> ماژول‌ها</a></div><% } %></div>
+<% if (!user.isSuper) { %><div class="note-super"><%- icon('lock', 16) %><div>تنظیمات فنی (اتصال پنل پیامک، امنیت، نگهداری و ماژول‌ها) توسط پشتیبان فنی سامانه مدیریت می‌شود. برای تغییر آن‌ها با پشتیبانی تماس بگیرید.</div></div><% } %>
 <div class="settings-layout">
   <nav class="stabs" aria-label="گروه‌های تنظیمات">
-    <% tabs.forEach(function(t){ %><a href="<%= u('/settings?tab=' + t[0]) %>" class="<%= tab === t[0] ? 'active' : '' %>" data-tab="<%= t[0] %>"><%- icon(t[2], 17) %><span><%= t[1] %></span></a><% }) %>
+    <% tabs.forEach(function(t){ %><a href="<%= u('/settings?tab=' + t[0]) %>" class="<%= tab === t[0] ? 'active' : '' %>" data-tab="<%= t[0] %>"><%- icon(t[2], 17) %><span><%= t[1] %></span><% if (superTabs.indexOf(t[0]) >= 0) { %><span class="muted" title="فقط سوپر ادمین"><%- icon('lock', 13) %></span><% } %></a><% }) %>
   </nav>
   <div class="spane">
     <% if (errors.length) { %><div class="alert error"><ul><% errors.forEach(function(e){ %><li><%= e %></li><% }) %></ul></div><% } %>
@@ -27,7 +28,7 @@
       <div class="muted small" style="line-height:2">متغیرهای قابل‌استفاده در متن پیام (داخل آکولاد) و در «متغیرهای الگو»:
         <% Object.keys(bdVars).forEach(function(k){ %><span class="badge ltr" title="<%= bdVars[k] %>">{<%= k %>}</span> <%= bdVars[k] %>؛ <% }) %><br>
         هر نوع پیام می‌تواند الگوی ippanel جداگانه داشته باشد. با خالی‌گذاشتن «کد الگو»، پیامک متنی با همان قالب ارسال می‌شود. <a href="<%= u('/birthdays') %>">مشاهده‌ی تولدها و اجرای دستی</a></div></div><% } %>
-    <form method="post" action="<%= u('/settings') %>" class="card sform">
+    <form method="post" action="<%= u('/settings') %>" class="card sform" data-dirty-warn>
       <input type="hidden" name="_csrf" value="<%= csrf %>"><input type="hidden" name="_group" value="<%= tab %>">
       <h3><%- icon((tabs.filter(function(t){ return t[0] === tab; })[0] || [])[2] || 'settings', 18) %> <%= groups[tab] %></h3>
       <div class="form-grid">
@@ -51,7 +52,7 @@
       <div class="form-actions"><button class="btn primary" type="submit"><%- icon('save', 16) %> ذخیره‌ی «<%= groups[tab] %>»</button></div>
     </form>
 
-    <% if (tab === 'sms') { %>
+    <% if (tab === 'sms' && user.isSuper) { %>
     <div class="card"><h3><%- icon('info', 18) %> راهنمای کد تأیید پیامکی</h3>
       <ol class="muted" style="line-height:2;padding-inline-start:1.2rem">
         <li>در پنل ippanel یک «الگو (Pattern)» با یک متغیر مثل <span class="ltr">%code%</span> بسازید، مثلاً: «کد ورود شما به سامانه مدرسه: %code%».</li>

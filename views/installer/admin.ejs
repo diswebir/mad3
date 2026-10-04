@@ -11,6 +11,14 @@
       <div class="field"><label>تکرار رمز عبور <span class="req">*</span></label><input type="password" class="ltr" name="password2" required autocomplete="new-password"></div>
       <div class="field full"><label>ایمیل (اختیاری)</label><input type="text" class="ltr" name="email" value="<%= admin.email || '' %>"></div>
     </div>
+    <h3 style="margin:1.4rem 0 .2rem"><%- icon('shield-check', 18) %> حساب سوپر ادمین (پشتیبان فنی)</h3>
+    <p class="muted small" style="margin:0 0 .8rem">حسابی بالاتر از مدیر مدرسه: فقط این حساب می‌تواند ماژول‌ها، تنظیمات پیامک و فنی و قفل دامنه را تغییر دهد. این اطلاعات را نزد خود نگه دارید و به مدیر مدرسه ندهید.</p>
+    <div class="form-grid">
+      <div class="field"><label>نام کاربری سوپر ادمین <span class="req">*</span></label><input type="text" class="ltr" name="super_username" value="<%= admin.super_username || '' %>" required autocomplete="off"></div>
+      <div class="field"></div>
+      <div class="field"><label>رمز عبور سوپر ادمین <span class="req">*</span></label><input type="password" class="ltr" name="super_password" required minlength="8" autocomplete="new-password"><div class="hint">حداقل ۸ نویسه، متفاوت از رمز مدیر</div></div>
+      <div class="field"><label>تکرار رمز <span class="req">*</span></label><input type="password" class="ltr" name="super_password2" required autocomplete="new-password"></div>
+    </div>
     <div class="form-actions"><button class="btn primary" type="submit">ادامه <%- icon('chevron-left', 16) %></button><a class="btn ghost" href="<%= u('/install/school') %>">بازگشت</a></div>
   </form>
 </div>

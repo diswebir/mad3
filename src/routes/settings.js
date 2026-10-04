@@ -8,24 +8,28 @@ const config = require('../config');
 const settings = require('../settings');
 const modules = require('../modules');
 const svc = require('../services');
-const { requireRole, uploader } = require('../middleware');
+const { requireRole, requireSuper, uploader } = require('../middleware');
 const router = express.Router();
 router.use(['/settings', '/modules'], requireRole('admin'));
+router.use('/modules', requireSuper);
+router.use(['/settings/system', '/settings/cron'], requireSuper);
 
 const TABS = [
   ['general', 'اطلاعات مدرسه', 'school'], ['academic', 'آموزشی', 'graduation-cap'], ['reportcard', 'کارنامه', 'file-text'], ['attendance', 'حضور و غیاب', 'calendar-check'],
   ['tickets', 'تیکت‌ها', 'life-buoy'], ['students', 'دانش‌آموزان', 'users'], ['birthday', 'تولد', 'cake'], ['finance', 'مالی', 'wallet'], ['hr', 'منابع انسانی', 'user-cog'],
   ['sms', 'پیامک و کد تأیید', 'smartphone'], ['security', 'امنیت', 'shield-check'], ['appearance', 'ظاهر و ورود', 'palette'], ['system', 'نگهداری، پشتیبان و cron', 'database-backup'],
 ];
-const tabKey = (t) => (TABS.some((x) => x[0] === t) ? t : 'general');
-const defsOf = (tab) => settings.DEFS.filter((d) => d.type !== 'hidden' && d.group === tab);
+/** تنظیمات قابل‌دسترسی کاربر: مدیر مدرسه فقط کلیدهای غیر super را می‌بیند */
+const defsOf = (tab, user) => settings.DEFS.filter((d) => d.type !== 'hidden' && d.group === tab && (!d.super || (user && user.isSuper)));
+const tabsFor = (user) => TABS.filter((t) => defsOf(t[0], user).length || (t[0] === 'appearance')).map((t) => (t[0] === 'sms' && !(user && user.isSuper) ? [t[0], 'اعلان‌های پیامکی', t[2]] : t));
+const tabKey = (t, user) => (tabsFor(user).some((x) => x[0] === t) ? t : 'general');
 /** نشانی کامل cron برای نمایش به مدیر */
 const cronUrl = (req) => `${req.protocol}://${req.get('host')}${config.load().basePath === '/' ? '' : config.load().basePath || ''}/cron?token=${settings.get('cron_token')}`;
 
 async function renderTab(req, res, tab, { errors = [], values = null, confirm = null, status = 200 } = {}) {
-  tab = tabKey(tab); const data = { title: 'تنظیمات', tab, tabs: TABS, defs: defsOf(tab), values: values || settings.all(), errors, confirm, groups: settings.GROUPS };
+  tab = tabKey(tab, req.user); const data = { title: 'تنظیمات', tab, tabs: tabsFor(req.user), superTabs: TABS.filter((t) => settings.DEFS.some((d) => d.group === t[0] && d.super && !settings.DEFS.some((e) => e.group === t[0] && !e.super && e.type !== 'hidden'))).map((t) => t[0]), defs: defsOf(tab, req.user), values: values || settings.all(), errors, confirm, groups: req.user.isSuper ? settings.GROUPS : { ...settings.GROUPS, sms: 'اعلان‌های پیامکی به اولیا' } };
   if (tab === 'birthday') { const BK = require('../lib/birthdayKinds'); data.bdVars = BK.VARS; }
-  if (tab === 'system') {
+  if (tab === 'system' && req.user.isSuper) {
     const k = db.get(); const last = await k('audit_logs').where({ action: 'cron' }).orderBy('id', 'desc').first();
     const B = require('../lib/backupTools'); const list = B.list();
     data.cron = { url: cronUrl(req), last: last ? last.created_at : null, lastResult: last ? last.details : null, line: `*/15 * * * * curl -fsS "${cronUrl(req)}" >/dev/null 2>&1`, wget: `*/15 * * * * wget -q -O /dev/null "${cronUrl(req)}"` };
@@ -66,8 +70,12 @@ function collect(req, defs) {
 }
 router.post('/settings', async (req, res, next) => {
   try {
-    const group = TABS.some((x) => x[0] === req.body._group) ? req.body._group : null; // بدون _group = همه‌ی تنظیمات (سازگاری با نسخه‌های قبل)
-    const defs = group ? defsOf(group) : settings.DEFS.filter((d) => d.type !== 'hidden');
+    if (req.body._group && !tabsFor(req.user).some((x) => x[0] === req.body._group)) { // گروه ناشناخته یا فنیِ مخصوص سوپر ادمین
+      await svc.audit(req, 'denied', 'settings', null, `تلاش برای ذخیره‌ی گروه «${String(req.body._group).slice(0, 30)}»`);
+      req.flash('error', 'شما اجازه‌ی تغییر این گروه از تنظیمات را ندارید.'); return res.redirect('/settings');
+    }
+    const group = req.body._group || null; // بدون _group = همه‌ی تنظیمات (سازگاری با نسخه‌های قبل)
+    const defs = group ? defsOf(group, req.user) : settings.DEFS.filter((d) => d.type !== 'hidden' && (!d.super || req.user.isSuper));
     const { out, errors } = collect(req, defs); const tab = group || 'general';
     const mergedValues = { ...settings.all(), ...req.body };
     if (errors.length) return renderTab(req, res, tab, { errors, values: mergedValues });

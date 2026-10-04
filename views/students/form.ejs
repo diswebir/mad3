@@ -1,5 +1,5 @@
 <div class="page-head"><div><div class="crumbs"><a href="<%= u('/students') %>">دانش‌آموزان</a> / <%= row ? 'ویرایش' : 'ثبت‌نام' %></div><h1><%= title %></h1></div></div>
-<form method="post" enctype="multipart/form-data" action="<%= u('/students/' + (row ? row.id + '/edit' : 'new')) %>?_csrf=<%= csrf %>" autocomplete="off">
+<form method="post" enctype="multipart/form-data" action="<%= u('/students/' + (row ? row.id + '/edit' : 'new')) %>?_csrf=<%= csrf %>" autocomplete="off" data-dirty-warn>
   <% if (errors.length) { %><div class="alert error"><%- icon('circle-x', 18) %><ul><% errors.forEach(function(e){ %><li><%= e %></li><% }) %></ul></div><% } %>
   <% if (!row) { %><div class="alert info"><%- icon('info', 18) %><div>برای دانش‌آموز به‌صورت خودکار پنل کاربری ساخته می‌شود. نام کاربری = شماره دانش‌آموزی و رمز اولیه بر اساس تنظیمات (پیش‌فرض: کد ملی) است.</div></div><% } %>
   <% groups.forEach(function(g, gi){ %>

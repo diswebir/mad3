@@ -7,11 +7,20 @@ const permissions = require('../permissions');
 const router = express.Router();
 const permJson = (b) => JSON.stringify([].concat(b.perm || []).filter((x) => permissions.PERMS[x]));
 router.use('/users', requireRole('admin'));
+/** حساب سوپر ادمین برای مدیر مدرسه نامرئی و غیرقابل‌ویرایش است */
+router.use('/users/:id(\\d+)', async (req, res, next) => {
+  try {
+    if (req.user.isSuper) return next();
+    const row = await db.get()('users').where({ id: req.params.id }).first();
+    if (row && row.role === 'superadmin') return res.status(404).view('error', { code: 404, title: 'یافت نشد', message: 'کاربر یافت نشد.' });
+    next();
+  } catch (e) { next(e); }
+});
 
 router.get('/users', async (req, res, next) => {
   try {
     const k = db.get(); const q = (req.query.q || '').trim(); const page = Math.max(1, parseInt(req.query.page, 10) || 1); const per = 25;
-    const qb = k('users');
+    const qb = k('users'); if (!req.user.isSuper) qb.whereNot({ role: 'superadmin' });
     if (q) qb.where((b) => b.where('full_name', 'like', `%${q}%`).orWhere('username', 'like', `%${q}%`).orWhere('phone', 'like', `%${q}%`));
     if (req.query.role) qb.where({ role: req.query.role });
     if (req.query.active === '0' || req.query.active === '1') qb.where({ active: Number(req.query.active) });
@@ -69,7 +78,7 @@ router.post('/users/:id(\\d+)/edit', async (req, res, next) => {
 router.post('/users/:id(\\d+)/toggle', async (req, res, next) => {
   try {
     const k = db.get(); const row = await k('users').where({ id: req.params.id }).first();
-    if (!row || row.id === req.user.id) { req.flash('error', 'امکان غیرفعال‌سازی حساب خودتان وجود ندارد.'); return res.redirect('/users'); }
+    if (!row || row.id === req.user.id || row.role === 'superadmin') { req.flash('error', 'امکان غیرفعال‌سازی حساب خودتان وجود ندارد.'); return res.redirect('/users'); }
     const on = row.active ? 0 : 1;
     await k('users').where({ id: row.id }).update({ active: on });
     // همگام‌سازی وضعیت پرونده معلم/دانش‌آموز با حساب کاربری

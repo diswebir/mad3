@@ -85,12 +85,12 @@ async function setSettings(admin, overrides) {
   };
   const byTab = {};
   for (const [k, v] of Object.entries(overrides)) {
-    const tb = tabs.find((x) => { const m = /<form method="post" action="[^"]*\/settings" class="card sform">([\s\S]*?)<\/form>/.exec(pages[x].text); return m && new RegExp('name="' + k + '"').test(m[1]); });
+    const tb = tabs.find((x) => { const m = /<form method="post" action="[^"]*\/settings" class="card sform"[^>]*>([\s\S]*?)<\/form>/.exec(pages[x].text); return m && new RegExp('name="' + k + '"').test(m[1]); });
     assert.ok(tb, 'setting not found in any tab: ' + k); (byTab[tb] = byTab[tb] || {})[k] = v;
   }
   let last = null;
   for (const [tb, ov] of Object.entries(byTab)) {
-    const m = /<form method="post" action="[^"]*\/settings" class="card sform">([\s\S]*?)<\/form>/.exec(pages[tb].text); const form = parse(m[1]);
+    const m = /<form method="post" action="[^"]*\/settings" class="card sform"[^>]*>([\s\S]*?)<\/form>/.exec(pages[tb].text); const form = parse(m[1]);
     for (const [k, v] of Object.entries(ov)) {
       if (Array.isArray(v)) form[k] = v.map(String);
       else if (v === 1 || v === 0 || v === '1' || v === '0') { if (String(v) === '1' && typeof form[k] === 'undefined') form[k] = '1'; else if (String(v) === '0') delete form[k]; else form[k] = String(v); }

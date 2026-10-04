@@ -39,6 +39,7 @@ function load() {
     sessionSecret: env.SESSION_SECRET || file.sessionSecret || null,
     secureCookies: env.SECURE_COOKIES ? env.SECURE_COOKIES === 'true' : !!file.secureCookies,
     installedAt: file.installedAt || null,
+    domainLock: file.domainLock || null,
   };
   return cache;
 }
@@ -53,8 +54,16 @@ function save(cfg) {
   fs.writeFileSync(CONFIG_FILE, JSON.stringify(cfg, null, 2), { mode: 0o600 });
   cache = null;
 }
+/** ادغام بخشی از پیکربندی در config.json بدون از دست رفتن بقیه‌ی کلیدها */
+function update(patch) {
+  ensureDirs();
+  let file = {};
+  try { file = JSON.parse(fs.readFileSync(CONFIG_FILE, 'utf8')); } catch (_) { /* ignore */ }
+  fs.writeFileSync(CONFIG_FILE, JSON.stringify({ ...file, ...patch }, null, 2), { mode: 0o600 });
+  cache = null;
+}
 function isInstalled() { return fs.existsSync(LOCK_FILE) && fs.existsSync(CONFIG_FILE); }
 function markInstalled() { fs.writeFileSync(LOCK_FILE, new Date().toISOString()); }
 function randomSecret() { return crypto.randomBytes(48).toString('hex'); }
 
-module.exports = { ROOT, DATA_DIR, CONFIG_FILE, LOCK_FILE, STATE_FILE, UPLOAD_DIR, ensureDirs, load, save, isInstalled, markInstalled, randomSecret, normalizeBase };
+module.exports = { ROOT, DATA_DIR, CONFIG_FILE, LOCK_FILE, STATE_FILE, UPLOAD_DIR, ensureDirs, load, save, update, isInstalled, markInstalled, randomSecret, normalizeBase };

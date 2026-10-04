@@ -106,12 +106,18 @@ function createRouter(onComplete) {
     if (!b.full_name || b.full_name.length < 3) errors.push('نام و نام خانوادگی مدیر را وارد کنید.');
     if (!b.password || b.password.length < 8) errors.push('رمز عبور باید حداقل ۸ نویسه باشد.');
     if (b.password !== b.password2) errors.push('تکرار رمز عبور مطابقت ندارد.');
+    const sup = { username: String(b.super_username || '').trim(), password: b.super_password || '' };
+    if (!/^[a-zA-Z0-9._-]{3,30}$/.test(sup.username)) errors.push('نام کاربری سوپر ادمین باید ۳ تا ۳۰ نویسه لاتین/عدد باشد.');
+    else if (sup.username.toLowerCase() === String(b.username || '').toLowerCase()) errors.push('نام کاربری سوپر ادمین باید با نام کاربری مدیر مدرسه متفاوت باشد.');
+    if (sup.password.length < 8) errors.push('رمز عبور سوپر ادمین باید حداقل ۸ نویسه باشد.');
+    else if (sup.password !== b.super_password2) errors.push('تکرار رمز عبور سوپر ادمین مطابقت ندارد.');
+    else if (sup.password === b.password) errors.push('رمز سوپر ادمین باید با رمز مدیر مدرسه متفاوت باشد.');
     if (errors.length) return render(res, 'admin', { admin: b, errors });
-    const st = readState(); st.admin = { username: b.username, full_name: b.full_name, password_hash: svc.hash(b.password), email: b.email || '' }; writeState(st); // رمز به‌صورت متن ساده روی دیسک نگهداری نمی‌شود
+    const st = readState(); st.super = { username: sup.username, password_hash: svc.hash(sup.password) }; st.admin = { username: b.username, full_name: b.full_name, password_hash: svc.hash(b.password), email: b.email || '' }; writeState(st); // رمز به‌صورت متن ساده روی دیسک نگهداری نمی‌شود
     res.redirect('/install/modules');
   });
 
-  router.get('/install/modules', (req, res) => { const st = readState(); if (!st.admin) return res.redirect('/install/admin'); render(res, 'modules', { mods: modulesReg.MODULES, chosen: st.modules || modulesReg.MODULES.map((m) => m.key), demo: st.demo !== false }); });
+  router.get('/install/modules', (req, res) => { const st = readState(); if (!st.admin) return res.redirect('/install/admin'); render(res, 'modules', { mods: modulesReg.MODULES.filter((m) => !m.hidden), chosen: st.modules || modulesReg.MODULES.map((m) => m.key), demo: st.demo !== false }); });
   router.post('/install/modules', (req, res) => {
     const st = readState();
     st.modules = [].concat(req.body.modules || []); st.demo = req.body.demo === '1';
@@ -122,7 +128,7 @@ function createRouter(onComplete) {
   router.post('/install/finish', async (req, res) => {
     const st = readState();
     if (config.isInstalled()) return res.redirect('/');
-    if (!st.db || !st.school || !st.admin || !st.modules) return res.redirect('/install');
+    if (!st.db || !st.school || !st.admin || !st.super || !st.modules) return res.redirect('/install');
     const base = config.load().basePath;
     let k = null; let created = false;
     try {
@@ -134,16 +140,16 @@ function createRouter(onComplete) {
       if (existing && Number((await k('users').count({ c: '*' }).first()).c) > 0) throw new Error('پایگاه داده انتخاب‌شده خالی نیست. یک پایگاه داده خالی بسازید یا جدول‌های قبلی را حذف کنید.');
       await createSchema(k); created = true;
       const seed = require('../seed');
-      await seed.seedBase(k, { school: st.school, admin: st.admin, modules: st.modules });
+      await seed.seedBase(k, { school: st.school, admin: st.admin, modules: st.modules, superAdmin: st.super });
       await settingsSvc.load();
       await modulesReg.load();
       if (st.demo) await seed.seedDemo(k);
       config.markInstalled();
       const demoUsed = !!st.demo;
-      const adminName = st.admin.username;
+      const adminName = st.admin.username; const superName = st.super.username;
       try { fs.unlinkSync(config.STATE_FILE); } catch (_) { /* ignore */ }
       await onComplete();
-      render(res, 'done', { demo: demoUsed, adminName, base });
+      render(res, 'done', { demo: demoUsed, adminName, superName, base });
     } catch (e) {
       console.error('[installer]', e);
       try { fs.unlinkSync(config.CONFIG_FILE); } catch (_) { /* ignore */ }

@@ -1,7 +1,7 @@
 <div class="page-head">
   <div><div class="crumbs"><a href="<%= u(rbase) %>"><%= def.title %></a> / <%= row ? 'ویرایش' : 'افزودن' %></div><h1><%= title %></h1></div>
 </div>
-<form method="post" class="card" action="<%= u(rbase) %><%= row ? '/' + row.id + '/edit' : '/new' %>" autocomplete="off">
+<form method="post" class="card" action="<%= u(rbase) %><%= row ? '/' + row.id + '/edit' : '/new' %>" autocomplete="off" data-dirty-warn>
   <input type="hidden" name="_csrf" value="<%= csrf %>">
   <% if (errors.length) { %><div class="alert error"><%- icon('circle-x', 18) %><ul><% errors.forEach(function(e){ %><li><%= e %></li><% }) %></ul></div><% } %>
   <% if (def.formNote) { %><div class="alert info"><%- icon('info', 18) %><div><%= def.formNote %></div></div><% } %>

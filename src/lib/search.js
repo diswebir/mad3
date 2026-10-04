@@ -42,7 +42,7 @@ async function run(user, rawQ, { limit = 10, only = null } = {}) {
     push('classes', rows.map((c) => ({ title: c.name, sub: c.grade_level ? 'پایه ' + c.grade_level : '', url: '/classes/' + c.id })));
   }
   if (want('users') && u.role === 'admin') {
-    const rows = await L(k('users').whereNot('role', 'parent').whereNot('role', 'student').where((b) => { b.whereRaw("full_name like ? escape '!'", [like]); ESC('username', b); ESC('phone', b); ESC('email', b); }).select('id', 'full_name', 'username', 'role'));
+    const rows = await L(k('users').whereNot('role', 'parent').whereNot('role', 'student').modify((q) => { if (!u.isSuper) q.whereNot('role', 'superadmin'); }).where((b) => { b.whereRaw("full_name like ? escape '!'", [like]); ESC('username', b); ESC('phone', b); ESC('email', b); }).select('id', 'full_name', 'username', 'role'));
     push('users', rows.map((x) => ({ title: x.full_name, sub: `${x.username} · ${({ admin: 'مدیر', deputy: 'معاون', teacher: 'معلم' })[x.role] || x.role}`, url: '/users/' + x.id + '/edit' })));
   }
   if (want('parents') && mgr && modules.isEnabled('parents')) {

@@ -7,7 +7,7 @@ const section = (s) => console.log('— ' + s);
 (async () => {
   const app = await boot(); const k = app.k; const ctx = await inproc(app); const settings = ctx.settings;
   const B = require('../src/lib/birthdays'); const BK = require('../src/lib/birthdayKinds');
-  const admin = await app.login('admin', 'Admin#12345'); const deputy = await app.login('deputy', 'deputy123'); const teacher = await app.login('t.ahmadi', 'teacher123'); const other = await app.login('a.taheri', 'teacher123');
+  const admin = await app.login('admin', 'Admin#12345'); const sup = await app.login('super', 'Super#12345'); const deputy = await app.login('deputy', 'deputy123'); const teacher = await app.login('t.ahmadi', 'teacher123'); const other = await app.login('a.taheri', 'teacher123');
   const stud = await app.login('14050001', 'student123');
   const today = J.todayISO(); const jt = J.isoToJ(today);
   /** تاریخ تولدِ دانش‌آموزی که «off» روز دیگر سالگردش است و age ساله می‌شود */
@@ -128,7 +128,7 @@ const section = (s) => console.log('— ' + s);
   await t('پیامک خاموش: هیچ ردیفی در sms_log ثبت نمی‌شود', async () => { assert.strictEqual(await cnt('sms_log', { event: 'birthday' }), 0); });
   const mock = await mockIppanel();
   await t('پیامک روشن با الگو برای اولیا (متغیرهای دلخواه) و متن ساده برای دانش‌آموز', async () => {
-    await setSettings(admin, { sms_enabled: 1, sms_provider: 'ippanel', sms_api_key: 'KEY123', sms_from_number: '+983000505', sms_base_url: mock.url, bd_pattern_parent_today: 'pat-par', bd_params_parent_today: 'fname:first_name,sch:school' });
+    await setSettings(sup, { sms_enabled: 1, sms_provider: 'ippanel', sms_api_key: 'KEY123', sms_from_number: '+983000505', sms_base_url: mock.url, bd_pattern_parent_today: 'pat-par', bd_params_parent_today: 'fname:first_name,sch:school' });
     await reload(); await k('notifications').del(); await k('birthday_log').del(); await k('sms_log').del(); mock.calls.length = 0;
     await k('students').where({ id: A.id }).update({ mobile: '09121112233', father_phone: '09123334455', mother_phone: '09124445566', guardian_phone: null });
     const r = await B.run({ today, nowHM: '09:00' }); assert.ok(r.sms >= 3, 'sms=' + r.sms);
@@ -155,17 +155,17 @@ const section = (s) => console.log('— ' + s);
 
   section('تنظیمات تولد (تب)');
   await t('تب «تولد» همه‌ی فیلدها و راهنمای متغیرها را دارد', async () => {
-    const r = ok(await admin.get('/settings?tab=birthday')); for (const key of ['bd_enabled', 'bd_before_days', 'bd_send_time', 'bd_sms_parent', 'bd_tpl_student_today', 'bd_pattern_admin_before', 'bd_params_parent_before', 'show_birthdays', 'bd_student_widget']) assert.ok(r.text.includes(`name="${key}"`), key);
+    const r = ok(await sup.get('/settings?tab=birthday')); for (const key of ['bd_enabled', 'bd_before_days', 'bd_send_time', 'bd_sms_parent', 'bd_tpl_student_today', 'bd_pattern_admin_before', 'bd_params_parent_before', 'show_birthdays', 'bd_student_widget']) assert.ok(r.text.includes(`name="${key}"`), key);
     assert.ok(r.text.includes('{first_name}') && /مخاطب: اولیا/.test(r.text));
   });
   await t('اعتبارسنجی: روز، ساعت، کد الگو، متغیرهای الگو و طول متن', async () => {
     const bads = [{ bd_before_days: '30' }, { bd_send_time: '25:90' }, { bd_pattern_parent_today: 'bad pattern!' }, { bd_params_parent_today: 'x:unknown' }, { bd_params_student_today: 'a,a' }, { bd_tpl_student_today: 'x'.repeat(401) }];
-    for (const bad of bads) { const page = await admin.get('/settings?tab=birthday'); const r = await admin.req('POST', '/settings', { _csrf: admin.csrf(page.text), _group: 'birthday', ...bad }); assert.ok(/class="alert error/.test(r.text), JSON.stringify(bad)); }
+    for (const bad of bads) { const page = await sup.get('/settings?tab=birthday'); const r = await sup.req('POST', '/settings', { _csrf: sup.csrf(page.text), _group: 'birthday', ...bad }); assert.ok(/class="alert error/.test(r.text), JSON.stringify(bad)); }
   });
   await t('تنظیمات معتبر ذخیره می‌شود و دسترسی فقط مدیر کل است', async () => {
-    await setSettings(admin, { bd_before_days: 2, bd_send_time: '08:15', bd_tpl_parent_today: 'تبریک به {first_name}' }); await reload();
+    await setSettings(sup, { bd_before_days: 2, bd_send_time: '08:15', bd_tpl_parent_today: 'تبریک به {first_name}' }); await reload();
     assert.strictEqual(settings.get('bd_send_time'), '08:15'); assert.strictEqual(B.templateOf('parent_today'), 'تبریک به {first_name}');
-    await setSettings(admin, { bd_before_days: 3, bd_send_time: '07:30', bd_tpl_parent_today: '' }); await reload(); assert.strictEqual(B.templateOf('parent_today'), BK.KINDS.parent_today.tpl, 'خالی = پیش‌فرض');
+    await setSettings(sup, { bd_before_days: 3, bd_send_time: '07:30', bd_tpl_parent_today: '' }); await reload(); assert.strictEqual(B.templateOf('parent_today'), BK.KINDS.parent_today.tpl, 'خالی = پیش‌فرض');
     for (const c of [deputy, teacher, stud]) assert.strictEqual((await c.get('/settings?tab=birthday')).status, 403);
   });
 
@@ -242,12 +242,12 @@ const section = (s) => console.log('— ' + s);
     assert.strictEqual((await parent.get('/birthdays')).status, 403);
   });
   await t('خاموش‌کردن ویجت‌ها در تنظیمات و ماژول، آن‌ها را از همه‌جا برمی‌دارد', async () => {
-    await setSettings(admin, { bd_student_widget: 0, show_birthdays: 0 }); await new Promise((r) => setTimeout(r, 10500));
+    await setSettings(sup, { bd_student_widget: 0, show_birthdays: 0 }); await new Promise((r) => setTimeout(r, 10500));
     assert.ok(!(await stud.get('/')).text.includes('bd-count')); assert.ok(!(await admin.get('/')).text.includes('bd-card'));
-    await setSettings(admin, { bd_student_widget: 1, show_birthdays: 1 });
-    await admin.post('/modules/birthdays/toggle', {}, '/modules');
+    await setSettings(sup, { bd_student_widget: 1, show_birthdays: 1 });
+    await sup.post('/modules/birthdays/toggle', {}, '/modules');
     assert.strictEqual((await admin.get('/birthdays')).status, 404, 'ماژول خاموش'); const w = ok(await admin.get('/calendar?view=week')); assert.ok(!w.text.includes('🎂') && !/تولدهای این هفته/.test(w.text));
-    assert.ok(!(await admin.get('/')).text.includes('href="/birthdays') || true); await admin.post('/modules/birthdays/toggle', {}, '/modules'); ok(await admin.get('/birthdays'));
+    assert.ok(!(await admin.get('/')).text.includes('href="/birthdays') || true); await sup.post('/modules/birthdays/toggle', {}, '/modules'); ok(await admin.get('/birthdays'));
   });
 
   section('داده‌ی نمونه و کار دوره‌ای');

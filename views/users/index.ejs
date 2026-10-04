@@ -1,7 +1,7 @@
 <div class="page-head"><div><h1><%- icon('users', 24) %> کاربران سامانه</h1><div class="muted small"><%= fa(total) %> کاربر</div></div><div class="actions"><a class="btn primary" href="<%= u('/users/new') %>"><%- icon('plus', 16) %> مدیر/معاون جدید</a></div></div>
 <div class="card flush">
 <form class="toolbar" method="get"><input type="text" name="q" value="<%= q %>" placeholder="جستجوی نام، نام کاربری، تلفن">
-<select name="role" data-autosubmit><option value="">همه نقش‌ها</option><% Object.keys(L.roles).forEach(function(r){ %><option value="<%= r %>" <%= role === r ? 'selected' : '' %>><%= L.roles[r] %></option><% }) %></select>
+<select name="role" data-autosubmit><option value="">همه نقش‌ها</option><% Object.keys(L.roles).forEach(function(r){ if (r === 'superadmin' && !user.isSuper) return; %><option value="<%= r %>" <%= role === r ? 'selected' : '' %>><%= L.roles[r] %></option><% }) %></select>
 <select name="active" data-autosubmit><option value="">همه وضعیت‌ها</option><option value="1" <%= active === '1' ? 'selected' : '' %>>فعال</option><option value="0" <%= active === '0' ? 'selected' : '' %>>غیرفعال</option></select>
 <button class="btn"><%- icon('filter', 15) %> اعمال</button></form>
 <div class="table-wrap"><table class="t"><thead><tr><th>نام</th><th>نام کاربری</th><th>نقش</th><th>وضعیت</th><th>آخرین ورود</th><th></th></tr></thead><tbody>

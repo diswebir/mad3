@@ -1,6 +1,6 @@
 {
   "name": "mad3-school-management",
-  "version": "2.2.1",
+  "version": "2.3.0",
   "description": "سامانه مدیریت مدرسه (Node.js) با ویزارد نصب و سازگار با cPanel",
   "main": "app.js",
   "private": true,
@@ -11,8 +11,9 @@
   "scripts": {
     "start": "node app.js",
     "dev": "node --watch app.js",
-    "test": "npm run test:smoke && npm run test:v2 && npm run test:v21 && npm run test:v22",
+    "test": "npm run test:smoke && npm run test:v2 && npm run test:v21 && npm run test:v22 && npm run test:v23",
     "demo": "node scripts/install-demo.js",
+    "super:create": "node scripts/create-super.js",
     "reset:admin": "node scripts/reset-admin.js",
     "reset:install": "node scripts/reset-install.js --yes --uploads --backups",
     "reset:demo": "node scripts/reset-install.js --yes --uploads --reinstall-demo",
@@ -20,7 +21,8 @@
     "test:smoke": "node test/smoke.test.js",
     "test:v2": "node test/v2.unit.test.js && node test/v2.test.js && node test/v2.year.test.js",
     "test:v21": "node test/v21.test.js && node test/v21.ops.test.js && node test/v21.auth.test.js && node test/v21.ux.test.js && node test/v21.settings.test.js",
-    "test:v22": "node test/v22.birthdays.test.js && node test/v22.firstlogin.test.js"
+    "test:v22": "node test/v22.birthdays.test.js && node test/v22.firstlogin.test.js",
+    "test:v23": "node test/v23.super.test.js && node test/v23.ui.test.js"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",

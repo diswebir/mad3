@@ -18,7 +18,7 @@ function bellForm(id, name, { count = 6, start = '07:45', minutes = 45, brk = 10
 
 (async () => {
   const app = await boot(); const k = app.k; await inproc(app); // پس از تنظیم SCHOOL_DATA_DIR، کتابخانه‌ها را بارگذاری می‌کنیم
-  const admin = await app.login('admin', 'Admin#12345'); const deputy = await app.login('deputy', 'deputy123');
+  const admin = await app.login('admin', 'Admin#12345'); const sup = await app.login('super', 'Super#12345'); const deputy = await app.login('deputy', 'deputy123');
   const tAhmadi = await app.login('t.ahmadi', 'teacher123'); const taheriC = await app.login('a.taheri', 'teacher123'); const taheriGet = (u) => taheriC.get(u); const student = await app.login('14050001', 'student123');
   const one = async (q) => (await q.first()) || null; const cnt = async (table, where = {}) => Number((await k(table).where(where).count({ c: '*' }).first()).c);
   const bell = require('../src/lib/bell');

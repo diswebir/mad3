@@ -11,5 +11,5 @@
   </div>
   <div class="form-actions"><button class="btn primary" type="submit"><%- icon('save', 16) %> ذخیره</button><a class="btn" href="<%= u('/profile/password') %>"><%- icon('key-round', 16) %> تغییر رمز</a></div>
 </form>
-<div class="card"><h3>اطلاعات حساب</h3><dl class="kv" style="grid-template-columns:90px 1fr"><dt>نقش</dt><dd><%= L.roles[user.role] %></dd><dt>آخرین ورود</dt><dd><%= user.last_login ? dt(user.last_login) : '—' %></dd><dt>عضویت</dt><dd><%= d(user.created_at) %></dd></dl></div>
+<div class="card"><h3>اطلاعات حساب</h3><dl class="kv" style="grid-template-columns:90px 1fr"><dt>نقش</dt><dd><%= L.roles[user.isSuper ? "superadmin" : user.role] %></dd><dt>آخرین ورود</dt><dd><%= user.last_login ? dt(user.last_login) : '—' %></dd><dt>عضویت</dt><dd><%= d(user.created_at) %></dd></dl></div>
 </div>

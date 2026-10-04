@@ -12,6 +12,7 @@
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%232563eb' stroke-width='2'%3E%3Cpath d='m4 10 8-5 8 5-8 5z'/%3E%3Cpath d='M18 12v4c0 1-2.5 2-6 2s-6-1-6-2v-4'/%3E%3C/svg%3E">
 </head>
 <body>
+<a class="skip-link" href="#main">پرش به محتوای اصلی</a>
 <div class="app">
 <aside class="sidebar" id="sidebar">
   <a class="brand" href="<%= u('/') %>" style="text-decoration:none">
@@ -19,11 +20,11 @@
     <span><%= S('school_name') %><small>سامانه مدیریت مدرسه</small></span>
   </a>
   <nav class="nav" id="nav" aria-label="منوی اصلی">
-    <% var NAV_ICONS = { main: 'layout-dashboard', edu: 'graduation-cap', comm: 'message-square', services: 'briefcase', system: 'settings' };
+    <% var NAV_ICONS = { main: 'layout-dashboard', edu: 'graduation-cap', comm: 'message-square', services: 'briefcase', system: 'settings', super: 'shield-check' };
        var topItems = []; var secs = (nav || []).map(function(sec){ var rest = sec.items.filter(function(it){ if (it.href === '/') { topItems.push(it); return false; } return true; }); return { key: sec.key, title: sec.title, items: rest }; }).filter(function(sec){ return sec.items.length; });
        var activeSec = ''; secs.forEach(function(sec){ if (sec.items.some(function(it){ return activeHref === it.href; })) activeSec = sec.key; });
        if (!activeSec && secs.length) activeSec = ''; %>
-    <% topItems.forEach(function(it){ %><a href="<%= u(it.href) %>" class="nav-top <%= activeHref === it.href ? 'active' : '' %>"><%- icon(it.icon, 18) %><span><%= it.label %></span></a><% }) %>
+    <% topItems.forEach(function(it){ %><a href="<%= u(it.href) %>"<%- activeHref === it.href ? ' aria-current="page"' : '' %> class="nav-top <%= activeHref === it.href ? 'active' : '' %>"><%- icon(it.icon, 18) %><span><%= it.label %></span></a><% }) %>
     <% secs.forEach(function(sec){ var open = sec.key === activeSec; var bsum = sec.items.reduce(function(a, it){ return a + (it.badgeCount || 0); }, 0); %>
     <div class="nav-group<%= open ? ' open' : '' %><%= sec.items.some(function(it){ return activeHref === it.href; }) ? ' has-active' : '' %>" data-key="<%= sec.key %>">
       <button type="button" class="nav-head" aria-expanded="<%= open ? 'true' : 'false' %>" aria-controls="ng-<%= sec.key %>">
@@ -31,7 +32,7 @@
         <% if (bsum) { %><span class="badge-n"><%= fa(bsum) %></span><% } %><span class="nh-n"><%= fa(sec.items.length) %></span><span class="nh-chev"><%- icon('chevron-down', 16) %></span>
       </button>
       <div class="nav-body" id="ng-<%= sec.key %>"><div class="nav-inner">
-        <% sec.items.forEach(function(it){ %><a href="<%= u(it.href) %>" class="<%= activeHref === it.href ? 'active' : '' %>"><%- icon(it.icon, 18) %><span><%= it.label %></span><% if (it.badgeCount) { %><span class="badge-n"><%= fa(it.badgeCount) %></span><% } %></a><% }) %>
+        <% sec.items.forEach(function(it){ %><a href="<%= u(it.href) %>"<%- activeHref === it.href ? ' aria-current="page"' : '' %> class="<%= activeHref === it.href ? 'active' : '' %>"><%- icon(it.icon, 18) %><span><%= it.label %></span><% if (it.badgeCount) { %><span class="badge-n"><%= fa(it.badgeCount) %></span><% } %></a><% }) %>
       </div></div>
     </div>
     <% }) %>
@@ -54,7 +55,7 @@
       </div>
     </div>
   </header>
-  <main class="content">
+  <main class="content" id="main" tabindex="-1">
     <% if (user.realRole === 'parent' && user.children && user.children.length) { %><div class="alert info" style="align-items:center;gap:.8rem;flex-wrap:wrap"><%- icon('baby', 18) %><div>در حال مشاهده‌ی پرونده‌ی فرزند: <b><%= user.student ? user.student.first_name + ' ' + user.student.last_name : '—' %></b></div><% if (user.children.length > 1) { %><form method="post" action="<%= u('/parent/switch') %>" style="display:flex;gap:.4rem;margin-inline-start:auto"><input type="hidden" name="_csrf" value="<%= csrf %>"><select name="student_id" data-autosubmit><% user.children.forEach(function(c){ %><option value="<%= c.id %>" <%= user.student && user.student.id === c.id ? 'selected' : '' %>><%= c.first_name %> <%= c.last_name %></option><% }) %></select></form><% } %></div><% } %>
     <% (flash || []).forEach(function(f){ %><div class="alert flash <%= f.type %>"><%- icon(f.type === 'success' ? 'circle-check' : f.type === 'error' ? 'circle-x' : 'info', 18) %><div><%= f.msg %></div></div><% }) %>
     <%- body %>

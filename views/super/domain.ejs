@@ -1,0 +1,32 @@
+<div class="page-head"><div><h1><%- icon('lock', 24) %> قفل دامنه</h1><div class="muted">این نصب فقط روی دامنه‌های زیر کار می‌کند. انتقال به دامنه‌ی دیگر فقط با تأیید سوپر ادمین ممکن است.</div></div><div class="actions"><a class="btn" href="<%= u('/super') %>">بازگشت به پنل</a></div></div>
+
+<div class="alert <%= lock.enforced ? 'success' : 'warn' %>"><%- icon(lock.enforced ? 'lock' : 'lock-open', 18) %><div><% if (lock.enforced) { %><b>قفل فعال است.</b> درخواست از هر دامنه‌ی دیگر، به‌جای سامانه، صفحه‌ی «دامنه مجاز نیست» را می‌بیند.<% } else if (lock.recorded) { %><b>قفل غیرفعال است</b>؛ سامانه روی هر دامنه‌ای اجرا می‌شود.<% } else { %><b>هنوز دامنه‌ای ثبت نشده.</b> اولین بازدید از یک دامنه‌ی واقعی (غیر localhost) آن را به‌طور خودکار ثبت و قفل می‌کند.<% } %></div></div>
+
+<div class="grid g2">
+  <div class="card"><h3><%- icon('globe', 18) %> دامنه‌های مجاز</h3>
+    <% if (!lock.hosts.length) { %><p class="muted">—</p><% } %>
+    <ul style="list-style:none;padding:0;margin:0">
+    <% lock.hosts.forEach(function(h){ %><li style="display:flex;justify-content:space-between;align-items:center;gap:.6rem;padding:.55rem 0;border-bottom:1px solid var(--border)"><span class="ltr"><b><%= h %></b></span><span style="display:flex;gap:.4rem;align-items:center"><% if (h === host) { %><span class="badge green">دامنه‌ی فعلی</span><% } %>
+      <form method="post" action="<%= u('/super/domain/remove') %>"><input type="hidden" name="_csrf" value="<%= csrf %>"><input type="hidden" name="host" value="<%= h %>"><button class="btn sm danger" data-confirm="دامنه‌ی «<%= h %>» از فهرست مجاز حذف شود؟"><%- icon('trash-2', 14) %> حذف</button></form></span></li><% }) %>
+    </ul>
+    <form method="post" action="<%= u('/super/domain/add') %>" style="margin-top:1rem"><input type="hidden" name="_csrf" value="<%= csrf %>">
+      <div class="field"><label>افزودن دامنه‌ی مجاز</label><div class="copy-row"><input class="ltr" type="text" name="host" placeholder="school.example.ir" required autocomplete="off"><button class="btn primary" type="submit"><%- icon('plus', 15) %> افزودن</button></div><div class="hint">بدون http:// ؛ «www.» به‌صورت خودکار معادل دامنه‌ی اصلی است.</div></div>
+    </form>
+    <% if (lock.hosts.indexOf(host) < 0) { %><form method="post" action="<%= u('/super/domain/add') %>"><input type="hidden" name="_csrf" value="<%= csrf %>"><input type="hidden" name="host" value="<%= host %>"><button class="btn" type="submit"><%- icon('check', 15) %> مجاز کردن دامنه‌ی فعلی (<span class="ltr"><%= host %></span>)</button></form><% } %>
+  </div>
+  <div class="card"><h3><%- icon('settings', 18) %> وضعیت قفل</h3>
+    <form method="post" action="<%= u('/super/domain/toggle') %>"><input type="hidden" name="_csrf" value="<%= csrf %>">
+      <% if (lock.enforced) { %><p class="muted">با غیرفعال‌کردن قفل، سامانه روی هر دامنه‌ای بالا می‌آید (مناسب هنگام جابه‌جایی هاست). پس از انتقال دوباره فعالش کنید.</p><button class="btn danger" name="on" value="0" data-confirm="قفل دامنه غیرفعال شود؟"><%- icon('lock-open', 16) %> غیرفعال‌کردن قفل</button>
+      <% } else { %><p class="muted">با فعال‌سازی، فقط دامنه‌ی فعلی (و دامنه‌های ثبت‌شده) مجاز خواهد بود.</p><button class="btn primary" name="on" value="1"><%- icon('lock', 16) %> فعال‌سازی قفل</button><% } %>
+    </form>
+    <hr style="border:0;border-top:1px dashed var(--border);margin:1rem 0">
+    <h4>چگونه روی دامنه‌ی دیگر راه‌اندازی شود؟</h4>
+    <ol class="muted" style="line-height:2;padding-inline-start:1.2rem">
+      <li>فایل‌ها و پایگاه داده را روی میزبان جدید منتقل کنید.</li>
+      <li>دامنه‌ی جدید را در مرورگر باز کنید؛ صفحه‌ی «دامنه مجاز نیست» نمایش داده می‌شود.</li>
+      <li>نام کاربری و رمز سوپر ادمین را وارد کنید و «افزودن» یا «جایگزینی» را بزنید.</li>
+    </ol>
+    <p class="muted small">قفل هم در <span class="ltr">data/config.json</span> و هم در پایگاه داده ثبت می‌شود. این قفل در سطح برنامه است؛ مدیر مدرسه از داخل سامانه هیچ راهی برای تغییر آن ندارد.</p>
+    <% if (lock.enforced && lock.file && lock.db) { %><p class="muted small">آخرین تغییر: <%= lock.db.at ? dt(String(lock.db.at).replace('T',' ').slice(0,19)) : '—' %><%= lock.db.by ? ' توسط ' + lock.db.by : '' %></p><% } %>
+  </div>
+</div>

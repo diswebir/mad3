@@ -7,33 +7,33 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 (async () => {
   const app = await boot(); const k = app.k; await inproc(app);
   const J = require('../src/utils/jalali'); const settings = require('../src/settings');
-  const admin = await app.login('admin', 'Admin#12345'); const deputy = await app.login('deputy', 'deputy123'); const teacher = await app.login('t.ahmadi', 'teacher123'); const stud = await app.login('14050001', 'student123');
+  const admin = await app.login('admin', 'Admin#12345'); const sup = await app.login('super', 'Super#12345'); const deputy = await app.login('deputy', 'deputy123'); const teacher = await app.login('t.ahmadi', 'teacher123'); const stud = await app.login('14050001', 'student123');
   const val = async (key) => ((await k('settings').where({ key }).first()) || {}).value;
   const cnt = async (table, where = {}) => Number((await k(table).where(where).count({ c: '*' }).first()).c);
 
   section('تنظیمات تب‌دار');
   await t('هر گروه تنظیمات یک تب است؛ همه‌ی تب‌ها باز می‌شوند و فقط فیلدهای همان گروه را دارند', async () => {
-    const first = await admin.get('/settings'); const tabs = [...first.text.matchAll(/data-tab="([a-z]+)"/g)].map((m) => m[1]); assert.ok(tabs.length >= 12, 'تب‌ها: ' + tabs.join());
+    const first = await sup.get('/settings'); const tabs = [...first.text.matchAll(/data-tab="([a-z]+)"/g)].map((m) => m[1]); assert.ok(tabs.length >= 12, 'تب‌ها: ' + tabs.join());
     assert.deepStrictEqual(tabs.slice().sort(), Object.keys(settings.GROUPS).sort(), 'هر گروه باید تب داشته باشد');
     for (const tb of tabs) {
-      const r = await admin.get('/settings?tab=' + tb); assert.strictEqual(r.status, 200, tb); assert.ok(new RegExp(`data-tab="${tb}" class?`).test(r.text) || r.text.includes(`name="_group" value="${tb}"`), tb);
+      const r = await sup.get('/settings?tab=' + tb); assert.strictEqual(r.status, 200, tb); assert.ok(new RegExp(`data-tab="${tb}" class?`).test(r.text) || r.text.includes(`name="_group" value="${tb}"`), tb);
       const names = [...r.text.matchAll(/<(?:input|select|textarea)[^>]*\bname="([a-z_]+)"/g)].map((m) => m[1]).filter((n) => !['_csrf', '_group', 'logo'].includes(n));
       const own = settings.DEFS.filter((d) => d.group === tb && d.type !== 'hidden').map((d) => d.key);
       for (const n of names) assert.ok(own.includes(n) || n === 'confirm_orphans' || n === 'q', `فیلد ${n} در تب ${tb} نباید باشد`);
       if (tb !== 'system') for (const o of own) assert.ok(names.includes(o), `فیلد ${o} در تب ${tb} نیست`);
     }
-    assert.strictEqual((await admin.get('/settings?tab=bogus')).status, 200);
+    assert.strictEqual((await sup.get('/settings?tab=bogus')).status, 200);
   });
   await t('ذخیره‌ی یک تب، تنظیمات تب‌های دیگر (به‌ویژه تیک‌ها) را دست نمی‌زند', async () => {
     const before = {}; for (const key of ['sms_on_absence', 'show_birthdays', 'rc_show_rank', 'ticket_escalate', 'attendance_enforce_schedule']) before[key] = await val(key);
-    await setSettings(admin, { school_principal: 'مدیر آزمون' });
+    await setSettings(sup, { school_principal: 'مدیر آزمون' });
     for (const key of Object.keys(before)) assert.strictEqual(await val(key), before[key], key);
     assert.strictEqual(await val('school_principal'), 'مدیر آزمون');
-    await setSettings(admin, { ticket_sla_hours: 12, show_birthdays: 0 }); assert.strictEqual(await val('ticket_sla_hours'), '12'); assert.strictEqual(await val('show_birthdays'), '0'); assert.strictEqual(await val('sms_on_absence'), before.sms_on_absence);
-    await setSettings(admin, { show_birthdays: 1 });
+    await setSettings(sup, { ticket_sla_hours: 12, show_birthdays: 0 }); assert.strictEqual(await val('ticket_sla_hours'), '12'); assert.strictEqual(await val('show_birthdays'), '0'); assert.strictEqual(await val('sms_on_absence'), before.sms_on_absence);
+    await setSettings(sup, { show_birthdays: 1 });
   });
   await t('اعتبارسنجی در تب: خطا نمایش داده می‌شود و هیچ مقداری ذخیره نمی‌شود', async () => {
-    const page = await admin.get('/settings?tab=attendance'); const r = await admin.req('POST', '/settings', { _csrf: admin.csrf(page.text), _group: 'attendance', late_after_minutes: '9999', absence_alert_threshold: '3' });
+    const page = await sup.get('/settings?tab=attendance'); const r = await sup.req('POST', '/settings', { _csrf: sup.csrf(page.text), _group: 'attendance', late_after_minutes: '9999', absence_alert_threshold: '3' });
     assert.ok(/class="alert error/.test(r.text) && /باید عددی بین/.test(r.text)); assert.notStrictEqual(await val('absence_alert_threshold'), '3');
     assert.ok(/data-tab="attendance"[^>]*>|class="active"/.test(r.text));
   });
@@ -42,12 +42,12 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   });
   await t('اعتبارسنجی‌های ویژه: OTP، توکن، فرمت‌ها', async () => {
     for (const bad of [{ tab: 'sms', f: { sms_otp_pattern: 'bad pattern!' } }, { tab: 'sms', f: { sms_otp_param: '9x' } }, { tab: 'sms', f: { otp_ttl_minutes: '60' } }]) {
-      const page = await admin.get('/settings?tab=' + bad.tab); const r = await admin.req('POST', '/settings', { _csrf: admin.csrf(page.text), _group: bad.tab, ...bad.f }); assert.ok(/class="alert error/.test(r.text), JSON.stringify(bad.f));
+      const page = await sup.get('/settings?tab=' + bad.tab); const r = await sup.req('POST', '/settings', { _csrf: sup.csrf(page.text), _group: bad.tab, ...bad.f }); assert.ok(/class="alert error/.test(r.text), JSON.stringify(bad.f));
     }
   });
   await t('تب‌های دارای کارت‌های ویژه: ظاهر (لوگو)، آموزشی (میان‌برها)، پیامک (راهنما)، سیستم (cron و پشتیبان)', async () => {
-    assert.ok(/name="logo"/.test((await admin.get('/settings?tab=appearance')).text)); assert.ok(/ساعت زنگ‌ها/.test((await admin.get('/settings?tab=academic')).text));
-    assert.ok(/راهنمای کد تأیید پیامکی/.test((await admin.get('/settings?tab=sms')).text)); const sys = await admin.get('/settings?tab=system'); assert.ok(/زمان‌بندی خودکار/.test(sys.text) && /مدیریت پشتیبان/.test(sys.text) && /data-copy/.test(sys.text));
+    assert.ok(/name="logo"/.test((await sup.get('/settings?tab=appearance')).text)); assert.ok(/ساعت زنگ‌ها/.test((await sup.get('/settings?tab=academic')).text));
+    assert.ok(/راهنمای کد تأیید پیامکی/.test((await sup.get('/settings?tab=sms')).text)); const sys = await sup.get('/settings?tab=system'); assert.ok(/زمان‌بندی خودکار/.test(sys.text) && /مدیریت پشتیبان/.test(sys.text) && /data-copy/.test(sys.text));
   });
 
   section('تأیید حذف روز هفته‌ی مدرسه');
@@ -67,17 +67,17 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
   section('حالت تعمیر و اعلان ورود');
   await t('اعلان صفحه‌ی ورود نمایش داده می‌شود و HTML در آن خنثی است', async () => {
-    await setSettings(admin, { login_notice: 'ثبت‌نام از ۱۵ مهر <script>alert(1)</script>' }); await sleep(10600);
+    await setSettings(sup, { login_notice: 'ثبت‌نام از ۱۵ مهر <script>alert(1)</script>' }); await sleep(10600);
     const r = await app.newClient().get('/login'); assert.ok(r.text.includes('ثبت‌نام از ۱۵ مهر')); assert.ok(!r.text.includes('<script>alert(1)</script>'), 'اسکریپت باید escape شود');
-    await setSettings(admin, { login_notice: '' });
+    await setSettings(sup, { login_notice: '' });
   });
   await t('حالت تعمیر: مدیر کل کار می‌کند؛ معاون/معلم/دانش‌آموز ۵۰۳ با پیام؛ خروج و ورود آزاد؛ با خاموش‌کردن برمی‌گردد', async () => {
-    await setSettings(admin, { maintenance_mode: 1, maintenance_message: 'تعمیر برنامه‌ریزی‌شده' }); await sleep(10600);
-    assert.strictEqual((await admin.get('/')).status, 200);
+    await setSettings(sup, { maintenance_mode: 1, maintenance_message: 'تعمیر برنامه‌ریزی‌شده' }); await sleep(10600);
+    assert.strictEqual((await sup.get('/')).status, 200, 'سوپر ادمین'); assert.strictEqual((await admin.get('/')).status, 503, 'مدیر مدرسه هم در حالت تعمیر بیرون می‌ماند');
     for (const c of [deputy, teacher, stud]) { const r = await c.get('/'); assert.strictEqual(r.status, 503); assert.ok(/تعمیر برنامه‌ریزی‌شده/.test(r.text)); assert.strictEqual((await c.get('/students')).status, 503); }
     const anon = app.newClient(); const l = await anon.get('/login'); assert.strictEqual(l.status, 200); assert.ok(/حالت تعمیر/.test(l.text));
     const out = await teacher.req('POST', '/logout', { _csrf: teacher.csrf((await teacher.get('/logout')).text || '') || '' }, { follow: false }); assert.ok([302, 403].includes(out.status));
-    await setSettings(admin, { maintenance_mode: 0 }); await sleep(10600); assert.strictEqual((await deputy.get('/')).status, 200);
+    await setSettings(sup, { maintenance_mode: 0 }); await sleep(10600); assert.strictEqual((await deputy.get('/')).status, 200);
   });
 
   section('منوی کناری آکاردئونی');

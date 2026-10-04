@@ -8,7 +8,7 @@ const section = (s) => console.log('— ' + s);
 
 (async () => {
   const app = await boot(); const k = app.k; await inproc(app);
-  const admin = await app.login('admin', 'Admin#12345'); const deputy = await app.login('deputy', 'deputy123');
+  const admin = await app.login('admin', 'Admin#12345'); let sup = await app.login('super', 'Super#12345'); const deputy = await app.login('deputy', 'deputy123');
   const B = require('../src/lib/backupTools'); const settings = require('../src/settings');
   const one = async (q) => (await q.first()) || null; const cnt = async (table, where = {}) => Number((await k(table).where(where).count({ c: '*' }).first()).c);
   const dir = path.join(app.data, 'backups');
@@ -21,19 +21,19 @@ const section = (s) => console.log('— ' + s);
   section('پشتیبان‌گیری');
   await t('کلید API پیامک در پشتیبان نمی‌آید و بازیابی آن را حفظ می‌کند', async () => {
     await settings.set('sms_api_key', 'SECRET-KEY-123'); await settings.load();
-    const r = await admin.post('/backup/download', {}, '/backup'); assert.strictEqual(r.status, 200); assert.ok(!/SECRET-KEY-123/.test(r.text), 'کلید محرمانه در فایل است');
+    const r = await sup.post('/backup/download', {}, '/backup'); assert.strictEqual(r.status, 200); assert.ok(!/SECRET-KEY-123/.test(r.text), 'کلید محرمانه در فایل است');
     const data = JSON.parse(r.text); assert.strictEqual(data.version, 3); assert.ok(data.tables.users.length > 3); assert.ok(!data.tables.sessions && !data.tables.otp_codes, 'نشست/OTP نباید در پشتیبان باشد');
     assert.ok(!data.tables.settings.some((x) => x.key === 'sms_api_key')); assert.ok(data.secrets_excluded.includes('sms_api_key'));
   });
   await t('پشتیبان دستی روی سرور: ذخیره، فهرست، دانلود (gzip معتبر) و حذف', async () => {
-    let r = await admin.post('/backup/now', {}, '/backup'); assert.strictEqual(flash(r).type, 'success'); const f = B.list().find((x) => x.kind === 'manual'); assert.ok(f);
-    assert.ok(new RegExp(f.name.replace(/\./g, '\\.')).test((await admin.get('/backup')).text));
-    r = await admin.get('/backup/files/' + f.name); assert.strictEqual(r.status, 200); const data = JSON.parse(zlib.gunzipSync(r.buf).toString()); assert.strictEqual(data.app, 'school-management'); assert.ok(!JSON.stringify(data).includes('SECRET-KEY-123'));
+    let r = await sup.post('/backup/now', {}, '/backup'); assert.strictEqual(flash(r).type, 'success'); const f = B.list().find((x) => x.kind === 'manual'); assert.ok(f);
+    assert.ok(new RegExp(f.name.replace(/\./g, '\\.')).test((await sup.get('/backup')).text));
+    r = await sup.get('/backup/files/' + f.name); assert.strictEqual(r.status, 200); const data = JSON.parse(zlib.gunzipSync(r.buf).toString()); assert.strictEqual(data.app, 'school-management'); assert.ok(!JSON.stringify(data).includes('SECRET-KEY-123'));
     assert.strictEqual(fs.statSync(path.join(dir, f.name)).mode & 0o077, 0, 'دسترسی فایل باید خصوصی باشد');
-    r = await admin.post(`/backup/files/${f.name}/delete`, {}, '/backup'); assert.strictEqual(flash(r).type, 'success'); assert.ok(!fs.existsSync(path.join(dir, f.name)));
+    r = await sup.post(`/backup/files/${f.name}/delete`, {}, '/backup'); assert.strictEqual(flash(r).type, 'success'); assert.ok(!fs.existsSync(path.join(dir, f.name)));
   });
   await t('امنیت: نام فایل نامعتبر/پیمایش مسیر رد می‌شود؛ معاون و بدون ورود دسترسی ندارند', async () => {
-    for (const bad of ['..%2F..%2Fconfig.json', 'x.json', '..%2Fbackups%2Fauto-20260101-000000.json.gz', 'auto-1-2.json.gz']) assert.strictEqual((await admin.get('/backup/files/' + bad)).status, 404, bad);
+    for (const bad of ['..%2F..%2Fconfig.json', 'x.json', '..%2Fbackups%2Fauto-20260101-000000.json.gz', 'auto-1-2.json.gz']) assert.strictEqual((await sup.get('/backup/files/' + bad)).status, 404, bad);
     assert.strictEqual((await deputy.get('/backup')).status, 403); assert.strictEqual((await deputy.get('/backup/files/auto-20260101-000000.json.gz')).status, 403); assert.strictEqual((await deputy.req('POST', '/backup/now', {})).status, 403);
     const anon = app.newClient(); const r = await anon.get('/backup'); assert.ok(/name="password"/.test(r.text) || r.status === 403 || r.status === 302);
   });
@@ -46,19 +46,19 @@ const section = (s) => console.log('— ' + s);
     await settings.set('auto_backup_enabled', '0'); assert.strictEqual(await B.dailyJob(k, '2031-02-01'), null, 'غیرفعال'); await settings.set('auto_backup_enabled', '1');
   });
   await t('بازیابی: تأیید لازم، پیش از آن پشتیبان خودکار، بازگشت داده، حفظ کلید پیامک', async () => {
-    const full = (await admin.post('/backup/download', {}, '/backup')).text; const snapName = `${Date.now()}.json`; fs.writeFileSync(path.join(app.data, snapName), full);
+    const full = (await sup.post('/backup/download', {}, '/backup')).text; const snapName = `${Date.now()}.json`; fs.writeFileSync(path.join(app.data, snapName), full);
     const nBefore = await cnt('students'); await k('students').where({ student_code: '14050010' }).update({ first_name: 'تغییرکرده' }); await k('students').where('id', '>', 70).del();
-    let r = await admin.multipart('/backup/restore', { confirm: 'no' }, { field: 'file', name: 'b.json', content: Buffer.from(full) }, '/backup'); assert.strictEqual(flash(r).type, 'error'); assert.strictEqual((await one(k('students').where({ student_code: '14050010' }))).first_name, 'تغییرکرده');
-    r = await admin.multipart('/backup/restore', { confirm: 'RESTORE' }, { field: 'file', name: 'b.json', content: Buffer.from('{"x":1}') }, '/backup'); assert.strictEqual(flash(r).type, 'error');
+    let r = await sup.multipart('/backup/restore', { confirm: 'no' }, { field: 'file', name: 'b.json', content: Buffer.from(full) }, '/backup'); assert.strictEqual(flash(r).type, 'error'); assert.strictEqual((await one(k('students').where({ student_code: '14050010' }))).first_name, 'تغییرکرده');
+    r = await sup.multipart('/backup/restore', { confirm: 'RESTORE' }, { field: 'file', name: 'b.json', content: Buffer.from('{"x":1}') }, '/backup'); assert.strictEqual(flash(r).type, 'error');
     const pre0 = B.list().filter((f) => f.kind === 'pre-restore').length;
-    r = await admin.multipart('/backup/restore', { confirm: 'RESTORE' }, { field: 'file', name: 'b.json', content: Buffer.from(full) }, '/backup');
+    r = await sup.multipart('/backup/restore', { confirm: 'RESTORE' }, { field: 'file', name: 'b.json', content: Buffer.from(full) }, '/backup');
     assert.strictEqual(B.list().filter((f) => f.kind === 'pre-restore').length, pre0 + 1, 'پشتیبان پیش از بازیابی'); assert.strictEqual(await cnt('students'), nBefore);
     assert.notStrictEqual((await one(k('students').where({ student_code: '14050010' }))).first_name, 'تغییرکرده'); assert.strictEqual((await one(k('settings').where({ key: 'sms_api_key' }))).value, 'SECRET-KEY-123', 'کلید پیامک باید حفظ شود');
-    const admin2 = await app.login('admin', 'Admin#12345'); ok(await admin2.get('/backup'));
+    sup = await app.login('super', 'Super#12345'); ok(await sup.get('/backup'));
     // بازیابی از فایل gz روی سرور
-    const f = B.list().find((x) => x.kind === 'pre-restore'); const admin3 = await app.login('admin', 'Admin#12345');
-    r = await admin3.post(`/backup/files/${f.name}/restore`, { confirm: '' }, '/backup'); assert.strictEqual(flash(r).type, 'error');
-    await admin3.post(`/backup/files/${f.name}/restore`, { confirm: 'RESTORE' }, '/backup'); assert.strictEqual(await cnt('students'), nBefore - 2, 'وضعیت ذخیره‌شده‌ی پیش از بازیابی برگشت'); assert.strictEqual((await one(k('students').where({ student_code: '14050010' }))).first_name, 'تغییرکرده'); assert.ok(!/\[error\]/.test(app.log()), app.log().slice(-400));
+    const f = B.list().find((x) => x.kind === 'pre-restore'); const admin3 = sup = await app.login('super', 'Super#12345');
+    r = await sup.post(`/backup/files/${f.name}/restore`, { confirm: '' }, '/backup'); assert.strictEqual(flash(r).type, 'error');
+    await sup.post(`/backup/files/${f.name}/restore`, { confirm: 'RESTORE' }, '/backup'); assert.strictEqual(await cnt('students'), nBefore - 2, 'وضعیت ذخیره‌شده‌ی پیش از بازیابی برگشت'); assert.strictEqual((await one(k('students').where({ student_code: '14050010' }))).first_name, 'تغییرکرده'); assert.ok(!/\[error\]/.test(app.log()), app.log().slice(-400));
   });
 
   section('ارتقای پایان سال: پشتیبان خودکار و بازگردانی');

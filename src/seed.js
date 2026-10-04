@@ -8,7 +8,7 @@ const J = require('./utils/jalali');
 const svc = require('./services');
 const { toFa } = require('./utils/fa');
 
-async function seedBase(k, { school, admin, modules }) {
+async function seedBase(k, { school, admin, modules, superAdmin }) {
   const vals = {};
   for (const d of settings.DEFS) vals[d.key] = d.def;
   Object.assign(vals, school || {});
@@ -22,6 +22,7 @@ async function seedBase(k, { school, admin, modules }) {
   const chosen = new Set(modules || modulesReg.MODULES.map((m) => m.key));
   await k.batchInsert('modules_state', modulesReg.MODULES.map((m) => ({ key: m.key, enabled: m.core || chosen.has(m.key) ? 1 : 0 })), 50);
   await k('users').insert({ username: admin.username, password_hash: admin.password_hash || svc.hash(admin.password), role: 'admin', full_name: admin.full_name, email: admin.email || null, active: 1 });
+  if (superAdmin) await k('users').insert({ username: superAdmin.username.toLowerCase(), password_hash: superAdmin.password_hash || svc.hash(superAdmin.password), role: 'superadmin', full_name: 'سوپر ادمین', active: 1 });
   const jy = J.isoToJ(J.todayISO());
   const y0 = jy.jm >= 6 ? jy.jy : jy.jy - 1;
   await k('academic_years').insert({ title: `${y0}-${y0 + 1}`, start_date: J.jToIso(y0, 6, 31), end_date: J.jToIso(y0 + 1, 3, 31), is_current: 1 });

@@ -11,9 +11,9 @@ const settings = require('../settings');
 const svc = require('../services');
 const J = require('../utils/jalali');
 const B = require('../lib/backupTools');
-const { requireRole } = require('../middleware');
+const { requireRole, requireSuper } = require('../middleware');
 const router = express.Router();
-router.use('/backup', modules.guard('backup'), requireRole('admin'));
+router.use('/backup', modules.guard('backup'), requireRole('admin'), requireSuper);
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 100 * 1024 * 1024, files: 1 } }).single('file');
 
 router.get('/backup', async (req, res, next) => {

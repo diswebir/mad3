@@ -82,6 +82,8 @@ async function loadUser(req, res, next) {
     const u = await db.get()('users').where({ id: uid }).first();
     if (u && u.active) {
       req.user = u;
+      // سوپر ادمین (نقش superadmin در پایگاه داده) در برنامه «مدیر» با پرچم isSuper است؛ بررسی‌های موجود مدیر بدون تغییر کار می‌کنند
+      if (u.role === 'superadmin') { u.isSuper = true; u.realRole = 'superadmin'; u.role = 'admin'; }
       if (u.role === 'teacher') req.user.teacher = await db.get()('teachers').where({ user_id: u.id }).first();
       if (u.role === 'student') req.user.student = await db.get()('students').where({ user_id: u.id }).first();
       if (u.role === 'parent') {
@@ -114,6 +116,12 @@ function requireAuth(req, res, next) {
 const requireRole = (...roles) => (req, res, next) => {
   if (req.user && roles.includes(req.user.role)) return next();
   res.status(403).view('error', { code: 403, title: 'دسترسی غیرمجاز', message: 'شما اجازه دسترسی به این بخش را ندارید.' });
+};
+/** فقط سوپر ادمین (فروشنده/پشتیبان فنی)؛ مدیر مدرسه به این بخش‌ها دسترسی ندارد */
+const requireSuper = (req, res, next) => {
+  if (req.user && req.user.isSuper) return next();
+  if (req.user) { try { require('../db').get()('audit_logs').insert({ user_id: req.user.id, user_name: req.user.full_name, action: 'denied', entity: 'super_area', entity_id: null, details: String(req.originalUrl || '').slice(0, 200), ip: req.ip }).catch(() => {}); } catch (_) { /* بدون خطا */ } }
+  res.status(403).view('error', { code: 403, title: 'فقط سوپر ادمین', message: 'این بخش مربوط به تنظیمات فنی و مدیریت سامانه است و فقط برای «سوپر ادمین» (پشتیبان فنی) در دسترس است.' });
 };
 const isManager = (u) => !!u && (u.role === 'admin' || u.role === 'deputy');
 
@@ -175,4 +183,4 @@ const noPassNormalize = (body) => {
   return nestKeys(o);
 };
 
-module.exports = { KnexStore, sessionMiddleware, loadUser, requireAuth, requireRole, isManager, csrfProtect, flash, uploader, badgesFor, invalidateBadges, noPassNormalize };
+module.exports = { KnexStore, sessionMiddleware, loadUser, requireAuth, requireRole, requireSuper, isManager, csrfProtect, flash, uploader, badgesFor, invalidateBadges, noPassNormalize };

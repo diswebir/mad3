@@ -7,7 +7,7 @@
 <% if (!list.length) { %><div class="empty" style="padding:1.5rem">تولدی در این بازه ثبت نشده است.</div>
 <% } else if (byMonth) { %>
   <% Object.keys(byMonth).sort(function(a, b){ var ca = (a - curM + 12) % 12, cb = (b - curM + 12) % 12; return ca - cb; }).forEach(function(m){ %>
-  <div class="card-title" style="padding:.7rem 1rem"><%= MONTHS[m - 1] %> <span class="badge"><%= fa(byMonth[m].length) %></span></div><%- include('../partials/bd-list', { list: byMonth[m] }) %>
+  <div class="card-title bd-month"><%= MONTHS[m - 1] %> <span class="badge"><%= fa(byMonth[m].length) %></span></div><%- include('../partials/bd-list', { list: byMonth[m] }) %>
   <% }) %>
 <% } else { %>
 <div class="table-wrap"><table class="t"><thead><tr><th>دانش‌آموز</th><th>کلاس</th><th>تاریخ تولد</th><th>روز</th><th>سنِ جدید</th><th>زمان</th><% if (isManager) { %><th></th><% } %></tr></thead><tbody>

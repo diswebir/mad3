@@ -38,9 +38,16 @@ async function forManager(u, today, school) {
   if (M('grades')) add('unpub', 'award', 'ارزیابی منتشرنشده', await n(k('assessments').where({ published: 0 })), '/grades', 'info');
   if (M('exams')) add('exam', 'clipboard-list', 'امتحان در ۳ روز آینده', await n(k('exam_schedule').where('exam_date', '>=', today).where('exam_date', '<=', J.addDays(today, 3))), '/exams', 'info');
   if (M('parents')) add('noparent', 'users-round', 'دانش‌آموز بدون حساب اولیا', await n(k('students').where('status', 'active').whereNotIn('id', k('parent_students').select('student_id'))), '/parents', 'info');
-  if (M('backup') && u.role === 'admin') {
+  if (M('backup') && u.isSuper) {
     const list = backupTools.list(); const last = list.reduce((m, f) => Math.max(m, f.mtime || 0), 0); const old = !last || (Date.now() - last) > 7 * 86400000;
     add('backup', 'database-backup', 'پشتیبان‌گیری از سامانه (بیش از ۷ روز گذشته یا وجود ندارد)', old ? 1 : 0, '/backup', 'danger');
+  }
+  if (u.isSuper) { // یادآوری سررسید پشتیبانی (فقط سوپر ادمین)
+    const st = settings.all(); const plan = st.sa_plan; const due = st.sa_next_due;
+    if ((plan === 'monthly' || plan === 'yearly') && due) {
+      const days = Math.round((new Date(due + 'T00:00:00Z') - new Date(today + 'T00:00:00Z')) / 86400000);
+      if (days <= 14) add('support', 'wallet', days < 0 ? 'سررسید پشتیبانی گذشته است' : 'سررسید پشتیبانی نزدیک است', 1, '/super/billing', days < 0 ? 'danger' : 'warn');
+    }
   }
   return out;
 }

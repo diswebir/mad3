@@ -12,7 +12,7 @@ const hid = (html, name) => { const m = new RegExp(`name="${name}" value="([^"]*
 (async () => {
   const app = await boot(); const k = app.k;
   const ip = await inproc(app); const qr = require('../src/lib/qr'); // پس از تنظیم SCHOOL_DATA_DIR تا کلید امضای QR همان سرور باشد
-  const admin = await app.login('admin', 'Admin#12345');
+  const admin = await app.login('admin', 'Admin#12345'); const sup = await app.login('super', 'Super#12345');
   const tAhmadi = await app.login('t.ahmadi', 'teacher123');
   const taheri = await app.login('a.taheri', 'teacher123');
   const student = await app.login('14050001', 'student123');
@@ -195,12 +195,12 @@ const hid = (html, name) => { const m = new RegExp(`name="${name}" value="([^"]*
     const other = await one(k('students').where({ classroom_id: 2 })); assert.notStrictEqual((await student.get('/grades/report-card/' + other.id)).status, 200, 'IDOR کارنامه');
   });
   await t('تغییر قالب: عنوان سفارشی، حالت توصیفی بدون نمره‌ی عددی، پنهان‌کردن غیبت', async () => {
-    await setSettings(admin, { rc_title: 'گواهی پیشرفت تحصیلی', rc_layout: 'descriptive', rc_show_attendance: 0, rc_footer_note: 'یادداشت پایانی تست', rc_region: 'ناحیه ۴ تهران' });
+    await setSettings(sup, { rc_title: 'گواهی پیشرفت تحصیلی', rc_layout: 'descriptive', rc_show_attendance: 0, rc_footer_note: 'یادداشت پایانی تست', rc_region: 'ناحیه ۴ تهران' });
     const r = ok(await admin.get('/grades/report-card/' + stu1.id)); assert.ok(r.text.includes('گواهی پیشرفت تحصیلی')); assert.ok(r.text.includes('یادداشت پایانی تست')); assert.ok(r.text.includes('ناحیه ۴ تهران')); assert.ok(!r.text.includes('کارنامه تحصیلی'));
     assert.ok(/عالی|خیلی خوب|خوب|قابل قبول|نیاز به/.test(r.text), 'سطح توصیفی'); assert.ok(!/غیبت/.test(r.text.split('class="rc')[1] || r.text) || true);
-    await setSettings(admin, { rc_layout: 'both', rc_show_attendance: 1 }); ok(await admin.get('/grades/report-card/' + stu1.id));
+    await setSettings(sup, { rc_layout: 'both', rc_show_attendance: 1 }); ok(await admin.get('/grades/report-card/' + stu1.id));
     const bad = await admin.post('/settings', { rc_levels: 'نادرست بدون ساختار' }, '/settings'); assert.ok(bad.status === 200 && /class="alert error/.test(bad.text), 'سطوح نامعتبر');
-    await setSettings(admin, { rc_title: 'کارنامه تحصیلی', rc_layout: 'numeric', rc_footer_note: '', rc_region: '' });
+    await setSettings(sup, { rc_title: 'کارنامه تحصیلی', rc_layout: 'numeric', rc_footer_note: '', rc_region: '' });
   });
   await t('توصیف معلم راهنما: فقط معلم راهنمای همان کلاس یا مدیر می‌نویسد', async () => {
     const r = await tAhmadi.post('/grades/class/1/comments', { [`comment[${stu1.id}]`]: 'توصیف تست ۱', term: '0' }, '/grades/class/1/comments'); assert.strictEqual(flash(r) && flash(r).type, 'success', r.status + JSON.stringify(flash(r)));
@@ -292,7 +292,7 @@ const hid = (html, name) => { const m = new RegExp(`name="${name}" value="([^"]*
   const stuUser = await one(k('users').where({ username: '14050001' })); const hours = (h) => new Date(Date.now() - h * 3600000).toISOString().replace('T', ' ').slice(0, 19);
   let slaTicket;
   await t('تیکت بی‌پاسخ فراتر از مهلت: برچسب، فیلتر، نمای مدیر و پنهان بودن از دانش‌آموز', async () => {
-    await setSettings(admin, { ticket_sla_hours: 1 });
+    await setSettings(sup, { ticket_sla_hours: 1 });
     const [id] = await k('tickets').insert({ subject: 'تیکت آزمایشی SLA', category: 'general', priority: 'normal', status: 'open', created_by: stuUser.id, recipient_role: 'admin', student_id: stu1.id, updated_at: hours(5) }); slaTicket = typeof id === 'object' ? id.id : id;
     await k('ticket_messages').insert({ ticket_id: slaTicket, user_id: stuUser.id, body: 'سلام' });
     const r = ok(await admin.get('/tickets?view=overdue')); assert.ok(r.text.includes('تیکت آزمایشی SLA')); assert.ok(r.text.includes('فراتر از مهلت'));
@@ -342,7 +342,7 @@ const hid = (html, name) => { const m = new RegExp(`name="${name}" value="([^"]*
   const mock = await mockIppanel(); const lastCalls = (n0) => mock.calls.slice(n0);
   await t('تنظیمات پیامک: اعتبارسنجی و عدم نمایش کلید API در صفحه', async () => {
     for (const bad of [{ sms_from_number: 'abc' }, { sms_base_url: 'ftp://x' }]) { const r = await admin.post('/settings', bad, '/settings'); assert.ok(r.status === 200 && /class="alert error/.test(r.text), JSON.stringify(bad)); }
-    await setSettings(admin, { sms_enabled: 1, sms_provider: 'ippanel', sms_api_key: 'KEY-123-SECRET', sms_from_number: '+983000505', sms_base_url: mock.url, sms_on_absence: 1, sms_on_late: 1, sms_on_exit: 1, sms_on_grades: 1, week_days: [0, 1, 2, 3, 4, 5, 6] });
+    await setSettings(sup, { sms_enabled: 1, sms_provider: 'ippanel', sms_api_key: 'KEY-123-SECRET', sms_from_number: '+983000505', sms_base_url: mock.url, sms_on_absence: 1, sms_on_late: 1, sms_on_exit: 1, sms_on_grades: 1, week_days: [0, 1, 2, 3, 4, 5, 6] });
     assert.ok(!(await admin.get('/settings')).text.includes('KEY-123-SECRET'), 'کلید API نباید در HTML باشد'); assert.ok(!(await admin.get('/sms/log')).text.includes('KEY-123-SECRET'));
   });
   await t('پیامک آزمایشی: قرارداد دقیق درخواست IPPanel و ثبت وضعیت ارسال', async () => {
@@ -361,9 +361,9 @@ const hid = (html, name) => { const m = new RegExp(`name="${name}" value="([^"]*
     mock.state.mode = 'ok';
   });
   await t('سرویس‌دهنده در دسترس نیست: خطا ثبت می‌شود و سامانه از کار نمی‌افتد', async () => {
-    const old = (await one(k('settings').where({ key: 'sms_base_url' }))).value; await setSettings(admin, { sms_base_url: 'http://127.0.0.1:1/v1' });
+    const old = (await one(k('settings').where({ key: 'sms_base_url' }))).value; await setSettings(sup, { sms_base_url: 'http://127.0.0.1:1/v1' });
     const r = await admin.post('/sms/test', { to: '09121234569' }, '/sms/log'); assert.strictEqual(flash(r).type, 'error'); const log = await one(k('sms_log').where({ to_number: '+989121234569' })); assert.strictEqual(log.status, 'failed'); assert.ok(log.error);
-    await setSettings(admin, { sms_base_url: old });
+    await setSettings(sup, { sms_base_url: old });
   });
   const absentStu = classStu[2]; const attForm = (absent) => { const f = { class_id: String(absent.classroom_id), date: jstr(today) }; for (const s of classStu) f[`status[${s.id}]`] = s.id === absent.id ? 'absent' : 'present'; return f; };
   await t('ثبت غیبت → پیامک به اولیا (فقط غیبت تازه، نه ثبت مجدد)', async () => {
@@ -383,7 +383,7 @@ const hid = (html, name) => { const m = new RegExp(`name="${name}" value="([^"]*
   };
   await t('ورود با QR: دروازه، تأخیر و پیامک تأخیر، تکراری، کد جعلی', async () => {
     const s = classStu[6]; const jsonPost = (client, code) => client.post('/attendance/gate', { code }, '/attendance/gate', { headers: { accept: 'application/json' } });
-    await setFirstBell('00:01'); await setSettings(admin, { late_after_minutes: 0 }); const n0 = mock.calls.length;
+    await setFirstBell('00:01'); await setSettings(sup, { late_after_minutes: 0 }); const n0 = mock.calls.length;
     let r = await jsonPost(admin, qr.payload(s.student_code)); assert.strictEqual(r.status, 200, r.text); let j = JSON.parse(r.text); assert.strictEqual(j.ok, true); assert.strictEqual(j.status, 'late');
     const row = await one(k('attendance').where({ student_id: s.id, date: today })); assert.ok(row.arrival_time); assert.strictEqual(row.status, 'late');
     await until(() => mock.calls.length > n0); assert.ok(lastCalls(n0).some((c) => /تأخیر/.test(c.body.message)), 'پیامک تأخیر');
@@ -391,7 +391,7 @@ const hid = (html, name) => { const m = new RegExp(`name="${name}" value="([^"]*
     r = await jsonPost(admin, 'MAD:' + classStu[7].student_code + ':00000000'); assert.strictEqual(r.status, 400); assert.strictEqual(await cnt('attendance', { student_id: classStu[7].id, date: today, status: 'late' }), 0);
     r = await jsonPost(admin, '99999999'); assert.strictEqual(r.status, 404);
     assert.strictEqual((await student.req('POST', '/attendance/gate', { code: qr.payload(classStu[7].student_code) }, { headers: { accept: 'application/json' } })).status, 403);
-    await setFirstBell('07:30'); await setSettings(admin, { late_after_minutes: 15 });
+    await setFirstBell('07:30'); await setSettings(sup, { late_after_minutes: 15 });
     const ok2 = await jsonPost(admin, qr.payload(classStu[8].student_code)); const j2 = JSON.parse(ok2.text); assert.ok(j2.ok); ok(await admin.get('/attendance/gate')); ok(await admin.get('/attendance/late'));
   });
   await t('انتشار نمرات → پیامک نمره فقط برای دانش‌آموزانِ دارای نمره', async () => {
@@ -405,9 +405,9 @@ const hid = (html, name) => { const m = new RegExp(`name="${name}" value="([^"]*
   await t('برگه‌ی خروج → پیامک به اولیا؛ پیامک غیرفعال → هیچ ارسالی', async () => {
     const s = classStu[9]; const n0 = mock.calls.length; const r = await admin.post('/exits', { student_id: s.id, kind: 'exit', permit_date: jstr(today), permit_time: '10:15', reason: 'مراجعه به پزشک', picked_up_by: 'شخص ناشناس' }, '/exits'); assert.strictEqual(flash(r).type, 'success'); assert.ok(/توجه/.test(flash(r).text), 'هشدار فرد غیرمجاز');
     await until(() => mock.calls.length > n0); assert.ok(lastCalls(n0).some((c) => /خارج/.test(c.body.message) && c.body.message.includes(s.last_name)));
-    await setSettings(admin, { sms_enabled: 0 }); const n1 = mock.calls.length; const n2 = await cnt('sms_log');
+    await setSettings(sup, { sms_enabled: 0 }); const n1 = mock.calls.length; const n2 = await cnt('sms_log');
     await admin.post('/exits', { student_id: classStu[10].id, kind: 'exit', permit_date: jstr(today), permit_time: '11:00', reason: 'کار شخصی', picked_up_by: 'x' }, '/exits'); await admin.post('/attendance', attForm(classStu[3]), `/attendance?class_id=1&date=${encodeURIComponent(jstr(today))}`); await new Promise((r) => setTimeout(r, 300));
-    assert.strictEqual(mock.calls.length, n1); assert.strictEqual(await cnt('sms_log'), n2); await setSettings(admin, { sms_enabled: 1 });
+    assert.strictEqual(mock.calls.length, n1); assert.strictEqual(await cnt('sms_log'), n2); await setSettings(sup, { sms_enabled: 1 });
   });
   await t('پیام گروهی: درون‌برنامه‌ای + پیامک، قالب، اعتبارسنجی، دسترسی', async () => {
     const n0 = mock.calls.length; const gm0 = await cnt('group_messages');
@@ -417,7 +417,7 @@ const hid = (html, name) => { const m = new RegExp(`name="${name}" value="([^"]*
     for (const bad of [{ title: '' }, { body: 'x' }, { body: 'ی'.repeat(700) }, { audience: 'bogus' }, { audience: 'class:99999' }]) { r = await admin.post('/messages/send', { title: 'تست', body: 'متن پیام', audience: 'class:1', channels: 'app', ...bad }, '/messages'); assert.ok(/class="alert error/.test(r.text), JSON.stringify(bad)); }
     assert.strictEqual(await cnt('group_messages'), gm0 + 1);
     assert.strictEqual((await tAhmadi.req('POST', '/messages/send', { title: 'تست', body: 'متن پیام', audience: 'all_parents', channels: 'app' })).status, 403); assert.strictEqual((await student.get('/messages')).status, 403);
-    await setSettings(admin, { sms_enabled: 0 }); r = await admin.post('/messages/send', { title: 'تست', body: 'متن پیام', audience: 'class:1', channels: 'sms' }, '/messages'); assert.ok(/class="alert error/.test(r.text), 'پیامک غیرفعال'); await setSettings(admin, { sms_enabled: 1 });
+    await setSettings(sup, { sms_enabled: 0 }); r = await admin.post('/messages/send', { title: 'تست', body: 'متن پیام', audience: 'class:1', channels: 'sms' }, '/messages'); assert.ok(/class="alert error/.test(r.text), 'پیامک غیرفعال'); await setSettings(sup, { sms_enabled: 1 });
     r = await admin.post('/messages/send', { title: 'به معلمان', body: 'جلسه شورا', audience: 'teachers', channels: 'app' }, '/messages'); assert.strictEqual(flash(r).type, 'success'); assert.ok(await cnt('notifications', { user_id: ahmadi.user_id, title: 'به معلمان' }) >= 1);
   });
   mock.close();
@@ -497,22 +497,22 @@ const hid = (html, name) => { const m = new RegExp(`name="${name}" value="([^"]*
   section('ماژولار بودن و پشتیبان‌گیری');
   await t('غیرفعال‌کردن ماژول، مسیرهای آن را می‌بندد و فعال‌کردن دوباره برمی‌گرداند', async () => {
     for (const [key, probe] of [['hr', '/hr'], ['questionbank', '/questions'], ['promotion', '/promotion'], ['exits', '/exits'], ['parents', '/parents'], ['sms', '/messages'], ['finance', '/finance/debtors']]) {
-      const on = await admin.get(probe); assert.strictEqual(on.status, 200, probe); await admin.post(`/modules/${key}/toggle`, {}, '/modules'); const off = await admin.get(probe); assert.notStrictEqual(off.status, 200, key + ' باید بسته شود'); assert.ok(!/خطای سرور/.test(off.text));
-      await admin.post(`/modules/${key}/toggle`, {}, '/modules'); assert.strictEqual((await admin.get(probe)).status, 200, key + ' بازگردانی');
+      const on = await admin.get(probe); assert.strictEqual(on.status, 200, probe); await sup.post(`/modules/${key}/toggle`, {}, '/modules'); const off = await admin.get(probe); assert.notStrictEqual(off.status, 200, key + ' باید بسته شود'); assert.ok(!/خطای سرور/.test(off.text));
+      await sup.post(`/modules/${key}/toggle`, {}, '/modules'); assert.strictEqual((await admin.get(probe)).status, 200, key + ' بازگردانی');
     }
-    await admin.post('/modules/reports/toggle', {}, '/modules'); assert.notStrictEqual((await admin.get('/reports/risk')).status, 200); await admin.post('/modules/reports/toggle', {}, '/modules'); ok(await admin.get('/reports/risk'));
-    await admin.post('/modules/timetable/toggle', {}, '/modules'); assert.notStrictEqual((await admin.get('/timetable/auto')).status, 200); await admin.post('/modules/timetable/toggle', {}, '/modules');
-    await admin.post('/modules/grades/toggle', {}, '/modules'); assert.notStrictEqual((await admin.get(`/grades/assessments/${asm.id}/template.csv`)).status, 200); assert.notStrictEqual((await admin.get('/grades/class/1/cards')).status, 200); await admin.post('/modules/grades/toggle', {}, '/modules'); ok(await admin.get('/grades/class/1/cards'));
+    await sup.post('/modules/reports/toggle', {}, '/modules'); assert.notStrictEqual((await admin.get('/reports/risk')).status, 200); await sup.post('/modules/reports/toggle', {}, '/modules'); ok(await admin.get('/reports/risk'));
+    await sup.post('/modules/timetable/toggle', {}, '/modules'); assert.notStrictEqual((await admin.get('/timetable/auto')).status, 200); await sup.post('/modules/timetable/toggle', {}, '/modules');
+    await sup.post('/modules/grades/toggle', {}, '/modules'); assert.notStrictEqual((await admin.get(`/grades/assessments/${asm.id}/template.csv`)).status, 200); assert.notStrictEqual((await admin.get('/grades/class/1/cards')).status, 200); await sup.post('/modules/grades/toggle', {}, '/modules'); ok(await admin.get('/grades/class/1/cards'));
     assert.strictEqual((await tAhmadi.req('POST', '/modules/hr/toggle', {})).status, 403);
   });
   await t('ماژول گزارش‌ها بدون حضور و غیاب/مالی هم خطا نمی‌دهد (بخش‌های وابسته حذف می‌شوند)', async () => {
-    for (const m of ['attendance', 'finance', 'grades', 'discipline']) await admin.post(`/modules/${m}/toggle`, {}, '/modules');
+    for (const m of ['attendance', 'finance', 'grades', 'discipline']) await sup.post(`/modules/${m}/toggle`, {}, '/modules');
     for (const p of ['/reports', '/reports/risk', '/reports/compare', '/reports/trends', '/hr', '/', `/students/${stu1.id}`]) ok(await admin.get(p), p);
-    for (const m of ['attendance', 'finance', 'grades', 'discipline']) await admin.post(`/modules/${m}/toggle`, {}, '/modules');
+    for (const m of ['attendance', 'finance', 'grades', 'discipline']) await sup.post(`/modules/${m}/toggle`, {}, '/modules');
     ok(await admin.get('/reports/trends'));
   });
   await t('پشتیبان JSON شامل جدول‌های نسخه‌ی ۲ است', async () => {
-    const r = await admin.post('/backup/download', {}, '/backup'); const j = JSON.parse(r.text); assert.strictEqual(j.version, 3);
+    const r = await sup.post('/backup/download', {}, '/backup'); const j = JSON.parse(r.text); assert.strictEqual(j.version, 3);
     for (const tb of ['questions', 'exam_papers', 'teacher_leaves', 'teacher_evaluations', 'fee_installments', 'substitutions', 'teacher_unavailability', 'report_comments', 'sms_log', 'parent_students', 'student_guardians', 'exit_permits', 'student_changes', 'student_year_records']) assert.ok(Array.isArray(j.tables[tb]), tb);
     assert.strictEqual(j.tables.questions.length, await cnt('questions')); assert.ok(!JSON.stringify(j).includes('KEY-123-SECRET') || true);
     assert.strictEqual((await tAhmadi.req('POST', '/backup/download', {})).status, 403);

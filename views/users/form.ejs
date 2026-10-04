@@ -1,5 +1,5 @@
 <div class="page-head"><h1><%= title %></h1></div>
-<form method="post" class="card" style="max-width:720px" action="<%= u('/users/' + (row ? row.id + '/edit' : 'new')) %>" autocomplete="off">
+<form method="post" class="card" style="max-width:720px" action="<%= u('/users/' + (row ? row.id + '/edit' : 'new')) %>" autocomplete="off" data-dirty-warn>
   <input type="hidden" name="_csrf" value="<%= csrf %>">
   <% if (errors.length) { %><div class="alert error"><ul><% errors.forEach(function(e){ %><li><%= e %></li><% }) %></ul></div><% } %>
   <div class="form-grid">

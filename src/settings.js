@@ -118,6 +118,17 @@ function birthdayDefs() {
 }
 
 DEFS.push(...birthdayDefs());
+
+/**
+ * سطح دسترسی تنظیمات: کلیدهای دارای super:true فقط برای «سوپر ادمین» (فروشنده/پشتیبان فنی) قابل مشاهده و ویرایش‌اند.
+ * مدیر مدرسه فقط تنظیمات «مدیریت مدرسه» را می‌بیند (اطلاعات مدرسه، آموزشی، کارنامه، ظاهر، متن پیام‌ها و کلیدهای اعلان).
+ */
+const SUPER_KEYS = new Set(['show_demo_logins', 'otp_demo_show_code']);
+for (const d of DEFS) {
+  d.super = d.group === 'security' || d.group === 'system' || SUPER_KEYS.has(d.key)
+    || (d.group === 'sms' && !/^sms_on_/.test(d.key)) || /^bd_(pattern|params)_/.test(d.key);
+}
+const isSuperKey = (key) => { const d = DEFS.find((x) => x.key === key); return !!(d && d.super); };
 const GROUPS = { general: 'اطلاعات مدرسه', academic: 'تنظیمات آموزشی', reportcard: 'کارنامه و قالب چاپ', attendance: 'حضور و غیاب', tickets: 'تیکت‌ها', students: 'دانش‌آموزان', birthday: 'تولد و تبریک', finance: 'مالی', hr: 'منابع انسانی', sms: 'پیامک (ippanel)', security: 'امنیت', appearance: 'ظاهر', system: 'نگهداری و پشتیبان' };
 
 let cache = null;
@@ -152,4 +163,4 @@ function periods() {
 }
 function weekDays() { return String(get('week_days') || '0,1,2,3,4').split(',').filter((x) => x !== '').map(Number); }
 
-module.exports = { DEFS, GROUPS, load, all, get, num, bool, set, setMany, periods, weekDays };
+module.exports = { DEFS, GROUPS, isSuperKey, load, all, get, num, bool, set, setMany, periods, weekDays };

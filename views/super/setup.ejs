@@ -1,0 +1,20 @@
+<div class="auth">
+  <div class="hero">
+    <div class="logo" style="width:64px;height:64px;border-radius:18px;background:rgba(255,255,255,.18);display:grid;place-items:center"><%- icon('shield-check', 30) %></div>
+    <h1>ساخت حساب سوپر ادمین</h1>
+    <p>حسابی بالاتر از مدیر مدرسه، برای تنظیمات فنی و قفل دامنه</p>
+  </div>
+  <div class="box"><div class="inner">
+    <h2>راه‌اندازی یک‌باره</h2>
+    <p class="muted">توکن راه‌اندازی در فایل <span class="ltr">data/super-setup.token</span> روی سرور ذخیره شده است. پس از ساخت حساب، این صفحه برای همیشه بسته می‌شود.</p>
+    <% if (error) { %><div class="alert error"><%- icon('circle-x', 18) %><div><%= error %></div></div><% } %>
+    <form method="post" action="<%= u('/super/setup') %>" autocomplete="off">
+      <input type="hidden" name="_csrf" value="<%= csrf %>">
+      <div class="field"><label>توکن راه‌اندازی</label><input class="ltr" name="token" required autocomplete="off"></div>
+      <div class="field"><label>نام کاربری سوپر ادمین</label><input class="ltr" name="username" required value="<%= vals.username || '' %>" autocomplete="off"></div>
+      <div class="field"><label>رمز عبور (حداقل ۸ نویسه)</label><input class="ltr" type="password" name="password" required minlength="8" autocomplete="new-password"></div>
+      <div class="field"><label>تکرار رمز عبور</label><input class="ltr" type="password" name="password2" required autocomplete="new-password"></div>
+      <button class="btn primary block" type="submit" style="margin-top:1rem"><%- icon('shield-check', 17) %> ساخت حساب</button>
+    </form>
+  </div></div>
+</div>

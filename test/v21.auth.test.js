@@ -6,7 +6,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 (async () => {
   const app = await boot(); const k = app.k; await inproc(app);
-  const admin = await app.login('admin', 'Admin#12345');
+  const admin = await app.login('admin', 'Admin#12345'); const sup = await app.login('super', 'Super#12345');
   const settings = require('../src/settings'); const J = require('../src/utils/jalali'); const jobs = require('../src/jobs');
   const cnt = async (table, where = {}) => Number((await k(table).where(where).count({ c: '*' }).first()).c);
   const setDB = async (obj) => { for (const [key, v] of Object.entries(obj)) { const n = await k('settings').where({ key }).update({ value: String(v) }); if (!n) await k('settings').insert({ key, value: String(v) }); } await settings.load(); };
@@ -37,11 +37,11 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
     const data = await B.dump(k); assert.ok(!JSON.stringify(data).includes(token), 'توکن cron در پشتیبان است');
   });
   await t('توکن cron فقط برای مدیر کل و فقط در تب «نگهداری» دیده می‌شود؛ بازسازی توکن قبلی را بی‌اعتبار می‌کند', async () => {
-    const sys = await admin.get('/settings?tab=system'); assert.strictEqual(sys.status, 200); assert.ok(sys.text.includes('/cron?token=' + token), 'نشانی cron در تب سیستم نیست');
+    assert.ok(!(await admin.get('/settings?tab=system')).text.includes(token), 'مدیر مدرسه نباید توکن cron را ببیند'); const sys = await sup.get('/settings?tab=system'); assert.strictEqual(sys.status, 200); assert.ok(sys.text.includes('/cron?token=' + token), 'نشانی cron در تب سیستم نیست');
     assert.ok(/readonly/.test(sys.text) && /curl -fsS/.test(sys.text), 'دستور cPanel');
     assert.ok(!(await admin.get('/settings?tab=general')).text.includes(token), 'توکن نباید در تب‌های دیگر باشد');
     const deputy = await app.login('deputy', 'deputy123'); assert.strictEqual((await deputy.get('/settings?tab=system')).status, 403);
-    const r = await admin.post('/settings/cron/regenerate', {}, '/settings?tab=system'); assert.strictEqual(flash(r).type, 'success');
+    const r = await sup.post('/settings/cron/regenerate', {}, '/settings?tab=system'); assert.strictEqual(flash(r).type, 'success');
     const nt = (await k('settings').where({ key: 'cron_token' }).first()).value; assert.ok(/^[a-f0-9]{48}$/.test(nt) && nt !== token);
     await sleep(10600); assert.strictEqual((await get('/cron?token=' + token)).status, 403, 'توکن قدیمی باید رد شود');
     assert.notStrictEqual((await get('/cron?token=' + nt)).status, 403, 'توکن جدید باید پذیرفته شود');

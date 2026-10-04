@@ -81,13 +81,19 @@ const MODULES = [
   { key: 'audit', title: 'گزارش فعالیت‌ها', icon: 'history', desc: 'ثبت تمام تغییرات مهم و ورودها', nav: [
     { label: 'گزارش فعالیت‌ها', href: '/audit', icon: 'history', roles: ['admin'], section: 'system' }] },
   { key: 'backup', title: 'پشتیبان‌گیری', icon: 'database-backup', desc: 'خروجی کامل داده‌ها و فایل پایگاه داده', nav: [
-    { label: 'پشتیبان‌گیری', href: '/backup', icon: 'database-backup', roles: ['admin'], section: 'system' }] },
+    { label: 'پشتیبان‌گیری', href: '/backup', icon: 'database-backup', roles: ['admin'], section: 'super', super: true }] },
   { key: 'settings', title: 'تنظیمات و کاربران', icon: 'settings', core: true, desc: 'تنظیمات مدرسه، کاربران، ماژول‌ها', nav: [
     { label: 'کاربران', href: '/users', icon: 'users', roles: ['admin'], section: 'system' },
     { label: 'تنظیمات', href: '/settings', icon: 'settings', roles: ['admin'], section: 'system' },
-    { label: 'ماژول‌ها', href: '/modules', icon: 'puzzle', roles: ['admin'], section: 'system' }] },
+    ] },
+  { key: 'superadmin', title: 'پنل سوپر ادمین', icon: 'shield-check', core: true, hidden: true, desc: 'قفل دامنه، ماژول‌ها، پیامک و تنظیمات فنی (فقط سوپر ادمین)', nav: [
+    { label: 'پنل سوپر ادمین', href: '/super', icon: 'shield-check', roles: ['admin'], section: 'super', super: true },
+    { label: 'ماژول‌ها', href: '/modules', icon: 'puzzle', roles: ['admin'], section: 'super', super: true },
+    { label: 'قفل دامنه', href: '/super/domain', icon: 'lock', roles: ['admin'], section: 'super', super: true },
+    { label: 'تنظیمات فنی و پیامک', href: '/settings?tab=sms', icon: 'smartphone', roles: ['admin'], section: 'super', super: true },
+    { label: 'پرونده‌ی فروش و پشتیبانی', href: '/super/billing', icon: 'wallet', roles: ['admin'], section: 'super', super: true }] },
 ];
-const SECTIONS = { main: 'مدیریت پایه', edu: 'آموزش', comm: 'ارتباطات', services: 'خدمات', system: 'سامانه' };
+const SECTIONS = { main: 'مدیریت پایه', edu: 'آموزش', comm: 'ارتباطات', services: 'خدمات', system: 'سامانه', super: 'سوپر ادمین' };
 const byKey = Object.fromEntries(MODULES.map((m) => [m.key, m]));
 
 let state = {};
@@ -118,6 +124,7 @@ function navFor(role, badges = {}, user = null) {
     if (!state[m.key]) continue;
     for (const n of m.nav) {
       if (!n.roles.includes(role)) continue;
+      if (n.super && !(user && user.isSuper)) continue;
       if (n.parentOnly && !(user && user.realRole === 'parent')) continue;
       if (n.perm && user && user.role === 'deputy' && !perms.can(user, n.perm)) continue;
       (sections[n.section] = sections[n.section] || []).push({ ...n, badgeCount: n.badge ? badges[n.badge] || 0 : 0 });
