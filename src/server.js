@@ -70,6 +70,8 @@ async function createApp() {
     crossOriginEmbedderPolicy: false, crossOriginResourcePolicy: { policy: 'same-origin' }, hsts: false,
   }));
   root.use('/assets', express.static(path.join(config.ROOT, 'public'), { maxAge: '30d', index: false }));
+  // نمادک سایت: بدون ورود در دسترس است تا مرورگر آن را «صفحه‌ی بعد از ورود» ذخیره نکند و 404 نگیرد
+  root.get('/favicon.ico', (req, res) => res.type('image/svg+xml').set('Cache-Control', 'public, max-age=86400').sendFile(path.join(config.ROOT, 'public', 'favicon.svg')));
   root.get('/healthz', (req, res) => res.json({ ok: true, installed: !!state.main, uptime: Math.round(process.uptime()) }));
   root.use(localsMiddleware);
   const installerRouter = installer.createRouter(async () => { await bootMain(); });

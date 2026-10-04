@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title><%= title ? title + ' | ' : '' %><%= typeof S === 'function' && S('school_name') ? S('school_name') : 'سامانه مدیریت مدرسه' %></title>
 <link rel="preload" href="<%= base %>/assets/fonts/Vazirmatn-Variable.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="icon" type="image/svg+xml" href="<%= base %>/assets/favicon.svg">
 <link rel="stylesheet" href="<%= asset('css/app.css') %>">
 <% if (typeof S === 'function' && /^#[0-9a-fA-F]{6}$/.test(S('primary_color') || '')) { %><style>:root{--primary:<%= S('primary_color') %>}</style><% } %>
 <script src="<%= asset('js/theme.js') %>"></script>

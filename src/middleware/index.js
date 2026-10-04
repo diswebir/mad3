@@ -97,12 +97,18 @@ async function loadUser(req, res, next) {
   res.locals.isManager = isManager(req.user);
   next();
 }
+/** فقط درخواست «باز کردن صفحه» برای بازگشت پس از ورود ذخیره شود؛ نه favicon، فایل‌های ایستا، fetch/XHR و ... */
+function isNavigation(req) {
+  const dest = req.get('sec-fetch-dest'); if (dest && !['document', 'iframe'].includes(dest)) return false;
+  if (/\.[a-z0-9]{2,5}$/i.test(req.path) || /^\/(assets|healthz|cron|\.well-known)(\/|$)/.test(req.path)) return false;
+  const acc = req.get('accept'); return !acc || /text\/html|\*\/\*/.test(acc);
+}
 function requireAuth(req, res, next) {
   if (req.user) {
     if (req.user.must_change_password && !req.path.startsWith('/profile') && !req.path.startsWith('/logout')) return res.redirect('/profile/password?force=1');
     return next();
   }
-  if (req.session && req.method === 'GET') { const back = req.originalUrl.replace(config.load().basePath, '') || '/'; if (back.startsWith('/') && !back.startsWith('//')) req.session.returnTo = back; }
+  if (req.session && req.method === 'GET' && isNavigation(req)) { const back = req.originalUrl.replace(config.load().basePath, '') || '/'; if (back.startsWith('/') && !back.startsWith('//')) req.session.returnTo = back; }
   res.redirect('/login');
 }
 const requireRole = (...roles) => (req, res, next) => {
