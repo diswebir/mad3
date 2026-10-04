@@ -128,29 +128,42 @@ router.post('/timetable', requireRole('admin', 'deputy'), async (req, res, next)
   } catch (e) { next(e); }
 });
 
-/* تقویم ماهانه */
+/* تقویم: نمای ماهانه و نمای هفتگی (هفته‌ی جاری + هفته‌ی بعد، مخصوص دیدن تولدها) */
+/** رویدادها، امتحان‌ها و (برای مدیر/معلم) تولدهای بازه‌ی [start, end] به‌صورت نقشه‌ی تاریخ → موارد */
+async function calendarItems(k, u, classIds, start, end) {
+  const items = {}; const add = (iso, o) => { (items[iso] = items[iso] || []).push(o); };
+  const ev = k('events as t').where('t.start_date', '<=', end).where((b) => b.where('t.end_date', '>=', start).orWhere((c) => c.whereNull('t.end_date').where('t.start_date', '>=', start)));
+  svc.audienceFilter(ev, u, classIds, 't', false);
+    for (const e of await ev.select('t.*')) { const last = e.end_date || e.start_date; for (let d = e.start_date < start ? start : e.start_date; d <= last && d <= end; d = J.addDays(d, 1)) add(d, { t: e.title, c: e.type === 'holiday' ? 'holiday' : e.type === 'exam' ? 'exam' : '' }); }
+  if (modules.isEnabled('exams')) {
+    const ex = k('exam_schedule as e').join('subjects as s', 's.id', 'e.subject_id').join('classrooms as c', 'c.id', 'e.classroom_id').whereBetween('e.exam_date', [start, end]);
+    if (classIds) ex.whereIn('e.classroom_id', classIds.length ? classIds : [0]);
+    for (const e of await ex.select('e.exam_date', 's.name as sn', 'c.name as cn')) add(e.exam_date, { t: `امتحان ${e.sn} (${e.cn})`, c: 'exam' });
+  }
+  if (u.role !== 'student' && modules.isEnabled('birthdays')) {
+    for (const b of await require('../lib/birthdays').between(start, end, { classIds, k })) add(b.date, { t: `🎂 ${b.name}`, c: 'bday', href: '/students/' + b.id, tip: `${b.name} — ${b.class_name || 'بدون کلاس'} — ${b.age} ساله می‌شود` });
+  }
+  return items;
+}
 router.get('/calendar', modules.guard('calendar'), async (req, res, next) => {
   try {
-    const k = db.get(); const u = req.user; const t = J.isoToJ(J.todayISO());
+    const k = db.get(); const u = req.user; const todayIso = J.todayISO(); const t = J.isoToJ(todayIso); const classIds = await svc.accessibleClassIds(u);
+    if (req.query.view === 'week') {
+      const B = require('../lib/birthdays'); const offset = Math.max(-52, Math.min(52, parseInt(req.query.w, 10) || 0));
+      const ws = J.addDays(B.weekStart(todayIso), offset * 7); const we = J.addDays(ws, 13);
+      const items = await calendarItems(k, u, classIds, ws, we); const hol = await cal.holidaySet(ws, we, k);
+      const days = []; for (let i = 0; i < 14; i++) { const iso = J.addDays(ws, i); const j = J.isoToJ(iso); days.push({ iso, d: j.jd, m: j.jm, week: i < 7 ? 0 : 1, today: iso === todayIso, off: !settings.weekDays().includes(J.dow(iso)) || hol.has(iso), holiday: hol.get(iso) || '', items: items[iso] || [] }); }
+      let bd = null;
+      if (u.role !== 'student' && modules.isEnabled('birthdays')) { const o = await B.overview({ classIds, weekOf: ws, k }); bd = { thisWeek: o.thisWeek, nextWeek: o.nextWeek }; }
+      return res.view('calendar/week', { title: 'تقویم هفتگی', ws, we, days, bd, offset, WEEKDAYS: J.WEEKDAYS, MONTHS: J.MONTHS, todayIso });
+    }
     let jy = Number(req.query.year) || t.jy; let jm = Number(req.query.month) || t.jm; if (jm < 1) { jm = 12; jy--; } if (jm > 12) { jm = 1; jy++; }
-    const { start, end, length } = J.monthRange(jy, jm); const classIds = await svc.accessibleClassIds(u);
-    const items = {}; const add = (iso, o) => { (items[iso] = items[iso] || []).push(o); };
-    const ev = k('events as t').where('t.start_date', '<=', end).where((b) => b.where('t.end_date', '>=', start).orWhere((c) => c.whereNull('t.end_date').where('t.start_date', '>=', start)));
-    svc.audienceFilter(ev, u, classIds, 't', false);
-    for (const e of await ev.select('t.*')) { const last = e.end_date || e.start_date; for (let d = e.start_date < start ? start : e.start_date; d <= last && d <= end; d = J.addDays(d, 1)) add(d, { t: e.title, c: e.type === 'holiday' ? 'holiday' : e.type === 'exam' ? 'exam' : '' }); }
-    if (modules.isEnabled('exams')) {
-      const ex = k('exam_schedule as e').join('subjects as s', 's.id', 'e.subject_id').join('classrooms as c', 'c.id', 'e.classroom_id').whereBetween('e.exam_date', [start, end]);
-      if (classIds) ex.whereIn('e.classroom_id', classIds.length ? classIds : [0]);
-      for (const e of await ex.select('e.exam_date', 's.name as sn', 'c.name as cn')) add(e.exam_date, { t: `امتحان ${e.sn} (${e.cn})`, c: 'exam' });
-    }
-    if (u.role !== 'student') {
-      const q = k('students').where({ status: 'active' }).whereNotNull('birth_date'); if (classIds) q.whereIn('classroom_id', classIds.length ? classIds : [0]);
-      for (const s of await q.select('first_name', 'last_name', 'birth_date')) { const j = J.isoToJ(s.birth_date); if (j && j.jm === jm) add(J.jToIso(jy, jm, Math.min(j.jd, length)), { t: `🎂 ${s.first_name} ${s.last_name}`, c: 'bday' }); }
-    }
+    const { start, end, length } = J.monthRange(jy, jm);
+    const items = await calendarItems(k, u, classIds, start, end);
     const hol = await cal.holidaySet(start, end, k);
     const firstDow = J.dow(start); const cells = [];
     for (let i = 0; i < firstDow; i++) cells.push(null);
-    for (let d = 1; d <= length; d++) { const iso = J.jToIso(jy, jm, d); cells.push({ d, iso, today: iso === J.todayISO(), off: !settings.weekDays().includes(J.dow(iso)) || hol.has(iso), holiday: hol.get(iso) || '', items: items[iso] || [] }); }
+    for (let d = 1; d <= length; d++) { const iso = J.jToIso(jy, jm, d); cells.push({ d, iso, today: iso === todayIso, off: !settings.weekDays().includes(J.dow(iso)) || hol.has(iso), holiday: hol.get(iso) || '', items: items[iso] || [] }); }
     const py = jm === 1 ? jy - 1 : jy; const pm = jm === 1 ? 12 : jm - 1; const ny = jm === 12 ? jy + 1 : jy; const nm = jm === 12 ? 1 : jm + 1;
     res.view('calendar/index', { title: 'تقویم', jy, jm, cells, prev: `?year=${py}&month=${pm}`, next: `?year=${ny}&month=${nm}`, WEEKDAYS: J.WEEKDAYS, MONTHS: J.MONTHS });
   } catch (e) { next(e); }

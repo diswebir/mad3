@@ -14,7 +14,7 @@ router.use(['/settings', '/modules'], requireRole('admin'));
 
 const TABS = [
   ['general', 'اطلاعات مدرسه', 'school'], ['academic', 'آموزشی', 'graduation-cap'], ['reportcard', 'کارنامه', 'file-text'], ['attendance', 'حضور و غیاب', 'calendar-check'],
-  ['tickets', 'تیکت‌ها', 'life-buoy'], ['students', 'دانش‌آموزان', 'users'], ['finance', 'مالی', 'wallet'], ['hr', 'منابع انسانی', 'user-cog'],
+  ['tickets', 'تیکت‌ها', 'life-buoy'], ['students', 'دانش‌آموزان', 'users'], ['birthday', 'تولد', 'cake'], ['finance', 'مالی', 'wallet'], ['hr', 'منابع انسانی', 'user-cog'],
   ['sms', 'پیامک و کد تأیید', 'smartphone'], ['security', 'امنیت', 'shield-check'], ['appearance', 'ظاهر و ورود', 'palette'], ['system', 'نگهداری، پشتیبان و cron', 'database-backup'],
 ];
 const tabKey = (t) => (TABS.some((x) => x[0] === t) ? t : 'general');
@@ -24,6 +24,7 @@ const cronUrl = (req) => `${req.protocol}://${req.get('host')}${config.load().ba
 
 async function renderTab(req, res, tab, { errors = [], values = null, confirm = null, status = 200 } = {}) {
   tab = tabKey(tab); const data = { title: 'تنظیمات', tab, tabs: TABS, defs: defsOf(tab), values: values || settings.all(), errors, confirm, groups: settings.GROUPS };
+  if (tab === 'birthday') { const BK = require('../lib/birthdayKinds'); data.bdVars = BK.VARS; }
   if (tab === 'system') {
     const k = db.get(); const last = await k('audit_logs').where({ action: 'cron' }).orderBy('id', 'desc').first();
     const B = require('../lib/backupTools'); const list = B.list();
@@ -45,6 +46,9 @@ function collect(req, defs) {
       else if (v === undefined) continue;
       if (d.type === 'secret' && !v) continue; // خالی = بدون تغییر
       if (d.key === 'cron_token' && !/^[A-Za-z0-9_-]{16,80}$/.test(v)) { errors.push('«توکن cron» باید ۱۶ تا ۸۰ نویسه‌ی لاتین/عدد (و _ -) باشد.'); continue; }
+      if (/^bd_pattern_/.test(d.key) && v && !/^[A-Za-z0-9_-]{3,60}$/.test(v)) { errors.push(`«${d.label}» نامعتبر است.`); continue; }
+      if (/^bd_params_/.test(d.key)) { const pr = require('../lib/birthdayKinds').parseParams(v); if (!pr.ok) { errors.push(`«${d.label}»: ${pr.error}`); continue; } }
+      if (/^bd_tpl_/.test(d.key) && v.length > 400) { errors.push('«متن پیام» حداکثر ۴۰۰ نویسه است.'); continue; }
       if (d.key === 'sms_otp_pattern' && v && !/^[A-Za-z0-9_-]{3,60}$/.test(v)) { errors.push('«کد الگو» نامعتبر است.'); continue; }
       if (d.key === 'sms_otp_param' && !/^[A-Za-z_]\w{0,30}$/.test(v || '')) { errors.push('«نام متغیر کد» باید لاتین باشد (مثل code).'); continue; }
       if (d.key === 'sms_from_number' && v && !/^\+?\d{3,15}$/.test(v)) { errors.push('«شماره ارسال‌کننده» نامعتبر است (مثل +983000505).'); continue; }

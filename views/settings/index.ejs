@@ -23,12 +23,17 @@
     </div>
     <% } %>
 
+    <% if (tab === 'birthday' && typeof bdVars !== 'undefined') { %><div class="card" style="margin-bottom:1rem"><h3><%- icon('info', 18) %> راهنما</h3>
+      <div class="muted small" style="line-height:2">متغیرهای قابل‌استفاده در متن پیام (داخل آکولاد) و در «متغیرهای الگو»:
+        <% Object.keys(bdVars).forEach(function(k){ %><span class="badge ltr" title="<%= bdVars[k] %>">{<%= k %>}</span> <%= bdVars[k] %>؛ <% }) %><br>
+        هر نوع پیام می‌تواند الگوی ippanel جداگانه داشته باشد. با خالی‌گذاشتن «کد الگو»، پیامک متنی با همان قالب ارسال می‌شود. <a href="<%= u('/birthdays') %>">مشاهده‌ی تولدها و اجرای دستی</a></div></div><% } %>
     <form method="post" action="<%= u('/settings') %>" class="card sform">
       <input type="hidden" name="_csrf" value="<%= csrf %>"><input type="hidden" name="_group" value="<%= tab %>">
       <h3><%- icon((tabs.filter(function(t){ return t[0] === tab; })[0] || [])[2] || 'settings', 18) %> <%= groups[tab] %></h3>
       <div class="form-grid">
       <% defs.forEach(function(d){ if (d.key === 'cron_token') return; var v = values[d.key]; if (v === undefined) v = d.def; %>
-        <div class="field <%= d.type === 'textarea' || d.type === 'days' ? 'full' : '' %>">
+        <% if (d.section) { %><h4 class="sec-h full" style="grid-column:1/-1;margin:.9rem 0 .1rem;padding-top:.7rem;border-top:1px dashed var(--border)"><%= d.section %></h4><% } %>
+        <div class="field <%= d.type === 'textarea' || d.type === 'days' || d.full ? 'full' : '' %>">
         <% if (d.type === 'checkbox') { %><label class="check"><input type="checkbox" name="<%= d.key %>" value="1" <%= (v === '1' || v === 1) ? 'checked' : '' %>> <%= d.label %></label>
         <% } else if (d.type === 'days') { var sel = String(v).split(','); %><label><%= d.label %></label><div style="display:flex;gap:1rem;flex-wrap:wrap"><% ['شنبه','یکشنبه','دوشنبه','سه‌شنبه','چهارشنبه','پنجشنبه','جمعه'].forEach(function(n, i){ %><label class="check"><input type="checkbox" name="<%= d.key %>" value="<%= i %>" <%= sel.includes(String(i)) ? 'checked' : '' %>> <%= n %></label><% }) %></div>
         <% } else { %><label><%= d.label %></label>

@@ -7,12 +7,6 @@ const svc = require('../services');
 const J = require('../utils/jalali');
 const router = express.Router();
 
-async function birthdays(classIds) {
-  const t = J.isoToJ(J.todayISO());
-  const q = db.get()('students as s').leftJoin('classrooms as c', 'c.id', 's.classroom_id').where('s.status', 'active').whereNotNull('s.birth_date').select('s.id', 's.first_name', 's.last_name', 's.birth_date', 'c.name as class_name');
-  if (classIds) q.whereIn('s.classroom_id', classIds.length ? classIds : [0]);
-  return (await q).filter((s) => { const j = J.isoToJ(s.birth_date); return j && j.jm === t.jm && j.jd === t.jd; });
-}
 async function latestAnnouncements(user, classIds, n = 4) {
   const today = J.todayISO();
   const q = db.get()('announcements as t').where((b) => b.whereNull('t.expires_on').orWhere('t.expires_on', '>=', today));
@@ -38,7 +32,11 @@ router.get('/', async (req, res, next) => {
       if (classIds) q.whereIn('e.classroom_id', classIds.length ? classIds : [0]);
       data.exams = await q;
     }
-    if (settings.bool('show_birthdays') && u.role !== 'student') data.birthdays = await birthdays(classIds);
+    if (settings.bool('show_birthdays') && u.role !== 'student' && M('birthdays')) {
+      const o = await require('../lib/birthdays').overview({ classIds, today });
+      data.birthdays = o.todayList; data.bdSoon = o.upcoming.filter((x) => x.days > 0 && x.days <= 7).slice(0, 6);
+      data.bdCounts = { week: o.thisWeek.list.length, next: o.nextWeek.list.length };
+    }
 
     if (u.role === 'admin' || u.role === 'deputy') {
       data.counts = {
@@ -99,6 +97,7 @@ router.get('/', async (req, res, next) => {
     // دانش‌آموز
     const s = u.student;
     data.student = s;
+    if (s && M('birthdays') && settings.bool('bd_student_widget')) { data.bdOn = true; data.bd = require('../lib/birthdays').countdown(s, today); }
     if (s) {
       data.klass = s.classroom_id ? await k('classrooms as c').leftJoin('teachers as t', 't.id', 'c.homeroom_teacher_id').leftJoin('users as tu', 'tu.id', 't.user_id').where('c.id', s.classroom_id).select('c.*', 'tu.full_name as homeroom_name').first() : null;
       if (M('timetable') && isSchoolDay && s.classroom_id) {

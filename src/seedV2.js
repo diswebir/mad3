@@ -87,5 +87,15 @@ async function seedV2(k) {
   }
   /* --- در دسترس نبودن معلم (برای زمان‌بندی) --- */
   if (mod('timetable')) { const tr = tByName['a.taheri']; if (tr) await k('teacher_unavailability').insert([{ teacher_id: tr.id, day: 3, period: 1, note: 'جلسه‌ی دانشگاه' }, { teacher_id: tr.id, day: 3, period: 2, note: 'جلسه‌ی دانشگاه' }]); }
+  /* --- تولدهای نزدیک به امروز (برای نمایش شمارش معکوس، تقویم هفتگی و اعلان‌ها) --- */
+  if (mod('birthdays')) {
+    const today = J.todayISO(); const ids = (await k('students').where({ status: 'active' }).orderBy('id').limit(8).select('id', 'birth_date'));
+    const plan = [[0, 11], [1, 0], [2, 2], [3, 3], [4, 5], [5, 9]];
+    for (const [i, off] of plan) {
+      const st = ids[i]; if (!st) continue;
+      const j = J.isoToJ(J.addDays(today, off)); const old = J.isoToJ(st.birth_date); const age = old ? Math.max(11, Math.min(17, J.isoToJ(today).jy - old.jy)) : 13;
+      const y = j.jy - age; await k('students').where({ id: st.id }).update({ birth_date: J.jToIso(y, j.jm, Math.min(j.jd, J.monthRange(y, j.jm).length)) });
+    }
+  }
 }
 module.exports = { seedV2 };

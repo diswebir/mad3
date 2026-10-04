@@ -1,5 +1,6 @@
 'use strict';
 const db = require('./db');
+const BK = require('./lib/birthdayKinds');
 
 /** تعریف تنظیمات سامانه؛ مقدار پیش‌فرض و گروه‌بندی برای صفحه تنظیمات */
 const DEFS = [
@@ -52,7 +53,6 @@ const DEFS = [
   // دانش‌آموز
   { key: 'student_code_prefix', group: 'students', label: 'پیشوند شماره دانش‌آموزی', type: 'text', def: '1405' },
   { key: 'student_password_mode', group: 'students', label: 'رمز اولیه دانش‌آموز', type: 'select', def: 'national_id', options: [['national_id', 'کد ملی (در نبود آن رمز تصادفی)'], ['random', 'همیشه رمز تصادفی']] },
-  { key: 'show_birthdays', group: 'students', label: 'نمایش تولدهای امروز در داشبورد', type: 'checkbox', def: '1' },
   // مالی
   { key: 'currency_label', group: 'finance', label: 'واحد پول', type: 'select', def: 'تومان', options: ['تومان', 'ریال'] },
   { key: 'sibling_discount_percent', group: 'finance', label: 'تخفیف برادر/خواهر (درصد برای فرزند دوم به بعد، ۰ = غیرفعال)', type: 'number', def: '0', min: 0, max: 100 },
@@ -91,7 +91,34 @@ const DEFS = [
   { key: 'show_demo_logins', group: 'appearance', label: 'نمایش حساب‌های دمو در صفحه ورود', type: 'checkbox', def: '0' },
   { key: 'logo', group: 'appearance', label: 'لوگو', type: 'hidden', def: '' },
 ];
-const GROUPS = { general: 'اطلاعات مدرسه', academic: 'تنظیمات آموزشی', reportcard: 'کارنامه و قالب چاپ', attendance: 'حضور و غیاب', tickets: 'تیکت‌ها', students: 'دانش‌آموزان', finance: 'مالی', hr: 'منابع انسانی', sms: 'پیامک (ippanel)', security: 'امنیت', appearance: 'ظاهر', system: 'نگهداری و پشتیبان' };
+/** تنظیمات تولد: بخش‌بندی‌شده بر پایه‌ی مخاطب؛ هر نوع پیام کد الگو، متغیرهای الگو و قالب متن خودش را دارد */
+function birthdayDefs() {
+  const d = [
+    { key: 'bd_enabled', group: 'birthday', section: 'عمومی', label: 'ارسال خودکار اعلان تولد (درون‌برنامه‌ای و پیامک)', type: 'checkbox', def: '1' },
+    { key: 'bd_before_days', group: 'birthday', label: 'اطلاع‌رسانی چند روز قبل از تولد (۰ = فقط روز تولد)', type: 'number', def: '3', min: 0, max: 14 },
+    { key: 'bd_send_time', group: 'birthday', label: 'ساعت ارسال روزانه', type: 'time', def: '07:30', hint: 'اجرای کارها هر ۳۰ دقیقه (و با cron) انجام می‌شود؛ اعلان‌ها پس از این ساعت و فقط یک‌بار برای هر دانش‌آموز در هر سال ارسال می‌شوند.' },
+    { key: 'bd_notify_homeroom', group: 'birthday', label: 'رونوشت درون‌برنامه‌ای برای معلم راهنمای کلاس', type: 'checkbox', def: '1' },
+    { key: 'show_birthdays', group: 'birthday', label: 'نمایش تولدها در داشبورد مدیر و معلم', type: 'checkbox', def: '1' },
+    { key: 'bd_student_widget', group: 'birthday', label: 'نمایش شمارش معکوس تولد در داشبورد دانش‌آموز و اولیا', type: 'checkbox', def: '1' },
+  ];
+  for (const aud of Object.keys(BK.AUDIENCES)) {
+    let first = true;
+    d.push({ key: 'bd_sms_' + aud, group: 'birthday', section: 'مخاطب: ' + BK.AUDIENCES[aud], label: `ارسال پیامک به ${BK.AUDIENCES[aud]} (نیازمند فعال‌بودن پیامک؛ اعلان درون‌برنامه‌ای همیشه ارسال می‌شود)`, type: 'checkbox', def: aud === 'admin' ? '0' : '1', full: true,
+      hint: aud === 'admin' ? 'شماره‌ی موبایل از «پروفایل» حساب مدیر/معاون خوانده می‌شود.' : aud === 'parent' ? 'به شماره‌های پدر، مادر و سرپرست در پرونده.' : 'به شماره‌ی موبایل دانش‌آموز در پرونده.' });
+    for (const [kind, m] of Object.entries(BK.KINDS)) {
+      if (m.aud !== aud) continue; first = false;
+      const when = m.when === 'before' ? 'چند روز قبل' : 'روز تولد';
+      d.push({ key: 'bd_on_' + kind, group: 'birthday', label: `«${when}» — ارسال شود`, type: 'checkbox', def: '1', full: true });
+      d.push({ key: 'bd_tpl_' + kind, group: 'birthday', label: `متن پیام (${when}) — خالی = متن پیش‌فرض`, type: 'textarea', def: m.tpl });
+      d.push({ key: 'bd_pattern_' + kind, group: 'birthday', label: `کد الگوی ippanel (${when}) — خالی = پیامک متنی با قالب بالا`, type: 'text', def: '' });
+      d.push({ key: 'bd_params_' + kind, group: 'birthday', label: `متغیرهای الگو (${when})`, type: 'text', def: m.params, hint: 'نام هر متغیر را همان‌طور که در الگوی ippanel ساخته‌اید بنویسید، با ویرگول؛ اگر نام با متغیر سامانه فرق دارد به‌شکل «نام‌در_الگو:متغیر» (مثلاً fname:first_name).' });
+    }
+  }
+  return d;
+}
+
+DEFS.push(...birthdayDefs());
+const GROUPS = { general: 'اطلاعات مدرسه', academic: 'تنظیمات آموزشی', reportcard: 'کارنامه و قالب چاپ', attendance: 'حضور و غیاب', tickets: 'تیکت‌ها', students: 'دانش‌آموزان', birthday: 'تولد و تبریک', finance: 'مالی', hr: 'منابع انسانی', sms: 'پیامک (ippanel)', security: 'امنیت', appearance: 'ظاهر', system: 'نگهداری و پشتیبان' };
 
 let cache = null;
 async function load() {

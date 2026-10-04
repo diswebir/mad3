@@ -77,13 +77,13 @@ async function dispatchRows(ids) {
  * کد در گزارش پیامک فقط در حالت آزمایشی ذخیره می‌شود؛ در حالت واقعی مخفی است.
  * خروجی: { ok, error, simulated }
  */
-async function sendPattern({ to, patternCode, params, event = 'otp', userId = null, secretKeys = [] }) {
+async function sendPattern({ to, patternCode, params, event = 'otp', userId = null, studentId = null, secretKeys = [] }) {
   const cfg = config(); const num = toE164(to);
   if (!num) return { ok: false, error: 'شماره‌ی موبایل معتبر نیست.' };
   const real = cfg.provider === 'ippanel';
   const shown = Object.keys(params).map((p) => `${p}=${secretKeys.includes(p) && real ? '••••' : params[p]}`).join(' ');
   const k = db.get();
-  const [rid] = await k('sms_log').insert({ to_number: num, message: `[الگو ${patternCode || '-'}] ${shown}`.slice(0, 1000), event, status: 'queued', created_by: userId });
+  const [rid] = await k('sms_log').insert({ to_number: num, message: `[الگو ${patternCode || '-'}] ${shown}`.slice(0, 1000), event, status: 'queued', student_id: studentId || null, created_by: userId });
   const id = typeof rid === 'object' ? rid.id : rid;
   const done = async (status, error, ref) => { await k('sms_log').where({ id }).update({ status, error: error ? String(error).slice(0, 250) : null, provider_ref: ref ? String(ref).slice(0, 60) : null }); return { ok: status !== 'failed', error: error || null, simulated: status === 'simulated' }; };
   if (!real) return done('simulated');

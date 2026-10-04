@@ -1,0 +1,9 @@
+<%# فهرست تولدها: list = آرایه‌ی خروجی lib/birthdays؛ showClass پیش‌فرض true %>
+<% if (!list.length) { %><div class="empty" style="padding:1rem">تولدی در این بازه نیست.</div><% } else { %>
+<ul class="list bd-list"><% list.forEach(function(b){ %>
+  <li class="<%= b.today ? 'bd-today' : '' %> <%= b.days < 0 ? 'bd-past' : '' %>">
+    <span class="bd-date"><b><%= ld(b.date).split(' ')[0] %></b><small><%= ld(b.date).split(' ')[1] %></small></span>
+    <div style="flex:1;min-width:0"><b><a href="<%= u('/students/' + b.id) %>"><%= b.name %></a></b><div class="muted small"><%= b.class_name || 'بدون کلاس' %> — <%= b.weekday %> — <%= fa(b.age) %> ساله می‌شود</div></div>
+    <% if (b.today) { %><span class="badge green">امروز 🎂</span><% } else if (b.days > 0) { %><span class="badge blue nowrap"><%= b.days === 1 ? 'فردا' : fa(b.days) + ' روز دیگر' %></span><% } else { %><span class="badge nowrap">گذشته</span><% } %>
+  </li><% }) %></ul>
+<% } %>

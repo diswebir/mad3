@@ -40,7 +40,7 @@
     </div>
     <% } %>
     <% if (typeof overdueLoans !== 'undefined' && overdueLoans) { %><div class="alert warn"><%- icon('library-big', 18) %><div><%= fa(overdueLoans) %> کتاب با دیرکرد در امانت است. <a href="<%= u('/library/loans') %>">مشاهده</a></div></div><% } %>
-    <% if (typeof birthdays !== 'undefined' && birthdays.length) { %><div class="card"><h3><%- icon('cake', 18) %> تولد امروز 🎂</h3><ul class="list"><% birthdays.forEach(function(b){ %><li><div><b><a href="<%= u('/students/' + b.id) %>"><%= b.first_name %> <%= b.last_name %></a></b><div class="muted small"><%= b.class_name %></div></div></li><% }) %></ul></div><% } %>
+    <%- include('../partials/bd-card') %>
     <%- include('../partials/common-widgets') %>
   </div>
 </div>

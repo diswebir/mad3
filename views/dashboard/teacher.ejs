@@ -25,6 +25,6 @@
     <div class="table-wrap"><table class="t"><tbody><% tickets.forEach(function(t){ %><tr><td><a href="<%= u('/tickets/' + t.id) %>"><%= t.subject %></a></td><td><%= t.creator %></td><td class="muted small"><%= dt(t.created_at) %></td></tr><% }) %></tbody></table></div></div>
   <% } %>
 </div><div>
-  <% if (typeof birthdays !== 'undefined' && birthdays.length) { %><div class="card"><h3><%- icon('cake', 18) %> تولد امروز 🎂</h3><ul class="list"><% birthdays.forEach(function(b){ %><li><div><b><a href="<%= u('/students/' + b.id) %>"><%= b.first_name %> <%= b.last_name %></a></b><div class="muted small"><%= b.class_name %></div></div></li><% }) %></ul></div><% } %>
+  <%- include('../partials/bd-card') %>
   <%- include('../partials/common-widgets') %>
 </div></div>

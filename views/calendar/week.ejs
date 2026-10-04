@@ -1,0 +1,19 @@
+<% var fmt = function(iso){ return ld(iso).split(' ').slice(0, 2).join(' '); }; %>
+<div class="page-head"><div><h1><%- icon('calendar-range', 24) %> تقویم هفتگی</h1><div class="muted">هفته‌ی <%= offset === 0 ? 'جاری' : '' %> از <%= fmt(ws) %> تا <%= fmt(we) %> — دو هفته پشت‌سرهم، همراه با تولدها</div></div>
+  <div class="actions"><a class="btn" href="<%= u('/calendar?view=week&w=' + (offset - 1)) %>"><%- icon('chevron-right', 16) %> هفته قبل</a><a class="btn" href="<%= u('/calendar?view=week') %>">این هفته</a><a class="btn" href="<%= u('/calendar?view=week&w=' + (offset + 1)) %>">هفته بعد <%- icon('chevron-left', 16) %></a><a class="btn" href="<%= u('/calendar') %>"><%- icon('calendar-days', 16) %> نمای ماهانه</a><% if (isManager) { %><a class="btn primary" href="<%= u('/events/new') %>"><%- icon('plus', 16) %> رویداد جدید</a><% } %></div></div>
+<% [0, 1].forEach(function(w){ %>
+<h3 style="margin:1rem 0 .5rem"><%= w === 0 ? 'هفته‌ی ' + (offset === 0 ? 'جاری' : 'اول') : 'هفته‌ی ' + (offset === 0 ? 'بعد' : 'دوم') %> <span class="muted small">(<%= fmt(days[w * 7].iso) %> تا <%= fmt(days[w * 7 + 6].iso) %>)</span></h3>
+<div class="cal week"><% WEEKDAYS.forEach(function(x){ %><div class="h"><%= x %></div><% }) %>
+<% days.filter(function(c){ return c.week === w; }).forEach(function(c){ %><div class="<%= c.today ? 'today' : '' %> <%= c.off ? 'off' : '' %>"><div class="d"><%= fa(c.d) %> <span class="muted small"><%= MONTHS[c.m - 1] %></span></div>
+  <% if (c.holiday) { %><span class="ev holiday" title="<%= c.holiday %>"><%= c.holiday %></span><% } %>
+  <% c.items.slice(0, 6).forEach(function(i){ %><% if (i.href) { %><a class="ev <%= i.c %>" title="<%= i.tip || i.t %>" href="<%= u(i.href) %>"><%= i.t %></a><% } else { %><span class="ev <%= i.c %>" title="<%= i.t %>"><%= i.t %></span><% } %><% }) %>
+  <% if (c.items.length > 6) { %><span class="muted small">+<%= fa(c.items.length - 6) %> مورد</span><% } %></div><% }) %></div>
+<% }) %>
+<div style="display:flex;gap:1rem;margin-top:.8rem" class="small"><span class="badge blue">رویداد</span><span class="badge amber">امتحان</span><span class="badge red">تعطیلی</span><span class="badge green">تولد</span></div>
+<% if (bd) { %>
+<div class="grid g2" style="margin-top:1.2rem">
+  <div class="card flush"><div class="card-title"><%- icon('cake', 18) %> تولدهای <%= offset === 0 ? 'این هفته' : 'هفته‌ی اول' %> <span class="badge"><%= fa(bd.thisWeek.list.length) %></span></div><%- include('../partials/bd-list', { list: bd.thisWeek.list }) %></div>
+  <div class="card flush"><div class="card-title"><%- icon('cake', 18) %> تولدهای <%= offset === 0 ? 'هفته‌ی بعد' : 'هفته‌ی دوم' %> <span class="badge"><%= fa(bd.nextWeek.list.length) %></span></div><%- include('../partials/bd-list', { list: bd.nextWeek.list }) %></div>
+</div>
+<div style="margin-top:.8rem"><a class="btn" href="<%= u('/birthdays') %>"><%- icon('cake', 16) %> فهرست کامل تولدها</a></div>
+<% } %>

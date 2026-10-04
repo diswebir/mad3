@@ -25,6 +25,7 @@
     <div class="table-wrap"><table class="t"><tbody><% scores.forEach(function(s){ %><tr><td><%= s.subject_name %></td><td><%= s.title %></td><td class="num"><b><%= fa(s.score) %></b> / <%= fa(s.max_score) %></td><td class="muted small"><%= d(s.date) %></td></tr><% }) %></tbody></table></div></div>
   <% } %>
 </div><div>
+  <%- include('../partials/bd-countdown') %>
   <% if (typeof recentAbsences !== 'undefined' && recentAbsences.length && enabled('tickets')) { %><div class="alert warn"><%- icon('triangle-alert', 18) %><div>غیبت‌های اخیر: <%= recentAbsences.map(function(a){ return d(a.date); }).join('، ') %>. برای توجیه غیبت <a href="<%= u('/tickets/new?category=absence&date=' + recentAbsences[0].date) %>">تیکت ارسال کنید</a>.</div></div><% } %>
   <% if (typeof loans !== 'undefined' && loans.length) { %><div class="card"><h3><%- icon('library-big', 18) %> کتاب‌های امانتی</h3><ul class="list"><% loans.forEach(function(l){ %><li><div><b><a href="<%= u('/library/loans') %>"><%= l.title %></a></b><div class="muted small">موعد بازگشت: <%= d(l.due_date) %></div></div></li><% }) %></ul></div><% } %>
   <%- include('../partials/common-widgets') %>

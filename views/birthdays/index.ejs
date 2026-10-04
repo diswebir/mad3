@@ -1,0 +1,28 @@
+<div class="page-head"><div><h1><%- icon('cake', 24) %> تولدها</h1><div class="muted">تاریخ تولد شمسی دانش‌آموزان — <%= fa(total) %> دانش‌آموز دارای تاریخ تولد<% if (missing) { %> · <span class="text-amber"><%= fa(missing) %> نفر بدون تاریخ تولد</span><% } %></div></div>
+  <div class="actions"><a class="btn" href="<%= u('/calendar?view=week') %>"><%- icon('calendar-range', 16) %> تقویم هفتگی</a><a class="btn" href="<%= u('/birthdays/export.csv?range=' + key + (cid ? '&class=' + cid : '')) %>"><%- icon('download', 16) %> CSV</a><button class="btn" onclick="window.print()"><%- icon('printer', 16) %> چاپ</button>
+  <% if (user.role === 'admin') { %><a class="btn" href="<%= u('/settings?tab=birthday') %>"><%- icon('settings', 16) %> تنظیمات تولد</a><% } %></div></div>
+<div class="tabs"><% RANGES.forEach(function(r){ %><a class="<%= key === r[0] ? 'active' : '' %>" href="<%= u('/birthdays?range=' + r[0] + (cid ? '&class=' + cid : '')) %>"><%= r[1] %></a><% }) %></div>
+<form method="get" class="filters" style="margin:.2rem 0 .8rem"><input type="hidden" name="range" value="<%= key %>"><select name="class" data-autosubmit><option value="">همه‌ی کلاس‌ها</option><% classes.forEach(function(c){ %><option value="<%= c.id %>" <%= cid === c.id ? 'selected' : '' %>><%= c.name %></option><% }) %></select><span class="muted small">بازه: <%= d(from) %> تا <%= d(to) %> — <%= fa(list.length) %> مورد</span></form>
+<div class="card flush">
+<% if (!list.length) { %><div class="empty" style="padding:1.5rem">تولدی در این بازه ثبت نشده است.</div>
+<% } else if (byMonth) { %>
+  <% Object.keys(byMonth).sort(function(a, b){ var ca = (a - curM + 12) % 12, cb = (b - curM + 12) % 12; return ca - cb; }).forEach(function(m){ %>
+  <div class="card-title" style="padding:.7rem 1rem"><%= MONTHS[m - 1] %> <span class="badge"><%= fa(byMonth[m].length) %></span></div><%- include('../partials/bd-list', { list: byMonth[m] }) %>
+  <% }) %>
+<% } else { %>
+<div class="table-wrap"><table class="t"><thead><tr><th>دانش‌آموز</th><th>کلاس</th><th>تاریخ تولد</th><th>روز</th><th>سنِ جدید</th><th>زمان</th><% if (isManager) { %><th></th><% } %></tr></thead><tbody>
+<% list.forEach(function(b){ %><tr class="<%= b.today ? 'bd-today' : '' %>"><td><b><a href="<%= u('/students/' + b.id) %>"><%= b.name %></a></b></td><td><%= b.class_name || '—' %></td><td class="num"><%= d(b.date) %></td><td><%= b.weekday %></td><td class="num"><%= fa(b.age) %></td>
+<td><% if (b.today) { %><span class="badge green">امروز 🎂</span><% } else if (b.days > 0) { %><span class="badge blue"><%= b.days === 1 ? 'فردا' : fa(b.days) + ' روز دیگر' %></span><% } else { %><span class="badge">گذشته</span><% } %></td>
+<% if (isManager) { %><td><form method="post" action="<%= u('/birthdays/' + b.id + '/greet') %>"><input type="hidden" name="_csrf" value="<%= csrf %>"><button class="btn sm" data-confirm="اعلان و پیامک تبریک همین حالا برای دانش‌آموز و اولیا ارسال شود؟"><%- icon('send', 14) %> تبریک</button></form></td><% } %></tr><% }) %>
+</tbody></table></div><% } %></div>
+<% if (isManager) { %>
+<div class="grid g2" style="margin-top:1.1rem">
+  <div class="card"><h3><%- icon('bell', 18) %> اعلان‌های خودکار</h3>
+    <ul class="list small"><li>وضعیت: <% if (botOn) { %><span class="badge green">فعال</span><% } else { %><span class="badge red">خاموش</span><% } %></li>
+      <li>اطلاع‌رسانی <%= before ? fa(before) + ' روز قبل و ' : '' %>روز تولد — هر روز پس از ساعت <b class="num"><%= fa(at) %></b></li>
+      <li>پیامک: <%= smsOn ? 'فعال' : 'غیرفعال (فقط اعلان درون‌برنامه‌ای)' %></li></ul>
+    <form method="post" action="<%= u('/birthdays/run') %>" style="margin-top:.6rem"><input type="hidden" name="_csrf" value="<%= csrf %>"><button class="btn" data-confirm="کار روزانه‌ی تولد همین حالا اجرا شود؟ پیام‌های ارسال‌شده‌ی قبلی تکرار نمی‌شوند."><%- icon('play', 15) %> اجرای فوری</button></form></div>
+  <div class="card flush"><div class="card-title"><%- icon('history', 18) %> آخرین ارسال‌ها</div>
+    <% if (!recent.length) { %><div class="empty" style="padding:1rem">هنوز اعلانی ارسال نشده است.</div><% } else { %><div class="table-wrap"><table class="t"><tbody><% recent.forEach(function(r){ %><tr><td><a href="<%= u('/students/' + r.student_id) %>"><%= r.first_name %> <%= r.last_name %></a></td><td class="small"><%= (kinds[r.kind] || {}).label || (r.kind === 'homeroom_before' ? 'معلم راهنما — قبل' : r.kind === 'homeroom_today' ? 'معلم راهنما — روز تولد' : r.kind) %></td><td class="muted small"><%= dt(r.created_at) %></td></tr><% }) %></tbody></table></div><% } %></div>
+</div>
+<% } %>

@@ -47,6 +47,8 @@ const MODULES = [
     { label: 'تقویم', href: '/calendar', icon: 'calendar-days', roles: ALL, section: 'comm' },
     { label: 'مدیریت رویدادها', href: '/events', icon: 'flag', roles: STAFF, section: 'comm' },
     { label: 'تعطیلات و تقویم آموزشی', href: '/holidays', icon: 'calendar-off', roles: STAFF, section: 'comm', perm: 'timetable' }] },
+  { key: 'birthdays', title: 'تولد و تبریک', icon: 'cake', desc: 'تولدهای هفته‌ی جاری و بعد، شمارش معکوس تولد دانش‌آموز و اعلان/پیامک تبریک به مدیر، اولیا و دانش‌آموز', nav: [
+    { label: 'تولدها', href: '/birthdays', icon: 'cake', roles: STAFF_T, section: 'comm' }] },
   { key: 'meetings', title: 'جلسات اولیا', icon: 'users-round', desc: 'برنامه‌ریزی و ثبت صورت‌جلسه ملاقات با اولیا', nav: [
     { label: 'جلسات اولیا', href: '/meetings', icon: 'users-round', roles: ALL, section: 'comm' }] },
   { key: 'documents', title: 'مدارک و فایل‌های پرونده', icon: 'folder-open', desc: 'بارگذاری مدارک در پرونده دانش‌آموز (شناسنامه، عکس، ...)', nav: [] },
