@@ -1,0 +1,11 @@
+<%# کارت تولد داشبورد مدیر/معلم: امروز + هفت روز آینده + شمارنده‌ی هفته‌ها (همه قابل‌کلیک) %>
+<% if (typeof bdCounts !== 'undefined') { %>
+<div class="card bd-card"><h3><%- icon('cake', 18) %> تولدها <a class="btn sm ghost" style="margin-right:auto" href="<%= u('/birthdays') %>">همه</a></h3>
+  <% if (typeof birthdays !== 'undefined' && birthdays.length) { %><div class="bd-banner">🎂 امروز تولد <%= birthdays.length > 3 ? fa(birthdays.length) + ' دانش‌آموز' : birthdays.map(function(b){ return b.name; }).join('، ') %> است</div>
+  <ul class="list"><% birthdays.forEach(function(b){ %><li><div><b><a href="<%= u('/students/' + b.id) %>"><%= b.name %></a></b><div class="muted small"><%= b.class_name %> — <%= fa(b.age) %> ساله می‌شود</div></div></li><% }) %></ul>
+  <% } else { %><div class="muted small" style="margin-bottom:.4rem">امروز تولدی نیست.</div><% } %>
+  <% if (typeof bdSoon !== 'undefined' && bdSoon.length) { %><div class="muted small" style="margin:.5rem 0 .2rem">در هفت روز آینده</div>
+  <ul class="list"><% bdSoon.forEach(function(b){ %><li><div style="flex:1"><a href="<%= u('/students/' + b.id) %>"><%= b.name %></a> <span class="muted small">— <%= b.class_name %></span></div><span class="badge blue nowrap"><%= b.days === 1 ? 'فردا' : fa(b.days) + ' روز دیگر' %></span></li><% }) %></ul><% } %>
+  <div class="bd-links"><a href="<%= u('/birthdays?range=week') %>"><b><%= fa(bdCounts.week) %></b> تولد این هفته</a><a href="<%= u('/birthdays?range=next') %>"><b><%= fa(bdCounts.next) %></b> تولد هفته‌ی بعد</a><a href="<%= u('/calendar?view=week') %>"><%- icon('calendar-range', 14) %> تقویم هفتگی</a></div>
+</div>
+<% } %>

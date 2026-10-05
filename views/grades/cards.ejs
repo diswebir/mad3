@@ -1,0 +1,4 @@
+<div class="page-head no-print"><div><div class="crumbs"><a href="<%= u('/grades/class/' + c.id) %>">نتایج کلاس <%= c.name %></a></div><h1><%- icon('award', 24) %> چاپ گروهی کارنامه — <%= c.name %> (<%= fa(cards.length) %> کارنامه)</h1></div><div class="actions"><button class="btn primary" data-print><%- icon('printer', 16) %> چاپ همه</button></div></div>
+<div class="tabs no-print"><a class="<%= !term ? 'active' : '' %>" href="?">کل سال</a><% for (var i = 1; i <= terms; i++) { %><a class="<%= term === i ? 'active' : '' %>" href="?term=<%= i %>">نوبت <%= fa(i) %></a><% } %></div>
+<% if (!cards.length) { %><div class="card empty">دانش‌آموز فعالی در این کلاس نیست.</div><% } %>
+<% cards.forEach(function(cd){ %><%- include('_card', Object.assign({}, cd, { bulk: true })) %><% }) %>

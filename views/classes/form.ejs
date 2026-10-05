@@ -1,0 +1,7 @@
+<div class="page-head"><div><div class="crumbs"><a href="<%= u('/classes') %>">کلاس‌ها</a> / <%= row ? 'ویرایش' : 'افزودن' %></div><h1><%= title %></h1></div></div>
+<form method="post" class="card" action="<%= u('/classes/' + (row ? row.id + '/edit' : 'new')) %>" autocomplete="off">
+  <input type="hidden" name="_csrf" value="<%= csrf %>">
+  <% if (errors.length) { %><div class="alert error"><ul><% errors.forEach(function(e){ %><li><%= e %></li><% }) %></ul></div><% } %>
+  <div class="form-grid"><% fields.forEach(function(f){ var opts = {}; if (f.opts) opts[f.name] = f.opts; %><%- include('../partials/field', { f: f, vals: vals, options: opts }) %><% }) %></div>
+  <div class="form-actions"><button class="btn primary"><%- icon('save', 16) %> ذخیره</button><a class="btn" href="<%= u(row ? '/classes/' + row.id : '/classes') %>">انصراف</a></div>
+</form>

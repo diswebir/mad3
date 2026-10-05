@@ -1,0 +1,40 @@
+<div class="page-head"><div><h1><%- icon('shield-check', 24) %> امنیت و قفل‌ها</h1><div class="muted">قفل‌های موقت ورود و کد پیامکی. شمارنده‌ها در پایگاه‌داده‌اند و با ری‌استارت سرور پاک نمی‌شوند.</div></div>
+  <div class="actions"><% if (user.isSuper) { %><a class="btn" href="<%= u('/settings?tab=security') %>"><%- icon('settings', 16) %> تنظیم حدها</a><% } %><a class="btn" href="<%= u('/audit?action=login_failed') %>"><%- icon('history', 16) %> گزارش ورودهای ناموفق</a></div></div>
+
+<div class="grid g4">
+  <div class="card stat"><span class="ico"><%- icon('lock', 22) %></span><div><div class="v"><%= fa(locks.length) %></div><div class="l">قفل فعال</div></div></div>
+  <div class="card stat"><span class="ico"><%- icon('triangle-alert', 22) %></span><div><div class="v"><%= fa(fails24) %></div><div class="l">ورود ناموفق در ۲۴ ساعت</div></div></div>
+  <div class="card stat"><span class="ico"><%- icon('globe', 22) %></span><div><div class="v"><%= fa(ips24) %></div><div class="l">IP متفاوت در ۲۴ ساعت</div></div></div>
+  <div class="card stat"><span class="ico"><%- icon('timer', 22) %></span><div><div class="v"><%= fa(p.limit) %> تلاش</div><div class="l">سپس <%= fa(p.lockMs / 60000) %> دقیقه قفل<%= prog ? ' (پلکانی)' : '' %></div></div></div>
+</div>
+
+<div class="card flush" style="margin-top:1rem"><div class="card-title" style="padding:1rem 1.2rem .2rem"><%- icon('lock', 18) %> قفل‌های فعال
+  <% if (locks.length || watching.length) { %><form method="post" action="<%= u('/security/unlock-all') %>" style="margin-inline-start:auto"><input type="hidden" name="_csrf" value="<%= csrf %>"><button class="btn sm danger" data-confirm="همه‌ی قفل‌ها و شمارنده‌ها پاک شود؟"><%- icon('lock-open', 14) %> بازکردن همه</button></form><% } %></div>
+  <% if (!locks.length) { %><div class="empty" style="padding:1.2rem">قفل فعالی وجود ندارد. 👌</div><% } else { %>
+  <div class="table-wrap"><table class="t"><thead><tr><th>نوع</th><th>کلید</th><th>باقی‌مانده</th><th>دفعات تکرار</th><th></th></tr></thead><tbody>
+  <% locks.forEach(function(l){ %><tr><td><span class="badge red"><%= l.label %></span></td><td class="ltr" style="text-align:right"><%= l.key %></td><td><%= fa(l.minutes) %> دقیقه</td><td><%= fa(l.strikes) %></td>
+    <td><form method="post" action="<%= u('/security/unlock/' + l.id) %>"><input type="hidden" name="_csrf" value="<%= csrf %>"><button class="btn sm"><%- icon('lock-open', 14) %> بازکردن</button></form></td></tr><% }) %>
+  </tbody></table></div><% } %></div>
+
+<% if (watching.length) { %><div class="card flush"><div class="card-title" style="padding:1rem 1.2rem .2rem"><%- icon('eye', 18) %> در حال شمارش (هنوز قفل نشده)</div>
+  <div class="table-wrap"><table class="t"><thead><tr><th>نوع</th><th>کلید</th><th>تلاش ناموفق</th><th></th></tr></thead><tbody>
+  <% watching.forEach(function(l){ %><tr><td><span class="badge amber"><%= l.label %></span></td><td class="ltr" style="text-align:right"><%= l.key %></td><td><%= fa(l.hits) %></td>
+    <td><form method="post" action="<%= u('/security/unlock/' + l.id) %>"><input type="hidden" name="_csrf" value="<%= csrf %>"><button class="btn sm"><%- icon('rotate-ccw', 14) %> صفر کردن</button></form></td></tr><% }) %>
+  </tbody></table></div></div><% } %>
+
+<div class="grid g2">
+  <div class="card flush"><div class="card-title" style="padding:1rem 1.2rem .2rem"><%- icon('history', 18) %> آخرین ورودهای ناموفق</div>
+    <% if (!recent.length) { %><div class="empty" style="padding:1.2rem">موردی ثبت نشده است.</div><% } else { %>
+    <div class="table-wrap"><table class="t"><thead><tr><th>زمان</th><th>نام کاربری</th><th>IP</th></tr></thead><tbody>
+    <% recent.forEach(function(r){ %><tr><td><%= dt(r.created_at) %></td><td class="ltr" style="text-align:right"><%= r.details || '—' %></td><td class="ltr" style="text-align:right"><%= r.ip || '—' %></td></tr><% }) %>
+    </tbody></table></div><% } %></div>
+  <div class="card"><h3><%- icon('sliders-horizontal', 18) %> حدهای فعلی</h3>
+    <dl class="kv" style="grid-template-columns:200px 1fr">
+      <dt>تلاش ناموفق هر کاربر/IP</dt><dd><%= fa(p.limit) %> بار در <%= fa(p.windowMs / 60000) %> دقیقه</dd>
+      <dt>قفل کل IP</dt><dd><%= fa(p.ipLimit) %> تلاش ناموفق</dd>
+      <dt>مدت قفل</dt><dd><%= fa(p.lockMs / 60000) %> دقیقه<%= prog ? '؛ هر تکرار دو برابر، تا سقف ' + fa(maxMin) + ' دقیقه' : '' %></dd>
+      <dt>کد پیامکی</dt><dd><%= fa(otp.max) %> حدس برای هر کد · فاصله‌ی ارسال <%= fa(otp.cool) %> ثانیه · <%= fa(otp.user) %> کد/ساعت برای هر کاربر · <%= fa(otp.ip) %> درخواست/ساعت برای هر IP</dd>
+      <dt>IPهای مورداعتماد</dt><dd class="ltr" style="text-align:right"><%= trusted.length ? trusted.join('، ') : '—' %></dd>
+    </dl>
+    <p class="muted small">مدیر مدرسه فقط قفل‌های ورود و کد پیامکی را می‌بیند و باز می‌کند؛ حدها و قفل‌های فنی (دامنه، راه‌اندازی سوپر ادمین) را فقط سوپر ادمین مدیریت می‌کند.</p></div>
+</div>

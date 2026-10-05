@@ -1,0 +1,48 @@
+<div class="page-head">
+  <div><h1><%- icon(def.icon || 'list-checks', 24) %> <%= def.title %></h1><div class="muted small"><%= fa(total) %> مورد</div></div>
+  <div class="actions">
+    <% if (def.csv !== false) { %><a class="btn" href="<%= u(rbase) %>/export.csv<%= qs({page: ''}) %>"><%- icon('download', 16) %> خروجی CSV</a><% } %>
+    <% (def.headActions || []).forEach(function(a){ if (!a.roles || a.roles.includes(user.role)) { %><a class="btn" href="<%= u(a.href) %>"><%- icon(a.icon || 'plus', 16) %> <%= a.label %></a><% } }) %>
+    <% if (canWrite) { %><a class="btn primary" href="<%= u(rbase) %>/new"><%- icon('plus', 16) %> افزودن <%= def.singular %></a><% } %>
+  </div>
+</div>
+<% if (extra && extra.html) { %><%- extra.html %><% } %>
+<div class="card flush">
+  <form class="toolbar" method="get">
+    <% if (def.search) { %><input type="text" name="q" value="<%= q %>" placeholder="جستجو..." style="min-width:200px"><% } %>
+    <% filters.forEach(function(f){ %>
+      <select name="<%= f.name %>" data-autosubmit><option value=""><%= f.label %>: همه</option><% f.opts.forEach(function(o){ %><option value="<%= o[0] %>" <%= String(o[0]) === String(f.value) ? 'selected' : '' %>><%= o[1] %></option><% }) %></select>
+    <% }) %>
+    <% if (def.search || filters.length) { %><button class="btn" type="submit"><%- icon('filter', 15) %> اعمال</button><% if (q || filters.some(function(f){ return f.value; })) { %><a class="btn ghost" href="<%= u(rbase) %>">پاک‌کردن</a><% } %><% } %>
+  </form>
+  <% if (!rows.length) { %>
+    <div class="empty"><%- icon(def.icon || 'list-checks', 42) %><div>موردی یافت نشد.</div></div>
+  <% } else { %>
+  <div class="table-wrap"><table class="t">
+    <thead><tr>
+      <% def.columns.forEach(function(c){ %><th><% if (c.sortKey) { %><a href="<%= qs({sort: c.sortKey, dir: (sort === c.sortKey && dir === 'asc') ? 'desc' : 'asc'}) %>"><%= c.label %><%= sort === c.sortKey ? (dir === 'asc' ? ' ▲' : ' ▼') : '' %></a><% } else { %><%= c.label %><% } %></th><% }) %>
+      <th></th>
+    </tr></thead>
+    <tbody>
+    <% rows.forEach(function(r){ %><tr>
+      <% def.columns.forEach(function(c){ var val = r[c.key]; %><td>
+        <% if (c.html) { %><%- c.html(r, { esc: esc, fa: fa, d: d, money: money, L: L, u: u, icon: icon, pill: pill, S: S }) %>
+        <% } else if (c.type === 'date') { %><%= d(val) %>
+        <% } else if (c.type === 'badge') { %><%- pill((c.labels || {})[val] || val || '—', c.colors ? c.colors[val] : '') %>
+        <% } else if (c.type === 'bool') { %><%- val ? pill('بله', 'green') : pill('خیر', '') %>
+        <% } else if (c.type === 'money') { %><span class="num"><%= money(val) %></span>
+        <% } else if (c.type === 'number') { %><%= fa(val === null || val === undefined ? '' : val) %>
+        <% } else if (c.type === 'trunc') { %><span title="<%= val %>"><%= String(val || '').length > 60 ? String(val).slice(0, 60) + '…' : (val || '—') %></span>
+        <% } else { %><%= (val === null || val === undefined || val === '') ? '—' : val %><% } %>
+      </td><% }) %>
+      <td class="actions">
+        <% (def.rowActions || []).forEach(function(a){ if (!a.show || a.show(r, user)) { %><a class="btn sm ghost" href="<%= u(a.href(r)) %>" title="<%= a.label %>"><%- icon(a.icon || 'eye', 15) %> <%= a.label %></a><% } }) %>
+        <% if (canEditRow(r)) { %><a class="btn sm ghost" href="<%= u(rbase) %>/<%= r.id %>/edit" title="ویرایش"><%- icon('pencil', 15) %></a><% } %>
+        <% if (canDeleteRow(r)) { %><form method="post" action="<%= u(rbase) %>/<%= r.id %>/delete" style="display:inline" data-confirm="آیا از حذف این مورد مطمئن هستید؟"><input type="hidden" name="_csrf" value="<%= csrf %>"><button class="btn sm ghost" style="color:var(--red)" title="حذف"><%- icon('trash-2', 15) %></button></form><% } %>
+      </td>
+    </tr><% }) %>
+    </tbody>
+  </table></div>
+  <%- include('../partials/pager', { page: page, pages: pages }) %>
+  <% } %>
+</div>

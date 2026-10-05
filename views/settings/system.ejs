@@ -1,0 +1,5 @@
+<div class="page-head"><h1><%- icon('monitor-check', 24) %> وضعیت سامانه</h1><div class="actions"><a class="btn" href="<%= u('/settings') %>">بازگشت</a></div></div>
+<div class="grid g2">
+<div class="card"><h3>محیط اجرا</h3><dl class="kv"><dt>Node.js</dt><dd class="ltr"><%= info.node %></dd><dt>سیستم‌عامل</dt><dd class="ltr"><%= info.platform %></dd><dt>پایگاه داده</dt><dd><%= info.db %></dd><dt>مسیر پایه</dt><dd class="ltr"><%= info.basePath %></dd><dt>حالت</dt><dd><%= info.env %></dd><dt>زمان فعالیت</dt><dd><%= fa(Math.floor(info.uptime / 3600)) %> ساعت و <%= fa(Math.floor(info.uptime % 3600 / 60)) %> دقیقه</dd><dt>حافظه</dt><dd><%= fa(info.rss) %> مگابایت (heap: <%= fa(info.heap) %>)</dd><dt>حجم فایل‌ها</dt><dd><%= fa(info.upload) %> کیلوبایت</dd></dl></div>
+<div class="card"><h3>تعداد رکوردها</h3><dl class="kv"><% Object.keys(counts).forEach(function(t){ %><dt class="ltr"><%= t %></dt><dd><%= fa(counts[t]) %></dd><% }) %></dl></div>
+</div>

@@ -1,0 +1,22 @@
+<div class="page-head"><h1><%= title %></h1></div>
+<form method="post" class="card" style="max-width:720px" action="<%= u('/users/' + (row ? row.id + '/edit' : 'new')) %>" autocomplete="off" data-dirty-warn>
+  <input type="hidden" name="_csrf" value="<%= csrf %>">
+  <% if (errors.length) { %><div class="alert error"><ul><% errors.forEach(function(e){ %><li><%= e %></li><% }) %></ul></div><% } %>
+  <div class="form-grid">
+    <div class="field"><label>نام و نام خانوادگی *</label><input type="text" name="full_name" value="<%= vals.full_name || '' %>" required></div>
+    <div class="field"><label>نام کاربری *</label><input type="text" class="ltr" name="username" value="<%= vals.username || '' %>" <%= row ? 'readonly' : 'required' %>></div>
+    <div class="field"><label>نقش</label><select name="role" <%= row && !['admin','deputy'].includes(row.role) ? 'disabled' : '' %>><% ['admin', 'deputy'].forEach(function(r){ %><option value="<%= r %>" <%= vals.role === r ? 'selected' : '' %>><%= L.roles[r] %></option><% }) %><% if (row && !['admin','deputy'].includes(row.role)) { %><option selected><%= L.roles[row.role] %></option><% } %></select></div>
+    <div class="field"><label>تلفن</label><input type="text" class="ltr" name="phone" value="<%= vals.phone || '' %>"></div>
+    <div class="field full"><label>ایمیل</label><input type="text" class="ltr" name="email" value="<%= vals.email || '' %>"></div>
+    <% if (!row) { %><div class="field"><label>رمز عبور *</label><input type="password" class="ltr" name="password" required minlength="8" autocomplete="new-password"></div><div class="field"><label class="check" style="margin-top:1.8rem"><input type="checkbox" name="must_change" value="1" checked> تغییر رمز در اولین ورود الزامی باشد</label></div><% } %>
+  </div>
+  <% if (!row || ['admin','deputy'].includes(row.role)) { var P = PERMS_LIB; var cur = row ? P.parse(row.permissions) : (vals.perm ? [].concat(vals.perm) : null); %>
+  <fieldset style="margin-top:1rem"><legend>سطح دسترسی (فقط برای نقش «معاون/کارمند»؛ مدیر همه‌چیز را دارد)</legend>
+  <% if (row && row.role === 'deputy') { %><div class="alert info" style="margin-bottom:.6rem">برای کنترل دقیق‌تر هر کار (مثلاً فقط مشاهده یا ثبت پرداخت) از <a href="<%= u('/access/user/' + row.id) %>"><b>صفحه‌ی سطوح دسترسی این کاربر</b></a> استفاده کنید؛ مجوزهای آنجا بر این محدوده‌ی کلی اولویت دارند.</div><% } %>
+    <div class="form-grid"><div class="field"><label>عنوان شغلی</label><input type="text" name="title" value="<%= vals.title || '' %>" placeholder="مثلاً معاون آموزشی، حسابدار"></div>
+    <div class="field"><label>الگوی آماده</label><select data-preset><option value="">— انتخاب الگو —</option><% Object.keys(P.PRESETS).forEach(function(k){ %><option value="<%= k %>" data-perms="<%= JSON.stringify(P.PRESETS[k].perms) %>"><%= P.PRESETS[k].label %></option><% }) %></select></div></div>
+    <div style="display:flex;gap:.4rem 1.2rem;flex-wrap:wrap;margin-top:.5rem"><% Object.keys(P.PERMS).forEach(function(k){ %><label class="check"><input type="checkbox" name="perm" value="<%= k %>" <%= (cur === null ? true : cur.includes(k)) ? 'checked' : '' %>> <%= P.PERMS[k] %></label><% }) %></div>
+    <div class="muted small" style="margin-top:.4rem">مدیریت دانش‌آموزان، معلمان و کلاس‌ها برای معاون همیشه فعال است. بخش‌های بالا را می‌توان محدود کرد.</div></fieldset>
+  <% } %>
+  <div class="form-actions"><button class="btn primary"><%- icon('save', 16) %> ذخیره</button><a class="btn" href="<%= u('/users') %>">انصراف</a></div>
+</form>

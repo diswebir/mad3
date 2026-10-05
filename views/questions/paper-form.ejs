@@ -1,0 +1,16 @@
+<div class="page-head"><div><div class="crumbs"><a href="<%= u('/papers') %>">برگه‌های امتحانی</a></div><h1><%= title %></h1></div></div>
+<% if (!css.length) { %><div class="card empty">درسی برای شما تعریف نشده است.</div><% } else { %>
+<form class="card toolbar" method="get"><select name="cs" data-autosubmit><% css.forEach(function(c){ %><option value="<%= c.id %>" <%= cs && cs.id === c.id ? 'selected' : '' %>><%= c.subject_name %> — <%= c.class_name %></option><% }) %></select></form>
+<% if (cs) { %><form method="post" action="<%= u('/papers') %>" class="card"><input type="hidden" name="_csrf" value="<%= csrf %>"><input type="hidden" name="class_subject_id" value="<%= cs.id %>">
+<% if (errors.length) { %><div class="alert error"><ul><% errors.forEach(function(e){ %><li><%= e %></li><% }) %></ul></div><% } %>
+<div class="form-grid"><div class="field"><label>عنوان برگه *</label><input type="text" name="title" value="<%= vals.title || '' %>" required placeholder="امتحان میان‌ترم <%= cs.subject_name %>"></div>
+<div class="field"><label>تاریخ</label><input class="jdate ltr" type="text" name="exam_date" value="<%= vals.exam_date || '' %>" autocomplete="off"></div>
+<div class="field"><label>مدت (دقیقه)</label><input type="number" class="ltr" name="duration" value="<%= vals.duration || 60 %>" min="5" max="300"></div>
+<div class="field full"><label>دستورالعمل</label><textarea name="instructions" style="min-height:60px"><%= vals.instructions || '' %></textarea></div></div>
+<h3 style="margin-top:1rem">انتخاب سؤال</h3>
+<div style="display:flex;gap:1.2rem;margin-bottom:.6rem"><label class="check"><input type="radio" name="mode" value="manual" <%= vals.mode !== 'auto' ? 'checked' : '' %>> انتخاب دستی</label><label class="check"><input type="radio" name="mode" value="auto" <%= vals.mode === 'auto' ? 'checked' : '' %>> انتخاب تصادفی بر اساس تعداد</label></div>
+<div class="card" style="background:var(--bg)"><b>انتخاب تصادفی:</b> <% Object.keys(TYPES).forEach(function(t){ %><label style="margin-inline-start:1rem"><%= TYPES[t] %> (<%= fa(stat[t] || 0) %> موجود) <input type="number" class="ltr" name="n_<%= t %>" min="0" max="100" value="<%= vals['n_' + t] || 0 %>" style="width:70px"></label><% }) %></div>
+<div class="table-wrap"><table class="t"><thead><tr><th></th><th>سؤال</th><th>نوع</th><th>سطح</th><th>بارم</th></tr></thead><tbody>
+<% if (!questions.length) { %><tr><td colspan="5" class="muted" style="text-align:center">برای این درس سؤالی در بانک نیست. <a href="<%= u('/questions/new?subject_id=' + cs.subject_id) %>">افزودن سؤال</a></td></tr><% } %>
+<% questions.forEach(function(q){ %><tr><td><input type="checkbox" name="q" value="<%= q.id %>" <%= [].concat(vals.q || []).map(String).indexOf(String(q.id)) >= 0 ? 'checked' : '' %>></td><td><%= q.text.length > 120 ? q.text.slice(0, 120) + '…' : q.text %></td><td><%= TYPES[q.type] %></td><td><%= DIFF[q.difficulty] %></td><td class="num"><%= fa(Number(q.score)) %></td></tr><% }) %></tbody></table></div>
+<div class="form-actions"><button class="btn primary"><%- icon('save', 16) %> ساخت برگه</button></div></form><% } %><% } %>

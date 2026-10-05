@@ -1,0 +1,3 @@
+<div class="page-head no-print"><div><h1><%- icon('award', 24) %> کارنامه</h1></div><div class="actions"><button class="btn primary" data-print><%- icon('printer', 16) %> چاپ</button><% if (user.role !== 'student') { %><a class="btn" href="<%= u('/students/' + s.id) %>">پرونده دانش‌آموز</a><% } %></div></div>
+<div class="tabs no-print"><a class="<%= !term ? 'active' : '' %>" href="?">کل سال</a><% for (var i = 1; i <= terms; i++) { %><a class="<%= term === i ? 'active' : '' %>" href="?term=<%= i %>">نوبت <%= fa(i) %></a><% } %></div>
+<%- include('_card') %>

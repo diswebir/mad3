@@ -1,0 +1,56 @@
+<% var TYPE = { s3: 'S3 و سازگارها', webdav: 'WebDAV', folder: 'پوشه‌ی دیگر' }; var KIND = { auto: 'خودکار', manual: 'دستی', 'pre-promotion': 'پیش از ارتقا', 'pre-restore': 'پیش از بازیابی' }; %>
+<div class="page-head"><div><h1><%- icon('cloud-upload', 24) %> پشتیبان بیرونی</h1><div class="muted">کپی نسخه‌های پشتیبان در جایی بیرون از این هاست، با رمزنگاری. اگر هاست آسیب ببیند، داده‌ها از مقصد بازیابی می‌شوند.</div></div>
+  <div class="actions"><a class="btn primary" href="<%= u('/settings?tab=offsite') %>"><%- icon('settings', 16) %> تنظیمات مقصد</a><a class="btn" href="<%= u('/backup') %>"><%- icon('database-backup', 16) %> پشتیبان‌گیری</a></div></div>
+
+<% if (!c.enabled) { %><div class="alert warn"><%- icon('triangle-alert', 18) %><div><b>غیرفعال است.</b> فقط روی همین سرور پشتیبان نگه‌داری می‌شود. از «تنظیمات مقصد» نوع مقصد را انتخاب و فعال کنید.</div></div>
+<% } else if (errs.length) { %><div class="alert error"><%- icon('circle-x', 18) %><div><b>تنظیمات کامل نیست:</b> <%= errs[0] %></div></div>
+<% } else if (st.last_error) { %><div class="alert error"><%- icon('circle-x', 18) %><div><b>آخرین ارسال ناموفق بود</b> (<%= st.last_error_at ? dt(String(st.last_error_at).replace('T', ' ').slice(0, 19)) : '' %>): <%= st.last_error %><br><span class="small">ارسال در اجرای بعدی کارهای دوره‌ای (هر ۳۰ دقیقه) دوباره تلاش می‌شود.</span></div></div>
+<% } else if (st.last_ok_at) { %><div class="alert success"><%- icon('circle-check', 18) %><div><b>همه‌چیز درست است.</b> آخرین ارسال موفق: <%= dt(String(st.last_ok_at).replace('T', ' ').slice(0, 19)) %> (<span class="ltr"><%= st.last_ok_name %></span>)</div></div>
+<% } else { %><div class="alert info"><%- icon('info', 18) %><div>فعال است ولی هنوز ارسالی انجام نشده. با «آزمایش اتصال» شروع کنید.</div></div><% } %>
+
+<div class="grid g3">
+  <div class="card stat"><span class="ico"><%- icon('cloud', 22) %></span><div><div class="v"><%= c.enabled ? TYPE[c.type] : 'خاموش' %></div><div class="l">مقصد</div></div></div>
+  <div class="card stat"><span class="ico"><%- icon(c.encrypt ? 'lock' : 'lock-open', 22) %></span><div><div class="v"><%= c.encrypt ? 'رمزنگاری AES-256' : 'بدون رمزنگاری' %></div><div class="l"><%= c.encrypt && !c.pass ? 'عبارت رمز ثبت نشده!' : (c.encrypt ? 'عبارت رمز ثبت شده' : 'پیشنهاد نمی‌شود') %></div></div></div>
+  <div class="card stat"><span class="ico"><%- icon('history', 22) %></span><div><div class="v"><%= c.keep ? fa(c.keep) + ' نسخه' : 'همه' %></div><div class="l">نگه‌داری در مقصد (هر نوع)</div></div></div>
+</div>
+
+<div class="card" style="margin-top:1rem"><h3><%- icon('play', 18) %> عملیات</h3>
+  <div style="display:flex;gap:.6rem;flex-wrap:wrap">
+    <form method="post" action="<%= u('/super/offsite/test') %>"><input type="hidden" name="_csrf" value="<%= csrf %>"><button class="btn"><%- icon('plug-zap', 16) %> آزمایش اتصال</button></form>
+    <form method="post" action="<%= u('/super/offsite/sync') %>"><input type="hidden" name="_csrf" value="<%= csrf %>"><button class="btn primary"><%- icon('cloud-upload', 16) %> ارسال نسخه‌های ارسال‌نشده</button></form>
+    <form method="post" action="<%= u('/super/offsite/sync') %>"><input type="hidden" name="_csrf" value="<%= csrf %>"><input type="hidden" name="fresh" value="1"><button class="btn"><%- icon('save', 16) %> پشتیبان تازه بگیر و بفرست</button></form>
+    <a class="btn" href="<%= u('/super/offsite?remote=1') %>"><%- icon('list', 16) %> فهرست نسخه‌های مقصد</a>
+  </div>
+  <p class="muted small" style="margin-top:.7rem">ارسال خودکار: پس از پشتیبان روزانه، و هر ۳۰ دقیقه برای نسخه‌هایی که قبلاً ارسال نشده‌اند. کلید دسترسی و عبارت رمز در فایل پشتیبان ذخیره نمی‌شوند؛ آن‌ها را جای امن دیگری هم یادداشت کنید.</p></div>
+
+<% if (remote || remoteError) { %><div class="card flush"><div class="card-title" style="padding:1rem 1.2rem .2rem"><%- icon('cloud', 18) %> نسخه‌های موجود در مقصد <% if (remote) { %><span class="badge"><%= fa(remote.length) %></span><% } %></div>
+  <% if (remoteError) { %><div class="alert error" style="margin:1rem"><%- icon('circle-x', 18) %><div><%= remoteError %></div></div>
+  <% } else if (!remote.length) { %><div class="empty" style="padding:1.2rem">نسخه‌ای در مقصد نیست.</div>
+  <% } else { %><div class="table-wrap"><table class="t"><thead><tr><th>فایل</th><th>حجم</th><th>زمان</th><th></th></tr></thead><tbody>
+    <% remote.forEach(function(f){ %><tr><td class="ltr small" style="text-align:right"><%= f.name %></td><td class="num"><%= fa(Math.max(1, Math.round(f.size / 1024))) %> KB</td><td><%= f.mtime ? dt(new Date(f.mtime).toISOString().replace('T', ' ').slice(0, 19)) : '—' %></td>
+      <td><form method="post" action="<%= u('/super/offsite/download') %>"><input type="hidden" name="_csrf" value="<%= csrf %>"><input type="hidden" name="name" value="<%= f.name %>"><button class="btn sm"><%- icon('download', 14) %> دریافت برای بازیابی</button></form></td></tr><% }) %>
+  </tbody></table></div><% } %></div><% } %>
+
+<div class="grid g2">
+  <div class="card flush"><div class="card-title" style="padding:1rem 1.2rem .2rem"><%- icon('hard-drive', 18) %> نسخه‌های این سرور و وضعیت ارسال</div>
+    <% if (!local.length) { %><div class="empty" style="padding:1.2rem">نسخه‌ای روی سرور نیست.</div><% } else { %>
+    <div class="table-wrap"><table class="t"><thead><tr><th>فایل</th><th>نوع</th><th>ارسال</th></tr></thead><tbody>
+    <% local.forEach(function(f){ %><tr><td class="ltr small" style="text-align:right"><%= f.name %></td><td><span class="badge <%= f.kind === 'auto' ? 'blue' : 'amber' %>"><%= KIND[f.kind] || f.kind %></span></td>
+      <td><% if (f.sent) { %><span class="badge green">ارسال شد</span><% } else if (c.enabled && f.wanted) { %><span class="badge amber">در انتظار</span><% } else { %><span class="muted small">—</span><% } %></td></tr><% }) %>
+    </tbody></table></div><% } %></div>
+  <div class="card flush"><div class="card-title" style="padding:1rem 1.2rem .2rem"><%- icon('history', 18) %> تاریخچه‌ی ارسال‌ها</div>
+    <% if (!st.history.length) { %><div class="empty" style="padding:1.2rem">هنوز ارسالی ثبت نشده است.</div><% } else { %>
+    <div class="table-wrap"><table class="t"><thead><tr><th>زمان</th><th>فایل</th><th>نتیجه</th></tr></thead><tbody>
+    <% st.history.forEach(function(h){ %><tr><td><%= dt(String(h.at).replace('T', ' ').slice(0, 19)) %></td><td class="ltr small" style="text-align:right"><%= h.name %></td>
+      <td><% if (h.ok) { %><span class="badge green">موفق</span> <span class="muted small"><%= fa(h.ms || 0) %> ms</span><% } else { %><span class="badge red" title="<%= h.error %>">ناموفق</span> <span class="muted small"><%= (h.error || '').slice(0, 60) %></span><% } %></td></tr><% }) %>
+    </tbody></table></div><% } %></div>
+</div>
+
+<div class="card" style="margin-top:1rem"><h3><%- icon('life-buoy', 18) %> بازیابی از مقصد (سرور از دست رفته)</h3>
+  <ol class="muted" style="line-height:2;padding-inline-start:1.2rem">
+    <li>سامانه را روی هاست تازه نصب کنید (ویزارد) و با سوپر ادمین وارد شوید.</li>
+    <li>در «تنظیمات ← پشتیبان بیرونی» همان مقصد و همان <b>عبارت رمز</b> را وارد کنید.</li>
+    <li>«فهرست نسخه‌های مقصد» ← «دریافت برای بازیابی» ← در «پشتیبان‌گیری» دکمه‌ی «بازیابی».</li>
+    <li>یا فایل <span class="ltr">.enc</span> را دستی دانلود کنید و در «بازیابی از پشتیبان» همراه عبارت رمز بارگذاری کنید.</li>
+    <li>فایل‌های بارگذاری‌شده (<span class="ltr">data/uploads</span>: عکس و مدارک) در پشتیبان نیست و باید جدا کپی شود.</li>
+  </ol></div>
