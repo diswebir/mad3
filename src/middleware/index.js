@@ -84,6 +84,7 @@ async function loadUser(req, res, next) {
       req.user = u;
       // سوپر ادمین (نقش superadmin در پایگاه داده) در برنامه «مدیر» با پرچم isSuper است؛ بررسی‌های موجود مدیر بدون تغییر کار می‌کنند
       if (u.role === 'superadmin') { u.isSuper = true; u.realRole = 'superadmin'; u.role = 'admin'; }
+      await require('../lib/caps').hydrate(u); // دسترسی ریزدانه (v2.5)
       if (u.role === 'teacher') req.user.teacher = await db.get()('teachers').where({ user_id: u.id }).first();
       if (u.role === 'student') req.user.student = await db.get()('students').where({ user_id: u.id }).first();
       if (u.role === 'parent') {

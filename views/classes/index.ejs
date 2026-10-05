@@ -1,7 +1,7 @@
 <div class="page-head"><div><h1><%- icon('school', 24) %> کلاس‌ها</h1><div class="muted small"><%= fa(rows.length) %> کلاس</div></div><div class="actions">
 <% if (grades.length > 1) { %><form method="get"><select name="grade" data-autosubmit style="width:auto"><option value="">همه پایه‌ها</option><% grades.forEach(function(g){ %><option <%= g === grade ? 'selected' : '' %>><%= g %></option><% }) %></select></form><% } %>
 <% if (isManager && enabled('promotion')) { %><a class="btn ghost" href="<%= u('/promotion/archive') %>"><%- icon('archive', 16) %> بایگانی</a><% } %>
-<% if (isManager) { %><a class="btn primary" href="<%= u('/classes/new') %>"><%- icon('plus', 16) %> افزودن کلاس</a><% } %></div></div>
+<% if (cap('classes.create')) { %><a class="btn primary" href="<%= u('/classes/new') %>"><%- icon('plus', 16) %> افزودن کلاس</a><% } %></div></div>
 <% if (!rows.length) { %><div class="card empty"><%- icon('school', 42) %><div>کلاسی وجود ندارد.</div></div><% } %>
 <div class="grid g3">
 <% rows.forEach(function(c){ var pct = c.capacity ? Math.min(100, Math.round(c.student_count * 100 / c.capacity)) : 0; %>

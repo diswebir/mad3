@@ -120,11 +120,9 @@ router.get('/classes/:id(\\d+)', requireRole('admin', 'deputy', 'teacher'), asyn
     const k = db.get(); const c = await getClass(req, req.params.id); if (!c) return nf(res);
     const students = await k('students').where({ classroom_id: c.id }).orderBy('last_name').orderBy('first_name').select('id', 'first_name', 'last_name', 'student_code', 'gender', 'status', 'father_phone', 'mother_phone');
     const subjects = await k('class_subjects as cs').join('subjects as s', 's.id', 'cs.subject_id').leftJoin('teachers as t', 't.id', 'cs.teacher_id').leftJoin('users as u', 'u.id', 't.user_id').where('cs.classroom_id', c.id).orderBy('s.name').select('cs.id', 'cs.weekly_hours', 'cs.max_per_day', 'cs.teacher_id', 's.id as subject_id', 's.name as subject_name', 'u.full_name as teacher_name');
-    const data = { title: c.name, c, students, subjects, mgrFlag: isManager(req.user) };
+    const data = { title: c.name, c, students, subjects, mgrFlag: isManager(req.user), canCurriculum: require('../lib/caps').has(req.user, 'classes.curriculum'), canStudents: require('../lib/caps').has(req.user, 'classes.students'), canEditClass: require('../lib/caps').has(req.user, 'classes.edit'), canDeleteClass: require('../lib/caps').has(req.user, 'classes.delete') };
+    data.plan = await loadPlan(k, c);
     if (data.mgrFlag) {
-      const used = subjects.map((s) => s.subject_id);
-      data.availableSubjects = (await k('subjects').orderBy('name').select('id', 'name', 'weekly_hours')).filter((s) => !used.includes(s.id));
-      data.teachers = await k('teachers as t').join('users as u', 'u.id', 't.user_id').where('t.status', 'active').orderBy('u.full_name').select('t.id', 'u.full_name');
       data.unassigned = await k('students').whereNull('classroom_id').where({ status: 'active' }).orderBy('last_name').select('id', 'first_name', 'last_name', 'student_code');
     }
     if (M('attendance')) {
@@ -190,6 +188,134 @@ router.post('/classes/:id(\\d+)/subjects/:csid/delete', mgr, async (req, res, ne
     req.flash('success', 'درس از کلاس حذف شد.'); res.redirect('/classes/' + c.id);
   } catch (e) { next(e); }
 });
+
+/* ===== برنامه‌ریز درسی کلاس (v2.5): ساعت هفتگی و سقف روزانه‌ی هر درس بر پایه‌ی برنامه هفتگی ===== */
+const cur = require('../lib/curriculum');
+const settingsLib = require('../settings');
+async function loadPlan(k, c) {
+  const days = settingsLib.weekDays();
+  const rows = await k('class_subjects as cs').join('subjects as s', 's.id', 'cs.subject_id').where('cs.classroom_id', c.id).orderBy('s.name').select('cs.id', 'cs.subject_id', 'cs.teacher_id', 'cs.weekly_hours', 'cs.max_per_day', 's.name as subject_name', 's.code as subject_code');
+  const cap = cur.capacity(days, c.grade_level);
+  const ttRows = M('timetable') ? await k('timetable').where({ classroom_id: c.id }).select('class_subject_id', 'day', 'period') : [];
+  const valid = ttRows.filter((r) => days.includes(r.day) && bellOk(r, c));
+  const placed = cur.placedMap(valid);
+  return { days, rows, slots: cap, placed, summary: cur.summarize(rows, cap, placed) };
+}
+const bell = require('../lib/bell');
+const bellOk = (r, c) => bell.periodsFor({ day: r.day, grade: c.grade_level }).some((p) => p.n === r.period);
+async function teacherLoads(k, ids) {
+  const cs = await k('class_subjects as cs').join('classrooms as c', 'c.id', 'cs.classroom_id').where('c.status', '<>', 'archived').whereNotNull('cs.teacher_id').select('cs.teacher_id', 'cs.weekly_hours');
+  const tt = M('timetable') ? await k('timetable as tt').join('class_subjects as cs', 'cs.id', 'tt.class_subject_id').join('classrooms as c', 'c.id', 'tt.classroom_id').where('c.status', '<>', 'archived').whereNotNull('cs.teacher_id').select('cs.teacher_id', 'tt.day') : [];
+  const tot = cur.teacherTotals(cs, tt); const out = {};
+  const ts = await k('teachers').whereIn('id', ids.length ? ids : [0]).select('id', 'weekly_load', 'daily_max');
+  for (const t of ts) out[t.id] = { hours: (tot[t.id] || { hours: 0 }).hours, byDay: (tot[t.id] || { byDay: {} }).byDay, load: t.weekly_load || null, dailyMax: t.daily_max || null };
+  return out;
+}
+/** هشدارهای بار کاری معلمان درگیر در تغییر (موظفی هفتگی و سقف روزانه) */
+async function loadWarnings(k, teacherIds) {
+  const ids = [...new Set(teacherIds.filter(Boolean))]; if (!ids.length) return [];
+  const loads = await teacherLoads(k, ids); const names = Object.fromEntries((await k('teachers as t').join('users as u', 'u.id', 't.user_id').whereIn('t.id', ids).select('t.id', 'u.full_name')).map((x) => [x.id, x.full_name]));
+  const out = [];
+  for (const id of ids) {
+    const l = loads[id]; if (!l) continue;
+    if (l.load && l.hours > l.load) out.push(`${names[id]}: ${l.hours} ساعت تعریف شده و از موظفی (${l.load}) بیشتر است.`);
+    if (l.dailyMax) for (const [d, n] of Object.entries(l.byDay)) if (n > l.dailyMax) out.push(`${names[id]}: در ${J.WEEKDAYS[d]} ${n} ساعت در برنامه دارد (سقف روزانه ${l.dailyMax}).`);
+  }
+  return out;
+}
+router.get('/classes/:id(\\d+)/curriculum', mgr, async (req, res, next) => {
+  try {
+    const k = db.get(); const c = await getClass(req, req.params.id); if (!c) return nf(res);
+    const plan = await loadPlan(k, c);
+    const used = plan.rows.map((r) => r.subject_id);
+    const subjects = (await k('subjects').orderBy('name').select('id', 'name', 'weekly_hours', 'grade_level')).filter((s) => !used.includes(s.id));
+    const teachers = await k('teachers as t').join('users as u', 'u.id', 't.user_id').where('t.status', 'active').orderBy('u.full_name').select('t.id', 'u.full_name', 't.specialty');
+    const loads = await teacherLoads(k, teachers.map((t) => t.id));
+    const others = await k('classrooms').where('status', '<>', 'archived').whereNot({ id: c.id }).orderBy('name').select('id', 'name');
+    const gradeMatch = subjects.filter((s) => c.grade_level && s.grade_level === c.grade_level).length;
+    res.view('classes/curriculum', { title: 'برنامه‌ریزی دروس — ' + c.name, c, ...plan, subjects, teachers, loads, others, gradeMatch, WEEKDAYS: J.WEEKDAYS, canEdit: require('../lib/caps').has(req.user, 'classes.curriculum'), hasTimetable: M('timetable') });
+  } catch (e) { next(e); }
+});
+/** ذخیره‌ی گروهی: همه یا هیچ؛ سپس هشدارهای موظفی/ظرفیت */
+router.post('/classes/:id(\\d+)/curriculum', mgr, async (req, res, next) => {
+  try {
+    const k = db.get(); const c = await getClass(req, req.params.id); if (!c) return nf(res);
+    const back = '/classes/' + c.id + '/curriculum';
+    const current = await k('class_subjects').where({ classroom_id: c.id });
+    const form = cur.parseForm(req.body);
+    const plan = cur.planChanges(current, form.rows, form.add);
+    const errors = plan.errors.slice();
+    const tids = [...plan.updates.map((u) => u.teacher_id), ...plan.inserts.map((i) => i.teacher_id)].filter(Boolean);
+    if (tids.length) { const ok = new Set((await k('teachers').whereIn('id', tids).where({ status: 'active' }).select('id')).map((x) => x.id)); if (tids.some((t) => !ok.has(t))) errors.push('معلم انتخاب‌شده معتبر یا فعال نیست.'); }
+    if (plan.inserts.length) { const ok = new Set((await k('subjects').whereIn('id', plan.inserts.map((i) => i.subject_id)).select('id')).map((x) => x.id)); if (plan.inserts.some((i) => !ok.has(i.subject_id))) errors.push('درس انتخاب‌شده نامعتبر است.'); }
+    for (const r of plan.removes) {
+      const a = Number((await k('assessments').where({ class_subject_id: r.id }).count({ c: '*' }).first()).c);
+      if (a) { const nm = (await k('subjects').where({ id: r.subject_id }).first('name')).name; errors.push(`برای «${nm}» ارزشیابی ثبت شده است؛ ابتدا ارزشیابی‌ها را حذف کنید.`); }
+    }
+    if (M('timetable')) for (const u of plan.updates) { // تغییر معلم نباید تداخل برنامه بسازد
+      if (!u.teacher_id || u.teacher_id === u.cur.teacher_id) continue;
+      for (const s of await k('timetable').where({ class_subject_id: u.cur.id }).select('day', 'period')) {
+        const clash = await k('timetable as tt').join('class_subjects as cs', 'cs.id', 'tt.class_subject_id').where({ 'cs.teacher_id': u.teacher_id, 'tt.day': s.day, 'tt.period': s.period }).whereNot('tt.class_subject_id', u.cur.id).first();
+        if (clash) { errors.push(`معلم انتخاب‌شده در ${J.WEEKDAYS[s.day]} زنگ ${s.period} کلاس دیگری دارد؛ ابتدا برنامه هفتگی را اصلاح کنید.`); break; }
+      }
+    }
+    if (errors.length) { req.flash('error', [...new Set(errors)].slice(0, 4).join(' | ')); return res.redirect(back); }
+    await k.transaction(async (t) => {
+      for (const u of plan.updates) await t('class_subjects').where({ id: u.cur.id }).update({ teacher_id: u.teacher_id, weekly_hours: u.weekly_hours, max_per_day: u.max_per_day });
+      for (const i of plan.inserts) await t('class_subjects').insert({ classroom_id: c.id, ...i });
+      for (const r of plan.removes) { await t('timetable').where({ class_subject_id: r.id }).del(); await purgeHomework(t, [r.id]); await t('class_subjects').where({ id: r.id }).del(); }
+    });
+    const n = plan.updates.length + plan.inserts.length + plan.removes.length;
+    if (n) await svc.audit(req, 'update', 'class_subjects', c.id, `${c.name}: ${plan.updates.length} ویرایش، ${plan.inserts.length} افزودن، ${plan.removes.length} حذف`);
+    req.flash('success', n ? `برنامه‌ی دروس ذخیره شد (${plan.updates.length} ویرایش، ${plan.inserts.length} افزودن، ${plan.removes.length} حذف).` : 'تغییری وجود نداشت.');
+    const fresh = await loadPlan(k, c); const w = fresh.summary.warnings.filter((x) => x.k !== 'no_teacher').map((x) => x.text);
+    w.push(...await loadWarnings(k, [...plan.updates.map((u) => u.teacher_id), ...plan.inserts.map((i) => i.teacher_id)]));
+    if (w.length) req.flash('info', 'هشدار: ' + [...new Set(w)].slice(0, 3).join(' | '));
+    res.redirect(back);
+  } catch (e) { next(e); }
+});
+/** هم‌گام‌سازی ساعت‌های هفتگی با چیدمان فعلی برنامه هفتگی */
+router.post('/classes/:id(\\d+)/curriculum/sync', mgr, async (req, res, next) => {
+  try {
+    const k = db.get(); const c = await getClass(req, req.params.id); if (!c) return nf(res); const back = '/classes/' + c.id + '/curriculum';
+    const plan = await loadPlan(k, c); let n = 0;
+    await k.transaction(async (t) => {
+      for (const r of plan.rows) {
+        const p = plan.placed[r.id]; if (!p || !p.total) continue;
+        const hours = Math.min(cur.HOURS_MAX, p.total); const mpd = Math.min(cur.PERDAY_MAX, Math.max(r.max_per_day || 1, p.maxDay));
+        if (hours !== r.weekly_hours || mpd !== r.max_per_day) { await t('class_subjects').where({ id: r.id }).update({ weekly_hours: hours, max_per_day: mpd }); n++; }
+      }
+    });
+    if (n) await svc.audit(req, 'update', 'class_subjects', c.id, `${c.name}: هم‌گام‌سازی ساعت‌ها با برنامه هفتگی (${n} درس)`);
+    req.flash('success', n ? `ساعت ${n} درس بر اساس برنامه هفتگی به‌روز شد.` : 'ساعت‌ها از قبل با برنامه هفتگی هم‌خوان بود.'); res.redirect(back);
+  } catch (e) { next(e); }
+});
+/** افزودن همه‌ی دروس هم‌پایه */
+router.post('/classes/:id(\\d+)/curriculum/add-grade', mgr, async (req, res, next) => {
+  try {
+    const k = db.get(); const c = await getClass(req, req.params.id); if (!c) return nf(res); const back = '/classes/' + c.id + '/curriculum';
+    if (!c.grade_level) { req.flash('error', 'پایه‌ی این کلاس تعیین نشده است.'); return res.redirect(back); }
+    const have = new Set((await k('class_subjects').where({ classroom_id: c.id }).select('subject_id')).map((x) => x.subject_id));
+    const list = (await k('subjects').where({ grade_level: c.grade_level }).select('id', 'weekly_hours')).filter((s) => !have.has(s.id));
+    for (const s of list) { const h = cur.clamp(s.weekly_hours, 1, cur.HOURS_MAX, 2); await k('class_subjects').insert({ classroom_id: c.id, subject_id: s.id, weekly_hours: h, max_per_day: Math.min(2, h) }); }
+    if (list.length) await svc.audit(req, 'assign', 'class_subjects', c.id, `${c.name}: افزودن ${list.length} درس پایه «${c.grade_level}»`);
+    req.flash(list.length ? 'success' : 'info', list.length ? `${list.length} درس پایه‌ی «${c.grade_level}» افزوده شد؛ حالا معلم هر درس را تعیین کنید.` : 'درس جدیدی برای این پایه پیدا نشد.'); res.redirect(back);
+  } catch (e) { next(e); }
+});
+/** کپی دروس، ساعت‌ها و معلم‌ها از کلاس دیگر (فقط دروسی که هنوز در این کلاس نیست) */
+router.post('/classes/:id(\\d+)/curriculum/copy', mgr, async (req, res, next) => {
+  try {
+    const k = db.get(); const c = await getClass(req, req.params.id); if (!c) return nf(res); const back = '/classes/' + c.id + '/curriculum';
+    const src = await k('classrooms').where({ id: Number(req.body.from) || 0 }).first(); if (!src || src.id === c.id) { req.flash('error', 'کلاس مبدأ را انتخاب کنید.'); return res.redirect(back); }
+    const keepTeacher = req.body.keep_teacher === '1';
+    const have = new Set((await k('class_subjects').where({ classroom_id: c.id }).select('subject_id')).map((x) => x.subject_id));
+    const list = (await k('class_subjects').where({ classroom_id: src.id })).filter((r) => !have.has(r.subject_id));
+    for (const r of list) await k('class_subjects').insert({ classroom_id: c.id, subject_id: r.subject_id, teacher_id: keepTeacher ? r.teacher_id : null, weekly_hours: r.weekly_hours, max_per_day: r.max_per_day });
+    if (list.length) await svc.audit(req, 'assign', 'class_subjects', c.id, `${c.name}: کپی ${list.length} درس از ${src.name}`);
+    req.flash(list.length ? 'success' : 'info', list.length ? `${list.length} درس از «${src.name}» کپی شد${keepTeacher ? '' : '؛ معلم‌ها را تعیین کنید'}.` : 'درس جدیدی برای کپی وجود نداشت.'); res.redirect(back);
+  } catch (e) { next(e); }
+});
+
 /* مدیریت اعضای کلاس */
 router.post('/classes/:id(\\d+)/add-students', mgr, async (req, res, next) => {
   try {

@@ -189,6 +189,15 @@ async function createSchema(db) {
   await addCol('payments', 'void_reason', (t) => t.string('void_reason', 250));
   await addCol('fees', 'discount_note', (t) => t.string('discount_note', 150));
   await addCol('teachers', 'weekly_load', (t) => t.integer('weekly_load'));
+  await addCol('teachers', 'daily_max', (t) => t.integer('daily_max')); // سقف ساعت تدریس در یک روز (v2.5)
+  /* v2.5: دسترسی ریزدانه — تنظیمات شخصی هر کاربر و الگوهای دسترسی */
+  await addCol('users', 'caps', (t) => t.text('caps'));
+  await addCol('users', 'profile_id', (t) => t.integer('profile_id'));
+  await make('access_profiles', (t) => {
+    t.increments('id'); t.string('name', 100).notNullable(); t.string('description', 250); t.string('base_role', 12).notNullable().defaultTo('teacher');
+    t.text('caps'); ts(t);
+  });
+  await require('./lib/caps').ensureDefaults(db);
 
   await make('bell_schedules', (t) => {
     t.increments('id'); t.string('name', 100).notNullable(); t.string('days', 30).notNullable().defaultTo(''); t.string('grades', 200).notNullable().defaultTo('');
@@ -308,7 +317,7 @@ async function createSchema(db) {
   await require('./lib/bell').ensureDefault(db);
 }
 
-const TABLES = ['settings', 'modules_state', 'sessions', 'users', 'academic_years', 'subjects', 'teachers', 'classrooms', 'class_subjects', 'students', 'student_documents', 'student_notes', 'attendance', 'tickets', 'ticket_messages', 'assessments', 'scores', 'homework', 'homework_submissions', 'timetable', 'exam_schedule', 'announcements', 'events', 'notifications', 'discipline_records', 'health_records', 'meetings', 'fees', 'payments', 'books', 'book_loans', 'bus_routes', 'audit_logs', 'parent_students', 'sms_log', 'message_templates', 'group_messages', 'student_year_records', 'report_comments', 'fee_installments', 'teacher_unavailability', 'substitutions', 'questions', 'exam_papers', 'student_changes', 'student_guardians', 'exit_permits', 'teacher_leaves', 'teacher_evaluations', 'bell_schedules', 'bell_rows', 'holidays', 'birthday_log', 'timetable_meta', 'timetable_history', 'scores_history', 'promotion_runs', 'job_runs', 'otp_codes', 'support_ledger', 'rate_limits'];
+const TABLES = ['settings', 'modules_state', 'sessions', 'users', 'academic_years', 'subjects', 'teachers', 'classrooms', 'class_subjects', 'students', 'student_documents', 'student_notes', 'attendance', 'tickets', 'ticket_messages', 'assessments', 'scores', 'homework', 'homework_submissions', 'timetable', 'exam_schedule', 'announcements', 'events', 'notifications', 'discipline_records', 'health_records', 'meetings', 'fees', 'payments', 'books', 'book_loans', 'bus_routes', 'audit_logs', 'parent_students', 'sms_log', 'message_templates', 'group_messages', 'student_year_records', 'report_comments', 'fee_installments', 'teacher_unavailability', 'substitutions', 'questions', 'exam_papers', 'student_changes', 'student_guardians', 'exit_permits', 'teacher_leaves', 'teacher_evaluations', 'bell_schedules', 'bell_rows', 'holidays', 'birthday_log', 'timetable_meta', 'timetable_history', 'scores_history', 'promotion_runs', 'job_runs', 'otp_codes', 'support_ledger', 'rate_limits', 'access_profiles'];
 /** حذف جدول‌های ساخته‌شده توسط نصب ناقص (فقط در ویزارد نصب استفاده می‌شود) */
 async function dropAll(db) { for (const t of TABLES) await db.schema.dropTableIfExists(t); }
 

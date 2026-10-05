@@ -132,7 +132,39 @@ router.get('/teachers/:id(\\d+)', async (req, res, next) => {
     const assigned = await k('class_subjects as cs').join('classrooms as c', 'c.id', 'cs.classroom_id').join('subjects as s', 's.id', 'cs.subject_id').where('cs.teacher_id', t.id).where('c.status', '<>', 'archived').orderBy('c.name').select('cs.id', 'cs.weekly_hours', 'c.id as classroom_id', 'c.name as class_name', 's.name as subject_name');
     const students = homerooms.length ? Number((await k('students').whereIn('classroom_id', homerooms.map((h) => h.id)).where({ status: 'active' }).count({ c: '*' }).first()).c) : 0;
     let tickets = 0; if (modules.isEnabled('tickets')) tickets = Number((await k('tickets').where({ recipient_user_id: t.user_id }).whereIn('status', ['open', 'pending']).count({ c: '*' }).first()).c);
-    res.view('teachers/show', { title: t.full_name, t, homerooms, assigned, hours: assigned.reduce((a, b) => a + (b.weekly_hours || 0), 0), students, tickets, tfields: TFIELDS });
+    const cur = require('../lib/curriculum'); const days = require('../settings').weekDays();
+    const tt = modules.isEnabled('timetable') ? await k('timetable as tt').join('class_subjects as cs', 'cs.id', 'tt.class_subject_id').join('classrooms as c', 'c.id', 'tt.classroom_id').where('cs.teacher_id', t.id).where('c.status', '<>', 'archived').select('tt.day') : [];
+    const byDay = {}; tt.forEach((r) => { byDay[r.day] = (byDay[r.day] || 0) + 1; });
+    const assignClasses = await k('classrooms').where('status', '<>', 'archived').orderBy('name').select('id', 'name'); const assignSubjects = await k('subjects').orderBy('name').select('id', 'name');
+    res.view('teachers/show', { title: t.full_name, t, days, byDay, assignClasses, assignSubjects, J, homerooms, assigned, hours: assigned.reduce((a, b) => a + (b.weekly_hours || 0), 0), students, tickets, tfields: TFIELDS });
+  } catch (e) { next(e); }
+});
+/** تخصیص/برداشتن درس از صفحه‌ی معلم (همان قوانین برنامه‌ریز کلاس) */
+router.post('/teachers/:id(\\d+)/assignments', async (req, res, next) => {
+  try {
+    const k = db.get(); const t = await load(req.params.id); if (!t) return nf(res); const back = '/teachers/' + t.id; const cur = require('../lib/curriculum');
+    if (req.body.action === 'remove') {
+      const cs = await k('class_subjects').where({ id: Number(req.body.cs_id) || 0, teacher_id: t.id }).first(); if (!cs) return nf(res);
+      await k('class_subjects').where({ id: cs.id }).update({ teacher_id: null }); await svc.audit(req, 'update', 'class_subjects', cs.id, 'برداشتن معلم ' + t.full_name);
+      req.flash('success', 'تخصیص برداشته شد؛ این درس اکنون بدون معلم است.'); return res.redirect(back);
+    }
+    if (t.status !== 'active') { req.flash('error', 'معلم غیرفعال است.'); return res.redirect(back); }
+    const cid = Number(req.body.classroom_id) || 0; const sid = Number(req.body.subject_id) || 0; const hours = cur.clamp(req.body.weekly_hours, 1, cur.HOURS_MAX, 2);
+    const c = await k('classrooms').where({ id: cid }).first(); const sub = await k('subjects').where({ id: sid }).first();
+    if (!c || !sub) { req.flash('error', 'کلاس و درس را انتخاب کنید.'); return res.redirect(back); }
+    const ex = await k('class_subjects').where({ classroom_id: cid, subject_id: sid }).first();
+    if (ex && ex.teacher_id && ex.teacher_id !== t.id) { req.flash('error', 'این درس در این کلاس معلم دیگری دارد؛ از «برنامه‌ریزی دروس کلاس» آن را تغییر دهید.'); return res.redirect(back); }
+    if (ex) {
+      if (modules.isEnabled('timetable')) for (const s of await k('timetable').where({ class_subject_id: ex.id }).select('day', 'period')) {
+        const clash = await k('timetable as tt').join('class_subjects as cs', 'cs.id', 'tt.class_subject_id').where({ 'cs.teacher_id': t.id, 'tt.day': s.day, 'tt.period': s.period }).whereNot('tt.class_subject_id', ex.id).first();
+        if (clash) { req.flash('error', `این معلم در ${J.WEEKDAYS[s.day]} زنگ ${s.period} کلاس دیگری دارد؛ تخصیص انجام نشد.`); return res.redirect(back); }
+      }
+      await k('class_subjects').where({ id: ex.id }).update({ teacher_id: t.id });
+    } else await k('class_subjects').insert({ classroom_id: cid, subject_id: sid, teacher_id: t.id, weekly_hours: hours, max_per_day: Math.min(2, hours) });
+    await svc.audit(req, 'assign', 'class_subjects', cid, `${sub.name} → ${c.name} (${t.full_name})`);
+    const tot = Number((await k('class_subjects as cs').join('classrooms as c', 'c.id', 'cs.classroom_id').where('c.status', '<>', 'archived').where('cs.teacher_id', t.id).sum({ h: 'cs.weekly_hours' }).first()).h || 0);
+    req.flash('success', 'درس به معلم تخصیص یافت.'); if (t.weekly_load && tot > t.weekly_load) req.flash('info', `هشدار: جمع ساعت‌ها (${tot}) از موظفی (${t.weekly_load}) بیشتر شد.`);
+    res.redirect(back);
   } catch (e) { next(e); }
 });
 module.exports = router;

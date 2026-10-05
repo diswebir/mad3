@@ -12,8 +12,8 @@ module.exports = function mountRoutes(r) {
   r.use(maintenanceGuard);
   r.use(requireAuth);
   r.use(require('./parents').parentGuard);
-  r.use(require('../permissions').guard);
-  const list = ['files', 'dashboard', 'profile', 'users', 'settings', 'students', 'teachers', 'classes', 'attendance', 'tickets', 'grades', 'homework', 'timetable', 'finance', 'library', 'reports', 'backup', 'super', 'audit', 'security', 'parents', 'scheduling', 'bells', 'holidays', 'birthdays', 'gradeimport', 'questions', 'messages', 'promotion', 'exits', 'analytics', 'hr', 'extras'];
+  r.use(require('../lib/caps').guard); // قابلیت‌های ریزدانه (در صورت نبود قابلیت برای مسیر، مجوزهای کلی معاون)
+  const list = ['files', 'dashboard', 'profile', 'users', 'access', 'settings', 'students', 'teachers', 'classes', 'attendance', 'tickets', 'grades', 'homework', 'timetable', 'finance', 'library', 'reports', 'backup', 'super', 'audit', 'security', 'parents', 'scheduling', 'bells', 'holidays', 'birthdays', 'gradeimport', 'questions', 'messages', 'promotion', 'exits', 'analytics', 'hr', 'extras'];
   for (const name of list) { if (require('fs').existsSync(require('path').join(__dirname, name + '.js'))) r.use(require('./' + name)); }
   require('../resources').mountAll(r);
 };

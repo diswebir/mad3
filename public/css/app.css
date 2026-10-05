@@ -370,3 +370,51 @@ button.is-busy::after{content:"";display:inline-block;width:.9em;height:.9em;mar
 @media(max-width:1000px){.auth.setup .hero{display:none}.auth.setup .box{padding:1.2rem}}
 .auth.setup .field{margin-bottom:1.05rem}.auth.setup .field>input+.how,.auth.setup .field>input+.hint{margin-top:.45rem}
 .how code{direction:ltr;unicode-bidi:isolate;display:inline-block}
+
+/* ===== v2.5: ماتریس دسترسی ===== */
+.cap-tools{display:flex;gap:.8rem;align-items:center;flex-wrap:wrap;margin:1rem 0 .6rem;position:sticky;top:56px;z-index:20;background:var(--bg);padding:.4rem 0}
+.cap-tools input[type=search]{flex:1;min-width:220px;max-width:380px;padding:.5rem .8rem;border:1px solid var(--border);border-radius:9px;background:var(--card)}
+.cap-group{padding:0;margin-bottom:.8rem;overflow:hidden}
+.cap-group>summary{cursor:pointer;padding:.75rem 1rem;display:flex;align-items:center;gap:.6rem;flex-wrap:wrap;list-style:none;background:var(--primary-l)}
+.cap-group>summary::-webkit-details-marker{display:none}
+.cap-bulk{margin-inline-start:auto;display:flex;gap:.3rem}
+.cap-t td,.cap-t th{padding:.55rem .8rem}
+.cap-row.changed{background:color-mix(in srgb,var(--primary) 7%,var(--card))}
+.seg{display:inline-flex;border:1px solid var(--border);border-radius:9px;overflow:hidden}
+.seg label{margin:0;cursor:pointer}
+.seg input{position:absolute;opacity:0;pointer-events:none}
+.seg span{display:block;padding:.3rem .8rem;font-size:.85rem;color:var(--muted);border-inline-start:1px solid var(--border)}
+.seg label:first-child span{border-inline-start:0}
+.seg input:checked+span{background:var(--primary);color:#fff;font-weight:600}
+.seg .s-allow input:checked+span{background:var(--green)}
+.seg .s-deny input:checked+span{background:var(--red)}
+.seg input:focus-visible+span{outline:2px solid var(--primary);outline-offset:-2px}
+.cap-top{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:1rem}
+.sticky-actions{position:sticky;bottom:0;background:var(--bg);padding:.7rem 0;z-index:15}
+
+/* ===== v2.5: برنامه‌ریز درسی ===== */
+.plan-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:1rem;margin-bottom:1rem}
+.meter{height:8px;border-radius:99px;background:var(--border);overflow:hidden;margin:.5rem 0 .3rem}
+.meter i{display:block;height:100%;background:var(--primary);border-radius:99px;transition:width .25s}
+.meter i.bad{background:var(--red)}
+.quick{display:flex;gap:.6rem;align-items:center;flex-wrap:wrap;padding:.7rem 1rem;margin-bottom:1rem}
+.inline-form{display:flex;gap:.5rem;align-items:center;flex-wrap:wrap}
+.stepper{display:inline-flex;align-items:center;border:1px solid var(--border);border-radius:10px;overflow:hidden;background:var(--card)}
+.stepper button{width:34px;height:36px;border:0;background:var(--primary-l);color:var(--primary);font-size:1.15rem;cursor:pointer;line-height:1}
+.stepper button:hover{background:var(--primary);color:#fff}
+.stepper input{width:48px;border:0;text-align:center;padding:.3rem 0;background:transparent;-moz-appearance:textfield;font-weight:700}
+.stepper input::-webkit-outer-spin-button,.stepper input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+.stepper input.warn{color:var(--amber)}
+.plan-t td{vertical-align:middle}
+.plan-t .p-teacher{min-width:200px;width:100%}
+.plan-row.removed{opacity:.45;text-decoration:line-through}
+.plan-row.is-new{background:color-mix(in srgb,var(--green) 8%,var(--card))}
+.dist{display:flex;gap:.3rem;flex-wrap:wrap;align-items:center}
+.dist .d{padding:.1rem .45rem;border-radius:8px;background:var(--bg);color:var(--muted);font-size:.8rem;border:1px solid var(--border)}
+.dist .d.on{background:var(--primary-l);color:var(--primary);border-color:transparent}
+.dist .d.bad{background:color-mix(in srgb,var(--red) 14%,var(--card));color:var(--red)}
+.del-toggle{cursor:pointer;margin:0}.del-toggle input{position:absolute;opacity:0}
+.del-toggle span{display:inline-grid;place-items:center;width:34px;height:34px;border-radius:9px;color:var(--muted);border:1px solid var(--border)}
+.del-toggle input:checked+span{background:var(--red);color:#fff;border-color:var(--red)}
+.add-row td{background:var(--bg)}
+@media (max-width:700px){.plan-t .p-teacher{min-width:140px}.stepper input{width:40px}}

@@ -1,6 +1,6 @@
 {
   "name": "mad3-school-management",
-  "version": "2.4.0",
+  "version": "2.5.0",
   "description": "سامانه مدیریت مدرسه (Node.js) با ویزارد نصب و سازگار با cPanel",
   "main": "app.js",
   "private": true,
@@ -11,7 +11,7 @@
   "scripts": {
     "start": "node app.js",
     "dev": "node --watch app.js",
-    "test": "npm run test:smoke && npm run test:v2 && npm run test:v21 && npm run test:v22 && npm run test:v23 && npm run test:v24",
+    "test": "npm run test:smoke && npm run test:v2 && npm run test:v21 && npm run test:v22 && npm run test:v23 && npm run test:v24 && npm run test:v25",
     "demo": "node scripts/install-demo.js",
     "super:create": "node scripts/create-super.js",
     "reset:admin": "node scripts/reset-admin.js",
@@ -24,7 +24,8 @@
     "test:v22": "node test/v22.birthdays.test.js && node test/v22.firstlogin.test.js",
     "test:v23": "node test/v23.super.test.js && node test/v23.ui.test.js",
     "loadtest": "node scripts/loadtest.js",
-    "test:v24": "node test/v24.locks.test.js && node test/v24.offsite.test.js && node test/v24.ui.test.js"
+    "test:v24": "node test/v24.locks.test.js && node test/v24.offsite.test.js && node test/v24.ui.test.js",
+    "test:v25": "node test/v25.access.test.js && node test/v25.curriculum.test.js && node test/v25.ui.test.js"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",

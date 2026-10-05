@@ -76,6 +76,9 @@ async function accessibleClassIds(user) {
   if (user.role === 'admin' || user.role === 'deputy') return null;
   const k = db.get();
   if (user.role === 'student') return user.student && user.student.classroom_id ? [user.student.classroom_id] : [];
+  if (user.role === 'teacher' && user.teacher && require('./lib/caps').has(user, 'scope.all_classes')) { // مجوز «همه‌ی کلاس‌ها» (v2.5)
+    return (await k('classrooms').where('status', '<>', 'archived').select('id')).map((r) => r.id);
+  }
   if (user.role === 'teacher' && user.teacher) {
     const a = await k('classrooms').where({ homeroom_teacher_id: user.teacher.id }).where('status', '<>', 'archived').select('id');
     const b = await k('class_subjects as cs').join('classrooms as c', 'c.id', 'cs.classroom_id').where({ 'cs.teacher_id': user.teacher.id }).where('c.status', '<>', 'archived').distinct('cs.classroom_id as id');
@@ -91,6 +94,7 @@ async function homeroomClassIds(user) {
 /** گزینه‌های classResults برای کاربر: معلم غیر راهنما فقط دروس خودش را می‌بیند */
 async function gradeScope(user, classroomId) {
   if (user.role !== 'teacher') return {};
+  if (require('./lib/caps').has(user, 'scope.all_classes')) return {};
   const home = await homeroomClassIds(user);
   return home.includes(classroomId) ? {} : { onlyTeacherId: user.teacher ? user.teacher.id : -1 };
 }

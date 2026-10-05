@@ -1,0 +1,14 @@
+<div class="page-head"><h1><%- icon('layers', 24) %> <%= title %></h1><div class="actions"><a class="btn" href="<%= u('/access?tab=profiles') %>"><%- icon('arrow-left', 16) %> بازگشت</a></div></div>
+<form method="post" action="<%= u('/access/profiles/save') %>" id="cap-form" data-dirty-warn>
+  <input type="hidden" name="_csrf" value="<%= csrf %>"><input type="hidden" name="id" value="<%= p.id || '' %>">
+  <% if (errors.length) { %><div class="alert error"><ul><% errors.forEach(function (e) { %><li><%= e %></li><% }) %></ul></div><% } %>
+  <div class="card"><div class="form-grid">
+    <div class="field"><label>نام الگو *</label><input type="text" name="name" value="<%= p.name || '' %>" required maxlength="100" placeholder="مثلاً معلم + ثبت‌کننده‌ی رویداد"></div>
+    <div class="field"><label>مخصوص نقش</label><select name="base_role" <%= p.id ? 'disabled' : '' %>><option value="teacher" <%= p.base_role === 'teacher' ? 'selected' : '' %>>معلم</option><option value="deputy" <%= p.base_role === 'deputy' ? 'selected' : '' %>>معاون/کارمند</option></select><% if (p.id) { %><input type="hidden" name="base_role" value="<%= p.base_role %>"><% } %></div>
+    <div class="field full"><label>توضیح</label><input type="text" name="description" value="<%= p.description || '' %>" maxlength="250"></div>
+    <div class="field"><label>رمز مدیر (برای مجوزهای ⚠)</label><input type="password" name="confirm_password" class="ltr" autocomplete="current-password"></div>
+  </div></div>
+  <%- include('_matrix', { groups: groups, mode: 'profile' }) %>
+  <div class="form-actions sticky-actions"><button class="btn primary"><%- icon('save', 16) %> ذخیره‌ی الگو</button><a class="btn" href="<%= u('/access?tab=profiles') %>">انصراف</a></div>
+</form>
+<script src="<%= asset('js/access.js') %>" defer></script>

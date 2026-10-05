@@ -7,6 +7,7 @@
 <div class="table-wrap"><table class="t"><thead><tr><th>نام</th><th>نام کاربری</th><th>نقش</th><th>وضعیت</th><th>آخرین ورود</th><th></th></tr></thead><tbody>
 <% rows.forEach(function(r){ %><tr><td><b><%= r.full_name %></b></td><td class="ltr"><%= r.username %></td><td><%= L.roles[r.role] %></td><td><%- r.active ? pill('فعال', 'green') : pill('غیرفعال', 'red') %></td><td class="muted small"><%= r.last_login ? dt(r.last_login) : '—' %></td>
 <td class="actions">
+<% if (['teacher','deputy'].includes(r.role)) { %><a class="btn sm ghost" title="سطح دسترسی" href="<%= u('/access/user/' + r.id) %>"><%- icon('key-round', 15) %></a><% } %>
 <a class="btn sm ghost" href="<%= u('/users/' + r.id + '/edit') %>"><%- icon('pencil', 15) %></a>
 <form method="post" action="<%= u('/users/' + r.id + '/reset-password') %>" style="display:inline" data-confirm="رمز عبور این کاربر بازنشانی شود؟"><input type="hidden" name="_csrf" value="<%= csrf %>"><button class="btn sm ghost" title="بازنشانی رمز"><%- icon('key-round', 15) %></button></form>
 <% if (r.id !== user.id) { %><form method="post" action="<%= u('/users/' + r.id + '/toggle') %>" style="display:inline"><input type="hidden" name="_csrf" value="<%= csrf %>"><button class="btn sm ghost" title="<%= r.active ? 'غیرفعال‌سازی' : 'فعال‌سازی' %>"><%- icon(r.active ? 'lock' : 'check', 15) %></button></form><% } %>

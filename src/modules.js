@@ -84,6 +84,7 @@ const MODULES = [
     { label: 'پشتیبان‌گیری', href: '/backup', icon: 'database-backup', roles: ['admin'], section: 'super', super: true }] },
   { key: 'settings', title: 'تنظیمات و کاربران', icon: 'settings', core: true, desc: 'تنظیمات مدرسه، کاربران، ماژول‌ها', nav: [
     { label: 'کاربران', href: '/users', icon: 'users', roles: ['admin'], section: 'system' },
+    { label: 'سطوح دسترسی', href: '/access', icon: 'key-round', roles: ['admin'], section: 'system' },
     { label: 'تنظیمات', href: '/settings', icon: 'settings', roles: ['admin'], section: 'system' },
     { label: 'امنیت و قفل‌ها', href: '/security', icon: 'shield-check', roles: ['admin'], section: 'system' },
     ] },
@@ -122,14 +123,16 @@ async function setEnabled(key, enabled) {
 }
 function navFor(role, badges = {}, user = null) {
   const sections = {};
-  const perms = require('./permissions');
+  const perms = require('./permissions'); const capsLib = require('./lib/caps');
   for (const m of MODULES) {
     if (!state[m.key]) continue;
     for (const n of m.nav) {
-      if (!n.roles.includes(role)) continue;
+      const cv = capsLib.navVisible(user, n); // true/false از قابلیت‌های ریزدانه؛ null = نظری ندارد
+      if (cv === false) continue;
+      if (cv !== true && !n.roles.includes(role)) continue;
       if (n.super && !(user && user.isSuper)) continue;
       if (n.parentOnly && !(user && user.realRole === 'parent')) continue;
-      if (n.perm && user && user.role === 'deputy' && !perms.can(user, n.perm)) continue;
+      if (cv === null && n.perm && user && user.role === 'deputy' && !perms.can(user, n.perm)) continue;
       (sections[n.section] = sections[n.section] || []).push({ ...n, badgeCount: n.badge ? badges[n.badge] || 0 : 0 });
     }
   }

@@ -121,8 +121,26 @@ router.post('/timetable', requireRole('admin', 'deputy'), async (req, res, next)
       const clash = await k('timetable as tt').join('class_subjects as cs', 'cs.id', 'tt.class_subject_id').join('classrooms as c', 'c.id', 'tt.classroom_id').where({ 'cs.teacher_id': r._t, 'tt.day': r.day, 'tt.period': r.period }).whereNot('tt.classroom_id', cid).first('c.name');
       if (clash) errors.push(`تداخل: معلم این درس در ${J.WEEKDAYS[r.day]} زنگ ${r.period} در کلاس «${clash.name}» حضور دارد.`);
     }
+    // سقف ساعت تدریس روزانه‌ی معلم (در صورت تعیین در منابع انسانی/صفحه‌ی معلم)
+    const myByTeacher = {}; for (const r of rows) if (r._t) { const o = (myByTeacher[r._t] = myByTeacher[r._t] || {}); o[r.day] = (o[r.day] || 0) + 1; }
+    const tIds = Object.keys(myByTeacher).map(Number);
+    if (tIds.length) {
+      const lim = await k('teachers as t').join('users as u', 'u.id', 't.user_id').whereIn('t.id', tIds).whereNotNull('t.daily_max').select('t.id', 't.daily_max', 'u.full_name');
+      if (lim.length) {
+        const oth = await k('timetable as tt').join('class_subjects as cs', 'cs.id', 'tt.class_subject_id').whereIn('cs.teacher_id', lim.map((x) => x.id)).whereNot('tt.classroom_id', cid).select('cs.teacher_id', 'tt.day');
+        for (const t of lim) for (const [d, n] of Object.entries(myByTeacher[t.id])) {
+          const total = n + oth.filter((x) => x.teacher_id === t.id && x.day === Number(d)).length;
+          if (total > t.daily_max) errors.push(`«${t.full_name}» در ${J.WEEKDAYS[d]} ${total} ساعت تدریس خواهد داشت؛ سقف روزانه‌ی او ${t.daily_max} ساعت است.`);
+        }
+      }
+    }
     if (errors.length) { req.flash('error', [...new Set(errors)].slice(0, 4).join(' | ')); return res.redirect(`/timetable?class_id=${cid}&edit=1`); }
     const out = await k.transaction((t) => tt.replaceClass(t, cid, rows.map(({ _t, ...r }) => r), { userId: req.user.id }));
+    if (req.body.sync_hours === '1' && require('../lib/caps').has(req.user, 'classes.curriculum')) { // هم‌گام‌سازی ساعت درس‌ها با چیدمان
+      const cur = require('../lib/curriculum'); const pm = cur.placedMap(rows); let n = 0;
+      for (const c of cs) { const p = pm[c.id]; if (!p) continue; const h = Math.min(cur.HOURS_MAX, p.total); const mpd = Math.min(cur.PERDAY_MAX, Math.max(c.max_per_day || 1, p.maxDay)); await k('class_subjects').where({ id: c.id }).update({ weekly_hours: h, max_per_day: mpd }); n++; }
+      if (n) { await svc.audit(req, 'update', 'class_subjects', cid, cls.name + ': هم‌گام‌سازی ساعت درس‌ها با برنامه هفتگی'); req.flash('info', `ساعت هفتگی ${n} درس با چیدمان هم‌گام شد.`); }
+    }
     await svc.audit(req, 'update', 'timetable', cid, cls.name + (out.versioned ? ' (نسخه‌ی قبلی در تاریخچه ثبت شد)' : ''));
     req.flash('success', out.changed ? `برنامه هفتگی ذخیره شد${out.versioned ? ' و نسخه‌ی قبلی در تاریخچه‌ی برنامه نگه‌داری شد' : ''}.` : 'تغییری در برنامه ایجاد نشد.'); res.redirect('/timetable?class_id=' + cid);
   } catch (e) { next(e); }

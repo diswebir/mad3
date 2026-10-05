@@ -123,13 +123,15 @@ router.get('/hr/teacher/:id(\\d+)', async (req, res, next) => {
 router.post('/hr/teacher/:id(\\d+)/load', mgr, async (req, res, next) => {
   try {
     const k = db.get(); const t = await k('teachers').where({ id: req.params.id }).first(); if (!t) return nf(res);
-    const v = req.body.weekly_load === '' ? null : Number(req.body.weekly_load);
-    if (v !== null && (!Number.isInteger(v) || v < 0 || v > 60)) { req.flash('error', 'ساعت موظفی باید عددی بین ۰ تا ۶۰ باشد.'); return res.redirect('/hr/teacher/' + t.id); }
-    await k('teachers').where({ id: t.id }).update({ weekly_load: v }); await svc.audit(req, 'update', 'teachers', t.id, 'weekly_load=' + v);
-    req.flash('success', 'موظفی ذخیره شد.'); res.redirect('/hr/teacher/' + t.id);
+    const back = req.body.back === 'teacher' ? '/teachers/' + t.id : '/hr/teacher/' + t.id;
+    const upd = {}; const parse = (x) => (x === '' ? null : Number(x));
+    if (req.body.weekly_load !== undefined) { const v = parse(req.body.weekly_load); if (v !== null && (!Number.isInteger(v) || v < 0 || v > 60)) { req.flash('error', 'ساعت موظفی باید عددی بین ۰ تا ۶۰ باشد.'); return res.redirect(back); } upd.weekly_load = v; }
+    if (req.body.daily_max !== undefined) { const v = parse(req.body.daily_max); if (v !== null && (!Number.isInteger(v) || v < 1 || v > 12)) { req.flash('error', 'سقف ساعت روزانه باید عددی بین ۱ تا ۱۲ باشد.'); return res.redirect(back); } upd.daily_max = v; }
+    if (!Object.keys(upd).length) return res.redirect(back);
+    await k('teachers').where({ id: t.id }).update(upd); await svc.audit(req, 'update', 'teachers', t.id, Object.entries(upd).map(([a, b]) => a + '=' + b).join(' '));
+    req.flash('success', 'سقف‌های بار تدریس ذخیره شد.'); res.redirect(back);
   } catch (e) { next(e); }
 });
-
 router.get('/hr/evaluations/new', mgr, async (req, res, next) => {
   try { const k = db.get(); res.view('hr/eval-form', { title: 'ارزشیابی معلم', teachers: await teacherBase(k).orderBy('u.full_name').select('t.id', 'u.full_name'), teacherId: Number(req.query.teacher_id) || null, CR: hr.CRITERIA }); } catch (e) { next(e); }
 });

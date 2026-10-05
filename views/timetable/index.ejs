@@ -6,16 +6,16 @@
 <div class="page-head"><div><h1><%- icon('clock', 24) %> برنامه هفتگی <%= subject ? '— ' + subject : '' %></h1><div class="muted"><%= mode === 'teacher' ? 'برنامه تدریس معلم' : 'برنامه هفتگی کلاس' %><% if (versionInfo && !versionInfo.current) { %> — نسخه‌ی قدیمی (فقط‌خواندنی)<% } %></div></div>
 <div class="actions">
 <% if (user.role === 'teacher') { %><a class="btn <%= mode === 'teacher' ? 'primary' : '' %>" href="<%= u('/timetable') %>">برنامه من</a><% } %>
-<% if (isManager) { %>
-  <a class="btn" href="<%= u('/timetable/auto') %>"><%- icon('shuffle', 16) %> تولید خودکار</a>
-  <a class="btn" href="<%= u('/timetable/substitutes') %>"><%- icon('user-check', 16) %> جانشین</a>
-  <a class="btn" href="<%= u('/timetable/availability') %>"><%- icon('user-cog', 16) %> ساعت‌های غیرمجاز</a>
-  <a class="btn" href="<%= u('/timetable/bells') %>"><%- icon('bell', 16) %> ساعت زنگ‌ها</a>
-  <a class="btn" href="<%= u('/timetable/overview') %>"><%- icon('layout-grid', 16) %> نمای کل مدرسه</a>
+<% if (true) { %>
+  <% if (cap('timetable.auto')) { %><a class="btn" href="<%= u('/timetable/auto') %>"><%- icon('shuffle', 16) %> تولید خودکار</a><% } %>
+  <% if (cap('timetable.substitutes')) { %><a class="btn" href="<%= u('/timetable/substitutes') %>"><%- icon('user-check', 16) %> جانشین</a><% } %>
+  <% if (cap('timetable.availability')) { %><a class="btn" href="<%= u('/timetable/availability') %>"><%- icon('user-cog', 16) %> ساعت‌های غیرمجاز</a><% } %>
+  <% if (cap('timetable.bells')) { %><a class="btn" href="<%= u('/timetable/bells') %>"><%- icon('bell', 16) %> ساعت زنگ‌ها</a><% } %>
+  <% if (cap('timetable.overview')) { %><a class="btn" href="<%= u('/timetable/overview') %>"><%- icon('layout-grid', 16) %> نمای کل مدرسه</a><% } %>
 <% } %>
 <% if (mode === 'class' && typeof cls !== 'undefined' && cls && !edit) { %><a class="btn" href="<%= u('/timetable/export.xlsx?by=class&class_id=' + cls.id) %>"><%- icon('file-spreadsheet', 16) %> اکسل</a><% } %>
 <% if (mode === 'teacher' && teacherId) { %><a class="btn" href="<%= u('/timetable/export.xlsx?by=teacher&teacher_id=' + teacherId) %>"><%- icon('file-spreadsheet', 16) %> اکسل</a><% } %>
-<% if (isManager && mode === 'class' && cls && !edit && !(versionInfo && !versionInfo.current)) { %><a class="btn primary" href="<%= u('/timetable?class_id=' + cls.id + '&edit=1') %>"><%- icon('pencil', 16) %> ویرایش برنامه</a><% } %>
+<% if (cap('timetable.edit') && mode === 'class' && cls && !edit && !(versionInfo && !versionInfo.current)) { %><a class="btn primary" href="<%= u('/timetable?class_id=' + cls.id + '&edit=1') %>"><%- icon('pencil', 16) %> ویرایش برنامه</a><% } %>
 <button class="btn" data-print><%- icon('printer', 16) %> چاپ</button></div></div>
 
 <% if (typeof classes !== 'undefined' && classes && classes.length > 1 && user.role !== 'student') { %>
@@ -45,7 +45,7 @@
 <% if (mode === 'teacher' && daySummary) { %><tr class="tt-sum"><th>جمع روز</th><% daySummary.forEach(function(s){ %><td><b><%= fa(s.total) %> ساعت</b><div class="small muted"><% s.classes.forEach(function(c, i){ %><%= i ? '، ' : '' %><%= c.name %><% if (c.n > 1) { %> <span class="badge amber">×<%= fa(c.n) %></span><% } %><% }) %><% if (!s.classes.length) { %>آزاد<% } %></div><% if (s.free > 0 && s.total) { %><div class="small muted">آزاد: <%= fa(s.free) %></div><% } %></td><% }) %></tr><% } %>
 </tbody></table></div></div>
 <% if (mode === 'teacher' && typeof weekTotal !== 'undefined') { %><div class="muted small" style="margin-bottom:1rem">جمع ساعات تدریس هفتگی: <b><%= fa(weekTotal) %></b> ساعت<% if (daySummary && daySummary.some(function(s){ return s.classes.some(function(c){ return c.n > 1; }); })) { %> — «×۲» یعنی در همان روز بیش از یک ساعت با همان کلاس دارید.<% } %></div><% } %>
-<% if (edit) { %><div style="display:flex;gap:.6rem;position:sticky;bottom:.6rem"><button class="btn primary" id="tt-save"><%- icon('save', 16) %> ذخیره برنامه</button><a class="btn" href="<%= u('/timetable?class_id=' + cls.id) %>">انصراف</a></div></form>
+<% if (edit) { %><div style="display:flex;gap:.6rem;position:sticky;bottom:.6rem"><button class="btn primary" id="tt-save"><%- icon('save', 16) %> ذخیره برنامه</button><% if (cap('classes.curriculum')) { %><label class="check" title="ساعت هفتگی هر درس برابر تعداد زنگ‌های چیده‌شده و سقف روزانه متناسب با چیدمان به‌روز شود"><input type="checkbox" name="sync_hours" value="1" form="tt-form"> هم‌گام‌سازی ساعت‌های درس‌ها با این چیدمان</label><% } %><a class="btn" href="<%= u('/timetable?class_id=' + cls.id) %>">انصراف</a></div></form>
 <script type="application/json" id="tt-data"><%- JSON.stringify(editData).replace(/</g, '\\u003c') %></script><script src="<%= asset('js/timetable-editor.js') %>" defer></script>
 <% } %>
 <% if (mode === 'class' && typeof hours !== 'undefined' && hours.length) { %><div class="card" style="margin-top:1rem"><h3>جمع ساعات دروس</h3><div style="display:flex;gap:.6rem;flex-wrap:wrap"><% hours.forEach(function(h){ var p = placed[h.id] || 0; %><span class="badge <%= p === h.weekly_hours ? 'green' : (p > h.weekly_hours ? 'red' : 'amber') %>" title="سقف در روز: <%= h.max_per_day || 'نامحدود' %>"><%= h.name %>: <%= fa(p) %> از <%= fa(h.weekly_hours) %><% if (h.max_per_day) { %> · حداکثر <%= fa(h.max_per_day) %> در روز<% } %></span><% }) %></div></div><% } %>

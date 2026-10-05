@@ -32,6 +32,7 @@ function parse(raw) {
 /** آیا کاربر مجوز perm را دارد؟ */
 function can(user, perm) {
   if (!user) return false;
+  if (user.elevated) return require('./lib/caps').hasArea(user, perm); // ارتقای موقت از قابلیت ریزدانه
   if (user.role === 'admin') return true;
   if (user.role !== 'deputy') return false;
   const list = user.permList === undefined ? parse(user.permissions) : user.permList;

@@ -13,7 +13,7 @@ const isLocked = (a) => !!a && !!Number(a.locked);
  */
 function gate(user, a, body = {}) {
   if (!isLocked(a)) return { ok: true };
-  if (!user || (user.role !== 'admin' && user.role !== 'deputy')) return { ok: false, reason: 'نمرات این ارزشیابی قفل شده است؛ فقط مدیر/معاون می‌تواند آن را اصلاح کند.' };
+  if (!user || !require('./caps').has(user, 'grades.edit_locked')) return { ok: false, reason: 'نمرات این ارزشیابی قفل شده است؛ فقط مدیر/معاون می‌تواند آن را اصلاح کند.' };
   if (!String(body.reason || '').trim()) return { ok: false, needReason: true, reason: 'نمرات قفل است؛ برای اصلاح، «دلیل اصلاح» را بنویسید.' };
   return { ok: true, needReason: true };
 }

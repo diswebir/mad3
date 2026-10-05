@@ -12,6 +12,7 @@
   </div>
   <% if (!row || ['admin','deputy'].includes(row.role)) { var P = PERMS_LIB; var cur = row ? P.parse(row.permissions) : (vals.perm ? [].concat(vals.perm) : null); %>
   <fieldset style="margin-top:1rem"><legend>سطح دسترسی (فقط برای نقش «معاون/کارمند»؛ مدیر همه‌چیز را دارد)</legend>
+  <% if (row && row.role === 'deputy') { %><div class="alert info" style="margin-bottom:.6rem">برای کنترل دقیق‌تر هر کار (مثلاً فقط مشاهده یا ثبت پرداخت) از <a href="<%= u('/access/user/' + row.id) %>"><b>صفحه‌ی سطوح دسترسی این کاربر</b></a> استفاده کنید؛ مجوزهای آنجا بر این محدوده‌ی کلی اولویت دارند.</div><% } %>
     <div class="form-grid"><div class="field"><label>عنوان شغلی</label><input type="text" name="title" value="<%= vals.title || '' %>" placeholder="مثلاً معاون آموزشی، حسابدار"></div>
     <div class="field"><label>الگوی آماده</label><select data-preset><option value="">— انتخاب الگو —</option><% Object.keys(P.PRESETS).forEach(function(k){ %><option value="<%= k %>" data-perms="<%= JSON.stringify(P.PRESETS[k].perms) %>"><%= P.PRESETS[k].label %></option><% }) %></select></div></div>
     <div style="display:flex;gap:.4rem 1.2rem;flex-wrap:wrap;margin-top:.5rem"><% Object.keys(P.PERMS).forEach(function(k){ %><label class="check"><input type="checkbox" name="perm" value="<%= k %>" <%= (cur === null ? true : cur.includes(k)) ? 'checked' : '' %>> <%= P.PERMS[k] %></label><% }) %></div>

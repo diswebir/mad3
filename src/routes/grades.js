@@ -8,6 +8,7 @@ const J = require('../utils/jalali');
 const { toCSV } = require('../utils/csv');
 const { L } = require('../labels');
 const { requireRole, isManager } = require('../middleware');
+const caps = require('../lib/caps');
 const { classResults } = require('../lib/gradesCalc');
 const reportcard = require('../lib/reportcard');
 const sms = require('../lib/sms');
@@ -23,7 +24,7 @@ async function loadCS(req, id) {
   const cs = await k('class_subjects as cs').join('subjects as s', 's.id', 'cs.subject_id').join('classrooms as c', 'c.id', 'cs.classroom_id').leftJoin('teachers as t', 't.id', 'cs.teacher_id').leftJoin('users as u', 'u.id', 't.user_id').where('cs.id', id).first('cs.*', 's.name as subject_name', 'c.name as class_name', 'u.full_name as teacher_name');
   if (!cs) return null;
   if (isManager(req.user)) return cs;
-  if (req.user.role === 'teacher' && req.user.teacher && cs.teacher_id === req.user.teacher.id) return cs;
+  if (req.user.role === 'teacher' && req.user.teacher && (cs.teacher_id === req.user.teacher.id || caps.has(req.user, 'scope.all_classes'))) return cs;
   return null;
 }
 async function loadAssessment(req, id) {
@@ -36,7 +37,7 @@ router.get('/grades', staff, async (req, res, next) => {
     const k = db.get(); const u = req.user;
     const q = k('class_subjects as cs').join('subjects as s', 's.id', 'cs.subject_id').join('classrooms as c', 'c.id', 'cs.classroom_id').where('c.status', '<>', 'archived').leftJoin('teachers as t', 't.id', 'cs.teacher_id').leftJoin('users as x', 'x.id', 't.user_id')
       .orderBy('c.name').orderBy('s.name').select('cs.id', 's.name as subject_name', 'c.id as classroom_id', 'c.name as class_name', 'x.full_name as teacher_name', k.raw('(select count(*) from assessments a where a.class_subject_id = cs.id) as a_count'));
-    if (u.role === 'teacher') q.where('cs.teacher_id', u.teacher ? u.teacher.id : 0);
+    if (u.role === 'teacher' && !caps.has(u, 'scope.all_classes')) q.where('cs.teacher_id', u.teacher ? u.teacher.id : 0);
     if (req.query.class_id) q.where('cs.classroom_id', req.query.class_id);
     const classes = await k('classrooms').where('status', '<>', 'archived').orderBy('name').select('id', 'name');
     res.view('grades/index', { title: 'نمرات', rows: await q, classes, classId: req.query.class_id || '' });
@@ -78,7 +79,7 @@ router.get('/grades/assessments/:id(\\d+)', staff, async (req, res, next) => {
     const pass = settings.num('pass_mark') / (settings.num('grade_scale') || 20) * Number(a.max_score);
     const stats = vals.length ? { n: vals.length, avg: round2(vals.reduce((x, y) => x + y, 0) / vals.length), min: Math.min(...vals), max: Math.max(...vals), passed: vals.filter((v) => v >= pass).length, bins: [0, 0, 0, 0] } : null;
     if (stats) vals.forEach((v) => { stats.bins[Math.min(3, Math.floor(v / Number(a.max_score) * 4))]++; });
-    res.view('grades/assessment', { title: a.title, a, cs, students, scores, stats, locked: lock.isLocked(a), canUnlock: isManager(req.user), canEditLocked: isManager(req.user), historyCount: Number((await k('scores_history').where({ assessment_id: a.id }).count({ c: '*' }).first()).c), assessmentVals: { ...a, date: J.isoToJString(a.date) }, terms: settings.num('terms_count') || 2 });
+    res.view('grades/assessment', { title: a.title, a, cs, students, scores, stats, locked: lock.isLocked(a), canUnlock: caps.has(req.user, 'grades.unlock'), canEditLocked: caps.has(req.user, 'grades.edit_locked'), canEnter: caps.has(req.user, 'grades.enter'), canPublish: caps.has(req.user, 'grades.publish'), canLock: caps.has(req.user, 'grades.lock'), canEdit: caps.has(req.user, 'grades.assessment.edit'), canDelete: caps.has(req.user, 'grades.assessment.delete'), canImport: caps.has(req.user, 'grades.import'), historyCount: Number((await k('scores_history').where({ assessment_id: a.id }).count({ c: '*' }).first()).c), assessmentVals: { ...a, date: J.isoToJString(a.date) }, terms: settings.num('terms_count') || 2 });
   } catch (e) { next(e); }
 });
 router.post('/grades/assessments/:id(\\d+)/scores', staff, async (req, res, next) => {
@@ -131,7 +132,7 @@ router.post('/grades/assessments/:id(\\d+)/lock', staff, async (req, res, next) 
     const k = db.get(); const r = await loadAssessment(req, req.params.id); if (!r) return nf(res); const back = '/grades/assessments/' + r.a.id;
     const want = req.body.action === 'unlock' ? 0 : 1; const now = lock.isLocked(r.a) ? 1 : 0;
     if (want === now) { req.flash('info', want ? 'ارزشیابی از قبل قفل است.' : 'ارزشیابی از قبل باز است.'); return res.redirect(back); }
-    if (!want && !isManager(req.user)) { req.flash('error', 'باز کردن قفل فقط توسط مدیر/معاون ممکن است.'); return res.redirect(back); }
+    if (!want && !caps.has(req.user, 'grades.unlock')) { req.flash('error', 'باز کردن قفل فقط برای کاربری که مجوز «باز کردن قفل نمرات» دارد ممکن است.'); return res.redirect(back); }
     const reason = String(req.body.reason || '').trim();
     if (!want && !reason) { req.flash('error', 'برای باز کردن قفل، دلیل را بنویسید.'); return res.redirect(back); }
     await k.transaction(async (t) => { await t('assessments').where({ id: r.a.id }).update({ locked: want }); await lock.log(t, r.a, want ? 'lock' : 'unlock', req.user, reason || null); });

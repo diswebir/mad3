@@ -1,5 +1,5 @@
 <div class="page-head"><div><div class="crumbs"><a href="<%= u('/grades') %>">نمرات</a> / <%= cs.class_name %></div><h1><%= cs.subject_name %> — <%= cs.class_name %></h1><div class="muted">معلم: <%= cs.teacher_name || '—' %> — <%= fa(students) %> دانش‌آموز</div></div><div class="actions"><a class="btn" href="<%= u('/grades/class/' + cs.classroom_id) %>"><%- icon('trophy', 16) %> کارنامه کلاس</a></div></div>
-<form class="card" method="post" action="<%= u('/grades/cs/' + cs.id + '/assessments') %>"><input type="hidden" name="_csrf" value="<%= csrf %>"><h3><%- icon('plus', 18) %> ارزشیابی جدید</h3>
+<% if (cap('grades.assessment.create')) { %><form class="card" method="post" action="<%= u('/grades/cs/' + cs.id + '/assessments') %>"><input type="hidden" name="_csrf" value="<%= csrf %>"><h3><%- icon('plus', 18) %> ارزشیابی جدید</h3>
   <div class="form-grid c3">
     <div class="field"><label>عنوان *</label><input type="text" name="title" required placeholder="مثلاً کوئیز فصل ۲"></div>
     <div class="field"><label>نوع</label><select name="type"><% Object.keys(L.assessmentType).forEach(function(k){ %><option value="<%= k %>"><%= L.assessmentType[k] %></option><% }) %></select></div>
@@ -8,7 +8,7 @@
     <div class="field"><label>وزن (ضریب)</label><input type="text" class="digits ltr" name="weight" value="1"><div class="hint">وزن این ارزشیابی در میانگین درس</div></div>
     <div class="field"><label>تاریخ</label><input class="jdate ltr" type="text" name="date" value="<%= vals.date %>" autocomplete="off"></div>
     <div class="field"><label class="check"><input type="checkbox" name="published" value="1"> انتشار فوری برای دانش‌آموزان</label></div></div>
-  <div class="form-actions" style="border:0;margin-top:.6rem"><button class="btn primary"><%- icon('plus', 16) %> ایجاد و ورود نمرات</button></div></form>
+  <div class="form-actions" style="border:0;margin-top:.6rem"><button class="btn primary"><%- icon('plus', 16) %> ایجاد و ورود نمرات</button></div></form><% } %>
 <div class="card flush"><div class="card-title">ارزشیابی‌های ثبت‌شده</div><% if (!as.length) { %><div class="empty">هنوز ارزشیابی‌ای ثبت نشده است.</div><% } else { %>
 <div class="table-wrap"><table class="t"><thead><tr><th>عنوان</th><th>نوع</th><th>نوبت</th><th>تاریخ</th><th>بیشینه</th><th>وزن</th><th>نمره‌دار</th><th>میانگین</th><th>انتشار</th><th></th></tr></thead><tbody>
 <% as.forEach(function(a){ %><tr><td><a href="<%= u('/grades/assessments/' + a.id) %>"><b><%= a.title %></b></a></td><td><%= L.assessmentType[a.type] %></td><td><%= fa(a.term) %></td><td><%= d(a.date) %></td><td class="num"><%= fa(a.max_score) %></td><td class="num"><%= fa(a.weight) %></td><td><%= fa(a.scored) %> / <%= fa(students) %></td><td class="num"><%= a.avg_score === null ? '—' : fa(Math.round(a.avg_score * 100) / 100) %></td><td><%- a.published ? pill('منتشر شده', 'green') : pill('پیش‌نویس', 'amber') %></td><td class="actions"><a class="btn sm" href="<%= u('/grades/assessments/' + a.id) %>">ورود نمره</a></td></tr><% }) %></tbody></table></div><% } %></div>

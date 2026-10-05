@@ -101,7 +101,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
   section('جانشین‌یابی در روز تعطیل');
   await t('روز تعطیل: برنامه‌ی کلاسی برگزار نمی‌شود، اخطار نمایش داده و ثبت جانشین رد می‌شود', async () => {
-    const day = J.addDays(J.todayISO(), 3); await k('holidays').insert({ title: 'تعطیلی آزمون', start_date: day, end_date: day, kind: 'official' }).catch(async () => k('holidays').insert({ title: 'تعطیلی آزمون', start_date: day, end_date: day }));
+    let day = J.addDays(J.todayISO(), 3); for (let i = 3; i < 17; i++) { day = J.addDays(J.todayISO(), i); if (!(await require('../src/routes/scheduling').substituteData(k, day)).off.off) break; } /* روز کاری بعدی (پنجشنبه/جمعه تعطیل هفتگی‌اند) */ await k('holidays').insert({ title: 'تعطیلی آزمون', start_date: day, end_date: day, kind: 'official' }).catch(async () => k('holidays').insert({ title: 'تعطیلی آزمون', start_date: day, end_date: day }));
     const r = await admin.get('/timetable/substitutes?date=' + encodeURIComponent(J.isoToJString(day))); assert.strictEqual(r.status, 200); assert.ok(/تعطیل/.test(r.text) && /تعطیلی آزمون/.test(r.text));
     const sd = await require('../src/routes/scheduling').substituteData(k, day); assert.strictEqual(sd.slots.length, 0); assert.strictEqual(sd.off.off, true);
     const n0 = await cnt('substitutions'); const p = await admin.post('/timetable/substitutes', { date: J.isoToJString(day), teacher_id: '1' }, '/timetable/substitutes'); assert.strictEqual(flash(p).type, 'error'); assert.strictEqual(await cnt('substitutions'), n0);
