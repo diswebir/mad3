@@ -1,0 +1,23 @@
+<div class="wizard">
+  <h1 class="center">تأیید و نصب</h1>
+  <%- include('_steps') %>
+  <form method="post" class="card">
+    <input type="hidden" name="_csrf" value="<%= csrf %>">
+    <% if (typeof error !== 'undefined') { %><div class="alert error"><%- icon('circle-x', 18) %><div><%= error %></div></div><% } %>
+    <dl class="kv">
+      <dt>پایگاه داده</dt><dd><%= st.db.client === 'mysql' ? 'MySQL — ' + st.db.database + '@' + st.db.host : 'SQLite (فایل محلی)' %></dd>
+      <dt>مدرسه</dt><dd><%= st.school.school_name %> (<%= st.school.school_type %>)</dd>
+      <dt>مدیر سامانه</dt><dd><%= st.admin.full_name %> — <span class="ltr"><%= st.admin.username %></span></dd>
+      <dt>ماژول‌ها</dt><dd><%= fa(st.modules.length) %> ماژول اختیاری + هسته</dd>
+      <dt>داده نمونه</dt><dd><%= st.demo ? 'بله' : 'خیر' %></dd>
+    </dl>
+    <fieldset class="dl-pick"><legend><%- icon('lock', 16) %> قفل دامنه</legend>
+      <label><input type="radio" name="domain_lock" value="this" checked> <b>قفل روی همین دامنه</b> <span class="muted small">(پیشنهادی؛ نصب فقط روی دامنه‌ای که اکنون با آن باز شده کار می‌کند)</span></label>
+      <label><input type="radio" name="domain_lock" value="manual"> <b>بعداً دستی</b> <span class="muted small">(چیزی قفل نمی‌شود تا سوپر ادمین از پنل دامنه را ثبت کند)</span></label>
+      <label><input type="radio" name="domain_lock" value="off"> <b>بدون قفل</b> <span class="muted small">(مناسب آزمایش و دمو)</span></label>
+      <div class="muted small">این مورد را بعداً فقط سوپر ادمین می‌تواند تغییر دهد. اگر با localhost نصب می‌کنید، قفل تا اولین ورود با دامنه‌ی واقعی ثبت نمی‌شود.</div>
+    </fieldset>
+    <div class="alert info" style="margin-top:1rem"><%- icon('info', 18) %><div>ساخت جدول‌ها و داده‌ها ممکن است تا یک دقیقه طول بکشد؛ صفحه را نبندید.</div></div>
+    <div class="form-actions"><button class="btn primary" type="submit"><%- icon('package-check', 17) %> شروع نصب</button><a class="btn ghost" href="<%= u('/install/modules') %>">بازگشت</a></div>
+  </form>
+</div>

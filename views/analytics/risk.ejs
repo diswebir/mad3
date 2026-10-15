@@ -1,0 +1,7 @@
+<div class="page-head"><div><h1><%- icon('triangle-alert', 24) %> دانش‌آموزان در معرض خطر</h1><div class="muted">بر پایه‌ی معدل، غیبت، تأخیر، انضباط و بدهی سررسیدگذشته</div></div><div class="actions"><a class="btn" href="<%= u('/reports/risk?format=xlsx' + (classId ? '&class_id=' + classId : '')) %>"><%- icon('download', 16) %> اکسل</a><button class="btn" data-print><%- icon('printer', 16) %> چاپ</button></div></div>
+<%- include('_nav', { active: 'risk' }) %>
+<form class="filters" method="get"><select name="class_id" data-autosubmit><option value="">همه‌ی کلاس‌ها</option><% classes.forEach(function(c){ %><option value="<%= c.id %>" <%= classId === c.id ? 'selected' : '' %>><%= c.name %></option><% }) %></select></form>
+<div class="card flush"><div class="table-wrap"><table class="t"><thead><tr><th>دانش‌آموز</th><th>کلاس</th><th>سطح</th><th>معدل</th><th>غیبت</th><th>تأخیر</th><th>دلایل</th></tr></thead><tbody>
+<% if (!list.length) { %><tr><td colspan="7" class="muted" style="text-align:center;padding:2rem">دانش‌آموز پرخطری یافت نشد.</td></tr><% } %>
+<% list.forEach(function(s){ %><tr><td><a href="<%= u('/students/' + s.id) %>"><%= s.first_name %> <%= s.last_name %></a></td><td><%= s.class_name %></td><td><span class="badge <%= s.level === 'high' ? 'red' : 'amber' %>"><%= s.level === 'high' ? 'زیاد' : 'متوسط' %></span></td><td><%= s.overall === null ? '—' : fa(Math.round(s.overall * 100) / 100) %></td><td><%= fa(s.absent) %></td><td><%= fa(s.late) %></td><td><%= s.reasons.join('، ') %></td></tr><% }) %>
+</tbody></table></div></div>

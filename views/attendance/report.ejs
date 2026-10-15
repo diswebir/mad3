@@ -1,0 +1,16 @@
+<div class="page-head"><div><h1><%- icon('list-checks', 24) %> گزارش حضور و غیاب ماهانه</h1><div class="muted"><%= cls ? 'کلاس ' + cls.name : '' %> — <%= J.MONTHS[jm - 1] %> <%= fa(jy) %></div></div>
+<div class="actions"><% if (cls) { %><a class="btn" href="<%= qs({format: 'csv'}) %>"><%- icon('download', 16) %> CSV</a><button class="btn" data-print><%- icon('printer', 16) %> چاپ</button><% } %><a class="btn" href="<%= u('/attendance') %>">ثبت حضور و غیاب</a></div></div>
+<form class="card" method="get" style="display:flex;gap:.8rem;flex-wrap:wrap;align-items:end">
+  <div class="field"><label>کلاس</label><select name="class_id" data-autosubmit><% classes.forEach(function(c){ %><option value="<%= c.id %>" <%= cls && c.id === cls.id ? 'selected' : '' %>><%= c.name %></option><% }) %></select></div>
+  <div class="field"><label>ماه</label><select name="month" data-autosubmit><% J.MONTHS.forEach(function(m, i){ %><option value="<%= i + 1 %>" <%= jm === i + 1 ? 'selected' : '' %>><%= m %></option><% }) %></select></div>
+  <div class="field"><label>سال</label><input type="text" class="digits ltr" name="year" value="<%= jy %>" style="width:90px" data-autosubmit></div>
+</form>
+<% if (cls && students) { %>
+<div class="card flush"><div class="table-wrap"><table class="t"><thead><tr><th>دانش‌آموز</th><% days.forEach(function(d){ %><th class="center" title="<%= d.iso %>" style="padding:.4rem .3rem"><%= fa(d.d) %></th><% }) %><th>ح</th><th>غ</th><th>ت</th><th>م</th></tr></thead><tbody>
+<% if (!students.length) { %><tr><td colspan="30" class="empty">دانش‌آموزی نیست.</td></tr><% } %>
+<% students.forEach(function(s){ var st = stats[s.id]; %><tr><td class="nowrap"><a href="<%= u('/students/' + s.id + '?tab=attendance') %>"><%= s.first_name %> <%= s.last_name %></a></td>
+<% days.forEach(function(d){ var v = map[s.id + '|' + d.iso]; %><td class="center" style="padding:.3rem"><% if (v) { %><span class="att-cell <%= v %>"><%= L.attendanceShort[v] %></span><% } else { %><span class="muted">·</span><% } %></td><% }) %>
+<td class="num"><%= fa(st.present) %></td><td class="num"><% if (st.absent >= threshold) { %><span class="badge red" title="بیش از آستانه هشدار"><%= fa(st.absent) %> ⚠</span><% } else { %><%= fa(st.absent) %><% } %></td><td class="num"><%= fa(st.late) %></td><td class="num"><%= fa(st.excused + st.leave) %></td></tr><% }) %>
+</tbody></table></div></div>
+<div class="muted small">راهنما: ح = حاضر، غ = غایب، ت = تأخیر، م = موجه/مرخصی. هشدار غیبت از <%= fa(threshold) %> روز در ماه.</div>
+<% } %>

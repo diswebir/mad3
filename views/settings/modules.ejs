@@ -1,0 +1,9 @@
+<div class="page-head"><div><h1><%- icon('puzzle', 24) %> مدیریت ماژول‌ها</h1><div class="muted">هر قابلیت را می‌توانید جداگانه فعال یا غیرفعال کنید. داده‌ها هنگام غیرفعال‌سازی حذف نمی‌شوند.</div></div></div>
+<div class="mod-grid">
+<% mods.forEach(function(m){ var on = enabled(m.key); %>
+<div class="mod <%= on ? '' : 'off' %>"><span class="ico"><%- icon(m.icon, 20) %></span>
+  <div class="grow"><b><%= m.title %></b> <% if (m.core) { %><span class="badge blue">پایه</span><% } else { %><%- on ? pill('فعال', 'green') : pill('غیرفعال', '') %><% } %><div class="muted small"><%= m.desc %></div></div>
+  <% if (!m.core) { %><form method="post" action="<%= u('/modules/' + m.key + '/toggle') %>"><input type="hidden" name="_csrf" value="<%= csrf %>"><button class="btn sm <%= on ? '' : 'primary' %>" type="submit"><%= on ? 'غیرفعال‌سازی' : 'فعال‌سازی' %></button></form><% } %>
+</div>
+<% }) %>
+</div>

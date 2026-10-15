@@ -1,0 +1,80 @@
+<div class="page-head"><h1><%- icon('settings', 24) %> تنظیمات سامانه</h1><% if (user.isSuper) { %><div class="actions"><a class="btn" href="<%= u('/super') %>"><%- icon('shield-check', 16) %> پنل سوپر ادمین</a><a class="btn" href="<%= u('/settings/system') %>"><%- icon('monitor-check', 16) %> وضعیت سامانه</a><a class="btn" href="<%= u('/modules') %>"><%- icon('puzzle', 16) %> ماژول‌ها</a></div><% } %></div>
+<% if (!user.isSuper) { %><div class="note-super"><%- icon('lock', 16) %><div>تنظیمات فنی (اتصال پنل پیامک، امنیت، نگهداری و ماژول‌ها) توسط پشتیبان فنی سامانه مدیریت می‌شود. برای تغییر آن‌ها با پشتیبانی تماس بگیرید.</div></div><% } %>
+<div class="settings-layout">
+  <nav class="stabs" aria-label="گروه‌های تنظیمات">
+    <% tabs.forEach(function(t){ %><a href="<%= u('/settings?tab=' + t[0]) %>" class="<%= tab === t[0] ? 'active' : '' %>" data-tab="<%= t[0] %>"><%- icon(t[2], 17) %><span><%= t[1] %></span><% if (superTabs.indexOf(t[0]) >= 0) { %><span class="muted" title="فقط سوپر ادمین"><%- icon('lock', 13) %></span><% } %></a><% }) %>
+  </nav>
+  <div class="spane">
+    <% if (errors.length) { %><div class="alert error"><ul><% errors.forEach(function(e){ %><li><%= e %></li><% }) %></ul></div><% } %>
+    <% if (confirm) { %><div class="alert warn"><%- icon('triangle-alert', 18) %><div><b>تأیید لازم است:</b> <%= confirm.text %></div></div><% } %>
+
+    <% if (tab === 'appearance') { %>
+    <div class="card"><h3><%- icon('image', 18) %> لوگوی مدرسه</h3>
+      <form method="post" enctype="multipart/form-data" action="<%= u('/settings/logo') %>?_csrf=<%= csrf %>" style="display:flex;gap:1rem;align-items:center;flex-wrap:wrap">
+        <span class="avatar lg" style="border-radius:16px"><% if (S('logo')) { %><img src="<%= fileUrl('branding', S('logo')) %>" alt=""><% } else { %><%- icon('school', 36) %><% } %></span>
+        <input type="file" name="logo" accept="image/*" style="max-width:280px"><button class="btn primary" type="submit">بارگذاری</button>
+      </form>
+      <% if (S('logo')) { %><form method="post" action="<%= u('/settings/logo/remove') %>" style="margin-top:.6rem"><input type="hidden" name="_csrf" value="<%= csrf %>"><button class="btn sm danger">حذف لوگو</button></form><% } %>
+    </div>
+    <% } %>
+
+    <% if (tab === 'academic') { %>
+    <div class="card shortcuts"><h3><%- icon('link', 18) %> تنظیمات وابسته</h3>
+      <div class="shortcut-row"><a class="btn" href="<%= u('/timetable/bells') %>"><%- icon('bell', 16) %> ساعت زنگ‌ها</a><a class="btn" href="<%= u('/holidays') %>"><%- icon('calendar-off', 16) %> تعطیلات و تقویم آموزشی</a><a class="btn" href="<%= u('/academic-years') %>"><%- icon('calendar-days', 16) %> سال‌های تحصیلی</a><a class="btn" href="<%= u('/subjects') %>"><%- icon('book-open', 16) %> دروس</a></div>
+    </div>
+    <% } %>
+
+    <% if (tab === 'birthday' && typeof bdVars !== 'undefined') { %><div class="card" style="margin-bottom:1rem"><h3><%- icon('info', 18) %> راهنما</h3>
+      <div class="muted small" style="line-height:2">متغیرهای قابل‌استفاده در متن پیام (داخل آکولاد) و در «متغیرهای الگو»:
+        <% Object.keys(bdVars).forEach(function(k){ %><span class="badge ltr" title="<%= bdVars[k] %>">{<%= k %>}</span> <%= bdVars[k] %>؛ <% }) %><br>
+        هر نوع پیام می‌تواند الگوی ippanel جداگانه داشته باشد. با خالی‌گذاشتن «کد الگو»، پیامک متنی با همان قالب ارسال می‌شود. <a href="<%= u('/birthdays') %>">مشاهده‌ی تولدها و اجرای دستی</a></div></div><% } %>
+    <form method="post" action="<%= u('/settings') %>" class="card sform" data-dirty-warn>
+      <input type="hidden" name="_csrf" value="<%= csrf %>"><input type="hidden" name="_group" value="<%= tab %>">
+      <h3><%- icon((tabs.filter(function(t){ return t[0] === tab; })[0] || [])[2] || 'settings', 18) %> <%= groups[tab] %></h3>
+      <div class="form-grid">
+      <% defs.forEach(function(d){ if (d.key === 'cron_token') return; var v = values[d.key]; if (v === undefined) v = d.def; %>
+        <% if (d.section) { %><h4 class="sec-h full" style="grid-column:1/-1;margin:.9rem 0 .1rem;padding-top:.7rem;border-top:1px dashed var(--border)"><%= d.section %></h4><% } %>
+        <div class="field <%= d.type === 'textarea' || d.type === 'days' || d.full ? 'full' : '' %>">
+        <% if (d.type === 'checkbox') { %><label class="check"><input type="checkbox" name="<%= d.key %>" value="1" <%= (v === '1' || v === 1) ? 'checked' : '' %>> <%= d.label %></label>
+        <% } else if (d.type === 'days') { var sel = String(v).split(','); %><label><%= d.label %></label><div style="display:flex;gap:1rem;flex-wrap:wrap"><% ['شنبه','یکشنبه','دوشنبه','سه‌شنبه','چهارشنبه','پنجشنبه','جمعه'].forEach(function(n, i){ %><label class="check"><input type="checkbox" name="<%= d.key %>" value="<%= i %>" <%= sel.includes(String(i)) ? 'checked' : '' %>> <%= n %></label><% }) %></div>
+        <% } else { %><label><%= d.label %></label>
+          <% if (d.type === 'select') { %><select name="<%= d.key %>"><% d.options.forEach(function(o){ var ov = Array.isArray(o) ? o[0] : o, ol = Array.isArray(o) ? o[1] : o; %><option value="<%= ov %>" <%= String(v) === String(ov) ? 'selected' : '' %>><%= ol %></option><% }) %></select>
+          <% } else if (d.type === 'textarea') { %><textarea name="<%= d.key %>" style="min-height:70px"><%= v %></textarea>
+          <% } else if (d.type === 'secret') { %><input type="password" name="<%= d.key %>" value="" autocomplete="new-password" class="ltr" placeholder="<%= v ? '•••••••• (ثبت شده — برای تغییر مقدار جدید بنویسید)' : '' %>">
+          <% } else if (d.type === 'color') { %><input type="color" name="<%= d.key %>" value="<%= v %>">
+          <% } else { %><input type="text" name="<%= d.key %>" value="<%= v %>" <%= d.type === 'number' || d.type === 'time' || /key|url|number|weights|pattern|param/.test(d.key) ? 'class=ltr' : '' %>><% } %>
+        <% } %>
+        <% if (d.hint) { %><div class="hint"><%= d.hint %></div><% } %>
+        </div>
+      <% }) %>
+      </div>
+      <% if (confirm) { %><label class="check" style="margin-top:.8rem"><input type="checkbox" name="confirm_orphans" value="1" required> می‌دانم؛ تغییر را اعمال کن</label><% } %>
+      <div class="form-actions"><button class="btn primary" type="submit"><%- icon('save', 16) %> ذخیره‌ی «<%= groups[tab] %>»</button></div>
+    </form>
+
+    <% if (tab === 'sms' && user.isSuper) { %>
+    <div class="card"><h3><%- icon('info', 18) %> راهنمای کد تأیید پیامکی</h3>
+      <ol class="muted" style="line-height:2;padding-inline-start:1.2rem">
+        <li>در پنل ippanel یک «الگو (Pattern)» با یک متغیر مثل <span class="ltr">%code%</span> بسازید، مثلاً: «کد ورود شما به سامانه مدرسه: %code%».</li>
+        <li>کد الگو را در «کد الگوی ippanel» و نام متغیر را (پیش‌فرض <span class="ltr">code</span>) وارد کنید.</li>
+        <li>«ارسال پیامک» و «کد یکبارمصرف» را فعال و سرویس‌دهنده را روی «ippanel» بگذارید.</li>
+        <li>صفحه‌های <a href="<%= u('/forgot') %>">فراموشی رمز</a> و <a href="<%= u('/login/otp') %>">ورود اولیا با کد</a> آماده‌ی استفاده می‌شوند. گزارش ارسال‌ها: <a href="<%= u('/sms/log') %>">گزارش پیامک‌ها</a>.</li>
+      </ol></div>
+    <% } %>
+
+    <% if (tab === 'system' && typeof cron !== 'undefined') { %>
+    <div class="card"><h3><%- icon('clock', 18) %> زمان‌بندی خودکار (Cron)</h3>
+      <p class="muted">در cPanel ← «Cron Jobs» یک کار هر ۱۵ دقیقه با دستور زیر بسازید. این نشانی پشتیبان‌گیری خودکار، قفل نمرات، یادآوری اقساط، بستن تیکت‌ها و پاک‌سازی نشست‌ها را اجرا می‌کند.</p>
+      <div class="field"><label>نشانی cron (محرمانه)</label><div class="copy-row"><input type="text" class="ltr" readonly value="<%= cron.url %>" id="cron-url"><button class="btn" type="button" data-copy="#cron-url"><%- icon('copy', 15) %> کپی</button></div></div>
+      <div class="field"><label>دستور cPanel (curl)</label><div class="copy-row"><input type="text" class="ltr" readonly value="<%= cron.line %>" id="cron-line"><button class="btn" type="button" data-copy="#cron-line"><%- icon('copy', 15) %> کپی</button></div></div>
+      <div class="field"><label>یا با wget</label><div class="copy-row"><input type="text" class="ltr" readonly value="<%= cron.wget %>" id="cron-wget"><button class="btn" type="button" data-copy="#cron-wget"><%- icon('copy', 15) %> کپی</button></div></div>
+      <p>آخرین اجرا: <b><%= cron.last ? dt(cron.last) : 'هنوز اجرا نشده' %></b></p>
+      <form method="post" action="<%= u('/settings/cron/regenerate') %>" data-confirm="توکن فعلی بی‌اعتبار می‌شود و باید زمان‌بندی هاست را به‌روز کنید. ادامه می‌دهید؟"><input type="hidden" name="_csrf" value="<%= csrf %>"><button class="btn danger"><%- icon('refresh-cw', 16) %> ساخت توکن جدید</button></form>
+    </div>
+    <div class="card"><h3><%- icon('database-backup', 18) %> پشتیبان‌گیری</h3>
+      <p>تعداد فایل‌های پشتیبان روی سرور: <b><%= fa(backups.n) %></b><% if (backups.last) { %> — آخرین: <b><%= dt(new Date(backups.last).toISOString().replace('T', ' ').slice(0, 19)) %></b><% } %></p>
+      <div class="shortcut-row"><a class="btn primary" href="<%= u('/backup') %>"><%- icon('database-backup', 16) %> مدیریت پشتیبان و بازیابی</a><a class="btn" href="<%= u('/settings/system') %>"><%- icon('monitor-check', 16) %> وضعیت سامانه</a><a class="btn" href="<%= u('/audit') %>"><%- icon('history', 16) %> گزارش فعالیت‌ها</a></div>
+    </div>
+    <% } %>
+  </div>
+</div>

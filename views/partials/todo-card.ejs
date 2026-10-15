@@ -1,0 +1,12 @@
+<% if (typeof todo !== 'undefined' && todo) { %>
+<div class="card todo-card"><h3><%- icon('list-checks', 18) %> کارهای امروز <span class="muted small" style="font-weight:400"><%= ld(today) %></span></h3>
+  <% if (!todo.items.length) { %><div class="todo-empty"><%- icon('circle-check', 20) %> همه‌چیز مرتب است؛ کار معوقی وجود ندارد.</div>
+  <% } else { %>
+  <ul class="todo">
+    <% todo.items.forEach(function(t){ %>
+    <li><a class="todo-item <%= t.level %>" href="<%= u(t.url) %>"><span class="ti"><%- icon(t.icon, 18) %></span><span class="tl"><%= t.label %></span><b class="tc"><%= fa(t.count) %></b><span class="tg"><%- icon('chevron-left', 16) %></span></a></li>
+    <% }) %>
+  </ul>
+  <% } %>
+</div>
+<% } %>

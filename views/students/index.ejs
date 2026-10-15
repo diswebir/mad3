@@ -1,0 +1,33 @@
+<div class="page-head"><div><h1><%- icon('graduation-cap', 24) %> دانش‌آموزان</h1><div class="muted small"><%= fa(total) %> دانش‌آموز</div></div>
+<div class="actions">
+  <a class="btn" href="<%= u('/students/export.csv') %><%= qs({page: ''}) %>"><%- icon('download', 16) %> خروجی CSV</a>
+  <% if (isManager) { %><a class="btn" href="<%= u('/students/import') %>"><%- icon('upload', 16) %> ورود گروهی</a><a class="btn primary" href="<%= u('/students/new') %>"><%- icon('user-plus', 16) %> ثبت‌نام دانش‌آموز</a><% } %></div></div>
+<form method="post" action="<%= u('/students/bulk') %>">
+<input type="hidden" name="_csrf" value="<%= csrf %>">
+<div class="card flush">
+  <div class="toolbar" style="gap:.6rem">
+    <input type="text" name="q" form="sf" value="<%= q %>" placeholder="نام، شماره دانش‌آموزی، کد ملی، تلفن اولیا..." style="min-width:260px">
+    <select name="classroom_id" form="sf" data-autosubmit><option value="">همه کلاس‌ها</option><% classes.forEach(function(c){ %><option value="<%= c.id %>" <%= String(f.classroom_id) === String(c.id) ? 'selected' : '' %>><%= c.name %></option><% }) %></select>
+    <select name="status" form="sf" data-autosubmit><option value="">همه وضعیت‌ها</option><% Object.keys(L.studentStatus).forEach(function(k){ %><option value="<%= k %>" <%= f.status === k ? 'selected' : '' %>><%= L.studentStatus[k] %></option><% }) %></select>
+    <select name="gender" form="sf" data-autosubmit><option value="">هر دو جنسیت</option><option value="male" <%= f.gender === 'male' ? 'selected' : '' %>>پسر</option><option value="female" <%= f.gender === 'female' ? 'selected' : '' %>>دختر</option></select>
+    <button class="btn" type="submit" form="sf"><%- icon('search', 15) %> جستجو</button>
+    <% if (q || f.classroom_id || f.status || f.gender) { %><a class="btn ghost" href="<%= u('/students') %>">پاک‌کردن</a><% } %>
+  </div>
+  <% if (!rows.length) { %><div class="empty"><%- icon('graduation-cap', 42) %><div>دانش‌آموزی یافت نشد.</div></div><% } else { %>
+  <div class="table-wrap"><table class="t"><thead><tr>
+    <% if (isManager) { %><th style="width:30px"><input type="checkbox" data-check-all=".row-check"></th><% } %>
+    <th>دانش‌آموز</th><th><a href="<%= qs({sort: 'code', dir: sort === 'code' && dir === 'asc' ? 'desc' : 'asc'}) %>">شماره</a></th><th><a href="<%= qs({sort: 'class', dir: sort === 'class' && dir === 'asc' ? 'desc' : 'asc'}) %>">کلاس</a></th><th>وضعیت</th><th>تماس اولیا</th><th></th></tr></thead><tbody>
+  <% rows.forEach(function(s){ %><tr>
+    <% if (isManager) { %><td><input class="row-check" type="checkbox" name="ids" value="<%= s.id %>"></td><% } %>
+    <td><div style="display:flex;gap:.6rem;align-items:center"><span class="avatar"><% if (s.photo) { %><img src="<%= fileUrl('photos', s.photo) %>" alt="" loading="lazy"><% } else { %><%= initials(s.first_name + ' ' + s.last_name) %><% } %></span><div><a href="<%= u('/students/' + s.id) %>"><b><%= s.first_name %> <%= s.last_name %></b></a><div class="muted small"><%= s.gender ? L.gender[s.gender] : '' %><%= s.father_name ? ' — فرزند ' + s.father_name : '' %></div></div></div></td>
+    <td class="num"><%= fa(s.student_code) %></td><td><%= s.class_name || '—' %></td>
+    <td><%- pill(L.studentStatus[s.status] || s.status, badges_map.studentStatus[s.status]) %></td>
+    <td class="ltr num small"><%= fa(s.father_phone || s.mother_phone || '—') %></td>
+    <td class="actions"><a class="btn sm ghost" href="<%= u('/students/' + s.id) %>"><%- icon('eye', 15) %> پرونده</a><% if (isManager) { %><a class="btn sm ghost" href="<%= u('/students/' + s.id + '/edit') %>"><%- icon('pencil', 15) %></a><% } %></td></tr><% }) %>
+  </tbody></table></div>
+  <% if (isManager) { %><div class="toolbar" style="border-top:1px solid var(--border);border-bottom:0"><span class="muted small">با انتخاب‌شده‌ها:</span>
+    <select name="classroom_id" style="width:auto"><option value="">انتقال به کلاس...</option><% classes.forEach(function(c){ %><option value="<%= c.id %>"><%= c.name %></option><% }) %></select><button class="btn sm" name="action" value="move">انتقال</button>
+    <select name="status" style="width:auto"><option value="">تغییر وضعیت...</option><% Object.keys(L.studentStatus).forEach(function(k){ %><option value="<%= k %>"><%= L.studentStatus[k] %></option><% }) %></select><button class="btn sm" name="action" value="status" data-confirm="وضعیت دانش‌آموزان انتخاب‌شده تغییر کند؟">اعمال</button></div><% } %>
+  <%- include('../partials/pager', { page: page, pages: pages }) %><% } %>
+</div></form>
+<form id="sf" method="get"></form>

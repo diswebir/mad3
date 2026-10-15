@@ -1,0 +1,26 @@
+<div class="card report-card" style="<%= typeof bulk !== 'undefined' && bulk ? 'page-break-after:always;break-after:page' : '' %>">
+  <div style="text-align:center;margin-bottom:1rem">
+    <% if (cfg.ministry) { %><div class="muted small"><%= cfg.ministry %></div><% } %>
+    <h2 style="margin:.2rem 0"><%= S('school_name') %></h2>
+    <% if (cfg.region) { %><div class="muted small"><%= cfg.region %></div><% } %>
+    <div class="muted"><%= cfg.title %> <%= term ? '— نوبت ' + fa(term) : '— کل سال' %> — سال تحصیلی <%= fa(year ? year.title : '') %></div></div>
+  <div class="grid g3" style="margin-bottom:1rem"><div><span class="muted">نام:</span> <b><%= s.first_name %> <%= s.last_name %></b></div><div><span class="muted">شماره دانش‌آموزی:</span> <b><%= fa(s.student_code) %></b></div><div><span class="muted">کلاس:</span> <b><%= s.class_name || '—' %></b> <span class="muted small">(راهنما: <%= s.homeroom_name || '—' %>)</span></div></div>
+  <% if (!r || !me || (me.overall === null && !(r.partial && Object.keys(me.subjects).length))) { %><div class="empty">نمره‌ای ثبت یا منتشر نشده است.</div><% } else { %>
+  <% if (r.partial) { %><div class="alert info no-print" style="margin-bottom:1rem"><%- icon('info', 18) %><div>شما معلم راهنمای این کلاس نیستید؛ فقط نمرات دروس خودتان نمایش داده می‌شود (بدون معدل کل و رتبه).</div></div><% } %>
+  <% var showNum = cfg.layout !== 'descriptive'; var showDesc = cfg.layout !== 'numeric'; var rankOn = showRank && cfg.showRank; %>
+  <div class="table-wrap"><table class="t"><thead><tr><th>درس</th><th>ضریب</th><th>معلم</th><% if (showNum) { %><th>میانگین دانش‌آموز</th><% } %><% if (showDesc) { %><th>ارزیابی توصیفی</th><% } %><% if (rankOn && showNum) { %><th>میانگین کلاس</th><% } %><th>وضعیت</th></tr></thead><tbody>
+  <% r.subjects.forEach(function(c){ var v = me.subjects[c.id]; %><tr><td><b><%= c.name %></b></td><td class="num"><%= fa(c.coefficient) %></td><td><%= c.teacher_name || '—' %></td>
+    <% if (showNum) { %><td class="num"><b><%= v ? fa(v.avg) : '—' %></b></td><% } %><% if (showDesc) { %><td><%= v ? describe(v.avg, r.scale, cfg.levels) : '—' %></td><% } %>
+    <% if (rankOn && showNum) { %><td class="num muted"><%= subjectAvg[c.id] === null || subjectAvg[c.id] === undefined ? '—' : fa(subjectAvg[c.id]) %></td><% } %>
+    <td><%- v ? (v.passed ? pill('قبول', 'green') : pill('مردود', 'red')) : '<span class="muted">—</span>' %></td></tr><% }) %>
+  </tbody></table></div>
+  <% if (!r.partial) { %>
+  <div class="grid g4" style="margin-top:1rem"><div class="card stat" style="margin:0"><div><div class="v"><%= showNum ? fa(me.overall) : describe(me.overall, r.scale, cfg.levels) %></div><div class="l"><%= showNum ? 'معدل از ' + fa(r.scale) : 'ارزیابی کلی' %></div></div></div>
+  <% if (rankOn) { %><div class="card stat green" style="margin:0"><div><div class="v"><%= me.rank ? fa(me.rank) + ' از ' + fa(r.rankedCount) : '—' %></div><div class="l">رتبه در کلاس</div></div></div><div class="card stat amber" style="margin:0"><div><div class="v"><%= classAvg === null ? '—' : fa(classAvg) %></div><div class="l">معدل کلاس</div></div></div><% } %>
+  <div class="card stat <%= me.overall >= r.pass ? 'green' : 'red' %>" style="margin:0"><div><div class="v"><%= me.overall >= r.pass ? 'قبول' : 'مردود' %></div><div class="l">نتیجه</div></div></div></div>
+  <% } %><% } %>
+  <% if ((cfg.showAttendance && typeof att !== 'undefined') || (cfg.showBehavior && typeof behavior !== 'undefined')) { %><div style="margin-top:1rem;display:flex;gap:2rem;flex-wrap:wrap"><% if (cfg.showAttendance && typeof att !== 'undefined') { %><span>غیبت غیرموجه: <b><%= fa(att.absent || 0) %></b> روز</span><span>غیبت موجه: <b><%= fa(att.excused || 0) %></b></span><span>تأخیر: <b><%= fa(att.late || 0) %></b> بار</span><% } %><% if (cfg.showBehavior && typeof behavior !== 'undefined') { %><span>نمره رفتار: <b><%= fa(behavior) %></b></span><% } %></div><% } %>
+  <% if (cfg.showComment && comment) { %><div style="margin-top:1rem;padding:.7rem 1rem;border:1px solid var(--border);border-radius:10px"><b>توصیف معلم راهنما:</b><div style="white-space:pre-wrap"><%= comment %></div></div><% } %>
+  <% if (cfg.footer) { %><div class="muted small" style="margin-top:1rem;white-space:pre-wrap"><%= cfg.footer %></div><% } %>
+  <div style="display:flex;justify-content:space-between;margin-top:3rem" class="print-only"><span><%= cfg.signLeft %></span><span><%= cfg.signRight %></span></div>
+</div>

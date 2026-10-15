@@ -1,0 +1,23 @@
+<div class="page-head"><div><h1><%- icon('users-round', 24) %> حساب‌های اولیا</h1><div class="muted small">والدین با شماره موبایل وارد می‌شوند و اطلاعات فرزندان خود را (فقط‌خواندنی) می‌بینند.</div></div></div>
+<% if (result) { %>
+<div class="card"><h3><%- icon('check', 18) %> نتیجه ساخت گروهی</h3>
+<p><%= fa(result.rows.length) %> حساب پردازش شد، <%= fa(result.skipped) %> دانش‌آموز به‌دلیل نبود شماره موبایل معتبر رد شد. <b>رمزها فقط همین یک‌بار نمایش داده می‌شوند</b>؛ فایل را دانلود کنید.</p>
+<div class="table-wrap"><table class="t"><thead><tr><th>دانش‌آموز</th><th>اولیا</th><th>نام کاربری</th><th>رمز</th></tr></thead><tbody><% result.rows.forEach(function(r){ %><tr><td><%= r.student %></td><td><%= r.name %></td><td class="ltr"><%= r.username %></td><td class="ltr"><%= r.password %></td></tr><% }) %></tbody></table></div>
+<form method="post" action="<%= u('/parents/credentials.xlsx') %>" style="margin-top:.8rem"><input type="hidden" name="_csrf" value="<%= csrf %>"><input type="hidden" name="data" value="<%= JSON.stringify(result.rows) %>"><button class="btn primary"><%- icon('download', 16) %> دانلود Excel</button></form></div>
+<% } else { %>
+<div class="card"><h3><%- icon('user-plus', 18) %> ساخت گروهی حساب اولیا</h3>
+<p class="muted"><%= fa(withoutParent) %> دانش‌آموز فعال هنوز حساب اولیا ندارد. حساب با شماره موبایل پدر (در نبود آن مادر/سرپرست) ساخته می‌شود.</p>
+<form method="post" action="<%= u('/parents/bulk') %>" class="toolbar" data-confirm="حساب اولیا برای دانش‌آموزان انتخاب‌شده ساخته شود؟"><input type="hidden" name="_csrf" value="<%= csrf %>">
+<select name="classroom_id"><option value="">همه کلاس‌ها</option><% classes.forEach(function(c){ %><option value="<%= c.id %>"><%= c.name %></option><% }) %></select><button class="btn primary">ساخت حساب‌ها</button></form></div>
+<div class="card flush"><form class="toolbar" method="get"><input type="text" name="q" value="<%= q %>" placeholder="جستجوی نام یا شماره موبایل"><button class="btn"><%- icon('filter', 15) %> اعمال</button></form>
+<div class="table-wrap"><table class="t"><thead><tr><th>اولیا</th><th>نام کاربری</th><th>فرزندان</th><th>وضعیت</th><th>آخرین ورود</th><th></th></tr></thead><tbody>
+<% if (!users.length) { %><tr><td colspan="6" class="muted" style="text-align:center">حسابی یافت نشد.</td></tr><% } %>
+<% users.forEach(function(p){ %><tr><td><b><%= p.full_name %></b></td><td class="ltr"><%= p.username %></td>
+<td><% (by[p.id] || []).forEach(function(c){ %><a class="badge" href="<%= u('/students/' + c.student_id) %>"><%= c.first_name %> <%= c.last_name %></a> <% }) %></td>
+<td><%- p.active ? pill('فعال', 'green') : pill('غیرفعال', 'red') %></td><td class="muted small"><%= p.last_login ? dt(p.last_login) : '—' %></td>
+<td class="actions"><form method="post" action="<%= u('/parents/' + p.id + '/reset-password') %>" style="display:inline" data-confirm="رمز این حساب بازنشانی شود؟"><input type="hidden" name="_csrf" value="<%= csrf %>"><button class="btn sm ghost" title="بازنشانی رمز"><%- icon('key-round', 15) %></button></form>
+<% if (user.role === 'admin') { %><form method="post" action="<%= u('/users/' + p.id + '/toggle') %>" style="display:inline"><input type="hidden" name="_csrf" value="<%= csrf %>"><button class="btn sm ghost" title="فعال/غیرفعال"><%- icon(p.active ? 'lock' : 'check', 15) %></button></form><% } %>
+<form method="post" action="<%= u('/parents/' + p.id + '/delete') %>" style="display:inline" data-confirm="حذف این حساب؟"><input type="hidden" name="_csrf" value="<%= csrf %>"><button class="btn sm ghost" style="color:var(--red)"><%- icon('trash-2', 15) %></button></form></td></tr><% }) %>
+</tbody></table></div></div>
+<% } %>
+<% if (typeof pages !== 'undefined') { %><%- include('../partials/pager', { page: page, pages: pages }) %><% } %>

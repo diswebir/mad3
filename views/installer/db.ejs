@@ -1,0 +1,21 @@
+<div class="wizard">
+  <h1 class="center">پایگاه داده</h1>
+  <%- include('_steps') %>
+  <form method="post" class="card" autocomplete="off">
+    <input type="hidden" name="_csrf" value="<%= csrf %>">
+    <% if (typeof error !== 'undefined') { %><div class="alert error"><%- icon('circle-x', 18) %><div><%= error %></div></div><% } %>
+    <% if (typeof ok !== 'undefined') { %><div class="alert success"><%- icon('circle-check', 18) %><div><%= ok %></div></div><% } %>
+    <div class="grid g2" style="margin-bottom:1rem">
+      <label class="mod" style="cursor:pointer"><input type="radio" name="client" value="mysql" <%= db.client === 'mysql' ? 'checked' : '' %>><div><b>MySQL / MariaDB</b><div class="muted small">پیشنهادی برای هاست cPanel. ابتدا در بخش «MySQL Databases» پایگاه داده و کاربر بسازید.</div></div></label>
+      <label class="mod" style="cursor:pointer"><input type="radio" name="client" value="sqlite" <%= db.client === 'sqlite' ? 'checked' : '' %> <%= sqlite ? '' : 'disabled' %>><div><b>SQLite (بدون تنظیمات)</b><div class="muted small"><%= sqlite ? 'مناسب مدارس کوچک و آزمایش؛ یک فایل در پوشه data.' : 'درایور روی این سرور موجود نیست.' %></div></div></label>
+    </div>
+    <div class="form-grid" id="mysql-fields">
+      <div class="field"><label>میزبان</label><input type="text" class="ltr" name="host" value="<%= db.host || 'localhost' %>"></div>
+      <div class="field"><label>پورت</label><input type="text" class="ltr digits" name="port" value="<%= db.port || 3306 %>"></div>
+      <div class="field"><label>نام پایگاه داده</label><input type="text" class="ltr" name="database" value="<%= db.database || '' %>" placeholder="cpuser_school"></div>
+      <div class="field"><label>نام کاربری</label><input type="text" class="ltr" name="user" value="<%= db.user || '' %>" placeholder="cpuser_school"></div>
+      <div class="field full"><label>رمز عبور</label><input type="password" class="ltr" name="password" value="<%= db.password || '' %>" autocomplete="new-password"></div>
+    </div>
+    <div class="form-actions"><button class="btn primary" type="submit">ذخیره و ادامه <%- icon('chevron-left', 16) %></button><button class="btn" type="submit" name="test_only" value="1">آزمایش اتصال</button><a class="btn ghost" href="<%= u('/install') %>">بازگشت</a></div>
+  </form>
+</div>

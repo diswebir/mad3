@@ -1,0 +1,10 @@
+<div class="wizard">
+  <div class="card center" style="padding:2.5rem">
+    <div style="color:var(--green)"><%- icon('circle-check', 64) %></div>
+    <h1>نصب با موفقیت انجام شد 🎉</h1>
+    <p class="muted">با نام کاربری <b class="ltr"><%= adminName %></b> و رمزی که انتخاب کردید وارد شوید.</p>
+    <% if (typeof superName !== 'undefined') { %><p class="muted">حساب سوپر ادمین (تنظیمات فنی، ماژول‌ها و قفل دامنه): <b class="ltr"><%= superName %></b> — اطلاعات آن را به مدیر مدرسه ندهید. این نصب به‌طور خودکار روی دامنه‌ای که اولین بار باز شود قفل می‌شود.</p><% } %>
+    <% if (demo) { %><div class="alert info" style="text-align:right"><%- icon('info', 18) %><div>داده نمونه نصب شد. ورود دمو: معلم <b class="ltr">t.ahmadi / teacher123</b> — دانش‌آموز <b class="ltr">14050001 / student123</b> — معاون <b class="ltr">deputy / deputy123</b></div></div><% } %>
+    <a class="btn primary" href="<%= u('/login') %>"><%- icon('log-in', 17) %> ورود به سامانه</a>
+  </div>
+</div>

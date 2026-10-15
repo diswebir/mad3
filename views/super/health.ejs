@@ -1,0 +1,49 @@
+<% var f1 = function(n){ return fa((Math.round(n * 10) / 10).toString().replace('.', '٫')); }; var mb = function(b){ return b == null ? '—' : (b >= 1048576 ? f1(b / 1048576) + ' MB' : fa(Math.max(1, Math.round(b / 1024))) + ' KB'); };
+   var upTxt = m.uptimeSec >= 86400 ? fa(Math.floor(m.uptimeSec / 86400)) + ' روز' : m.uptimeSec >= 3600 ? fa(Math.floor(m.uptimeSec / 3600)) + ' ساعت' : fa(Math.floor(m.uptimeSec / 60)) + ' دقیقه';
+   var errRate = m.total ? (m.errors5 / m.total * 100) : 0;
+   var lvl = function(v, a, b){ return v >= b ? 'red' : v >= a ? 'amber' : 'green'; }; %>
+<div class="page-head"><div><h1><%- icon('activity', 24) %> سلامت و کارایی</h1><div class="muted">وضعیت زنده‌ی سرور از زمان آخرین راه‌اندازی. آمار فقط در حافظه است و با راه‌اندازی مجدد صفر می‌شود.</div></div>
+  <div class="actions"><form method="post" action="<%= u('/super/health/reset') %>"><input type="hidden" name="_csrf" value="<%= csrf %>"><button class="btn"><%- icon('rotate-ccw', 16) %> صفر کردن شمارنده‌ها</button></form></div></div>
+<% if (!metricsOn) { %><div class="alert warn"><%- icon('triangle-alert', 18) %><div>سنجش درخواست‌ها با متغیر محیطی <span class="ltr">METRICS=0</span> خاموش است.</div></div><% } %>
+
+<div class="grid g4">
+  <div class="card stat"><span class="ico"><%- icon('gauge', 22) %></span><div><div class="v"><%= f1(m.p50) %> ms</div><div class="l">میانه‌ی زمان پاسخ (P50)</div></div></div>
+  <div class="card stat"><span class="ico"><%- icon('timer', 22) %></span><div><div class="v"><span class="badge <%= lvl(m.p95, 300, 1000) %>"><%= f1(m.p95) %> ms</span></div><div class="l">P95 (۹۵٪ درخواست‌ها سریع‌تر)</div></div></div>
+  <div class="card stat"><span class="ico"><%- icon('zap', 22) %></span><div><div class="v"><%= f1(m.p99) %> ms</div><div class="l">P99 · بیشینه <%= f1(m.max) %></div></div></div>
+  <div class="card stat"><span class="ico"><%- icon('circle-alert', 22) %></span><div><div class="v"><span class="badge <%= lvl(errRate, 0.5, 2) %>"><%= f1(errRate) %>٪</span></div><div class="l">خطای ۵xx · <%= fa(m.errors5) %> از <%= fa(m.total) %></div></div></div>
+</div>
+
+<div class="grid g2" style="margin-top:1rem">
+  <div class="card"><h3><%- icon('server', 18) %> سرور</h3>
+    <dl class="kv" style="grid-template-columns:150px 1fr">
+      <dt>زمان کارکرد</dt><dd><%= upTxt %></dd>
+      <dt>Node.js</dt><dd class="ltr" style="text-align:right"><%= m.node %> · pid <%= m.pid %></dd>
+      <dt>حافظه (RSS / heap)</dt><dd><span class="badge <%= lvl(m.rssMB, 400, 800) %>"><%= f1(m.rssMB) %> MB</span> / <%= f1(m.heapMB) %> MB</dd>
+      <dt>تأخیر حلقه‌ی رویداد</dt><dd><span class="badge <%= lvl(m.loopP99, 50, 200) %>">P99 <%= f1(m.loopP99) %> ms</span> · میانگین <%= f1(m.loopMean) %> · بیشینه <%= f1(m.loopMax) %></dd>
+      <dt>درخواست هم‌زمان</dt><dd>اکنون <%= fa(m.inflight) %> · اوج <%= fa(m.peakInflight) %></dd>
+      <dt>خطای ۴xx</dt><dd><%= fa(m.errors4) %> <span class="muted small">(ورود ناموفق، دسترسی غیرمجاز، …)</span></dd>
+    </dl></div>
+  <div class="card"><h3><%- icon('database', 18) %> پایگاه داده و فضا</h3>
+    <dl class="kv" style="grid-template-columns:150px 1fr">
+      <dt>نوع</dt><dd class="ltr" style="text-align:right"><%= dbClient === 'mysql' ? 'MySQL / MariaDB' : 'SQLite' %></dd>
+      <dt>تأخیر یک پرس‌وجو</dt><dd><span class="badge <%= lvl(pingMs, 20, 100) %>"><%= f1(pingMs) %> ms</span></dd>
+      <% if (dbBytes != null) { %><dt>حجم پایگاه داده</dt><dd><%= mb(dbBytes) %></dd><% } %>
+      <dt>پشتیبان‌های سرور</dt><dd><%= mb(backupBytes) %></dd>
+      <dt>فایل‌های بارگذاری‌شده</dt><dd><%= mb(uploadBytes) %></dd>
+      <dt>رکوردها</dt><dd class="small">کاربر <%= fa(counts.users) %> · دانش‌آموز <%= fa(counts.students) %> · حضور <%= fa(counts.attendance) %> · تیکت <%= fa(counts.tickets) %> · گزارش فعالیت <%= fa(counts.audit_logs) %> · نشست <%= fa(counts.sessions) %></dd>
+    </dl></div>
+</div>
+
+<div class="grid g2" style="margin-top:1rem">
+  <div class="card flush"><div class="card-title" style="padding:1rem 1.2rem .2rem"><%- icon('chart-bar', 18) %> سنگین‌ترین بخش‌ها (مجموع زمان)</div>
+    <% if (!m.groups.length) { %><div class="empty" style="padding:1.2rem">هنوز درخواستی ثبت نشده است.</div><% } else { %>
+    <div class="table-wrap"><table class="t"><thead><tr><th>مسیر</th><th>تعداد</th><th>میانگین</th><th>بیشینه</th></tr></thead><tbody>
+      <% m.groups.forEach(function(g){ %><tr><td class="ltr small" style="text-align:right"><%= g.group %></td><td class="num"><%= fa(g.n) %></td><td class="num"><%= f1(g.avg) %> ms</td><td class="num"><%= f1(g.max) %> ms</td></tr><% }) %>
+    </tbody></table></div><% } %></div>
+  <div class="card flush"><div class="card-title" style="padding:1rem 1.2rem .2rem"><%- icon('hourglass', 18) %> کندترین درخواست‌های اخیر (بیش از ۴۰۰ ms)</div>
+    <% if (!m.slow.length) { %><div class="empty" style="padding:1.2rem">درخواست کندی ثبت نشده 🎉</div><% } else { %>
+    <div class="table-wrap"><table class="t"><thead><tr><th>زمان</th><th>مسیر</th><th>مدت</th><th>کد</th></tr></thead><tbody>
+      <% m.slow.forEach(function(s){ %><tr><td class="small"><%= dt(s.at.replace('T', ' ').slice(0, 19)) %></td><td class="ltr small" style="text-align:right"><%= s.m %> <%= s.p %></td><td class="num"><%= fa(s.ms) %> ms</td><td class="num"><%= fa(s.code) %></td></tr><% }) %>
+    </tbody></table></div><% } %></div>
+</div>
+<p class="muted small" style="margin-top:1rem">برای سنجش بار واقعی از ابزار داخلی استفاده کنید: <span class="ltr">npm run loadtest -- --url http://127.0.0.1:3000 --users 50 --duration 20</span> — راهنما در <span class="ltr">docs/PERFORMANCE.md</span>.</p>

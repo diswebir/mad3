@@ -1,0 +1,3 @@
+<% g.fields.forEach(function(f){ if (f.type === 'textarea' && disp[f.name] === '—') return; %>
+<dt><%= f.label %></dt><dd class="<%= f.ltr || f.type === 'tel' ? 'ltr' : '' %>"><%= (f.type === 'tel' || f.name.indexOf('national') >= 0 || f.name === 'postal_code' || f.type === 'date' || f.type === 'number' || f.name === 'student_code') ? fa(disp[f.name]) : disp[f.name] %></dd>
+<% }) %>

@@ -1,0 +1,21 @@
+<div class="page-head"><h1><%- icon('search', 24) %> جستجو<% if (q) { %>: «<%= q %>»<% } %></h1></div>
+<form class="card" action="<%= u('/search') %>" method="get" style="display:flex;gap:.6rem;flex-wrap:wrap;align-items:center">
+  <input type="search" name="q" value="<%= q %>" placeholder="نام، کد دانش‌آموزی، کد ملی، شماره تلفن، عنوان تیکت..." style="flex:1;min-width:220px" autofocus>
+  <button class="btn primary" type="submit"><%- icon('search', 16) %> جستجو</button>
+</form>
+<% if (!q || q.length < 2) { %><div class="alert info"><%- icon('info', 18) %><div>حداقل دو نویسه وارد کنید. می‌توانید با نام، نام خانوادگی، کد دانش‌آموزی (پرش مستقیم به پرونده)، کد ملی، شماره تلفن اولیا، عنوان تیکت/تکلیف/اطلاعیه، نام کتاب یا کلاس جستجو کنید.</div></div>
+<% } else if (!groups.length) { %><div class="card empty">نتیجه‌ای برای «<%= q %>» یافت نشد.</div>
+<% } else { %>
+  <div class="tabs" style="margin-top:.8rem">
+    <a class="<%= !only ? 'active' : '' %>" href="<%= u('/search?q=' + encodeURIComponent(q)) %>">همه</a>
+    <% tabs.forEach(function(t){ %><a class="<%= only === t.key ? 'active' : '' %>" href="<%= u('/search?q=' + encodeURIComponent(q) + '&type=' + t.key) %>"><%= t.title %> <span class="muted">(<%= fa(t.total) %>)</span></a><% }) %>
+  </div>
+  <% groups.forEach(function(g){ %>
+  <div class="card flush"><div class="card-title"><%- icon(g.icon, 18) %> <%= g.title %> <span class="muted">(<%= fa(g.total) %>)</span>
+    <% if (!only && g.total > g.items.length) { %><a class="btn sm ghost" style="margin-inline-start:auto" href="<%= u('/search?q=' + encodeURIComponent(q) + '&type=' + g.key) %>">نمایش همه</a><% } %></div>
+    <table class="t"><tbody>
+      <% g.items.forEach(function(it){ %><tr><td><a href="<%= u(it.url) %>"><%= it.title %></a></td><td class="muted"><%= it.sub %></td></tr><% }) %>
+    </tbody></table>
+  </div>
+  <% }) %>
+<% } %>

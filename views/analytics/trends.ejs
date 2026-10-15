@@ -1,0 +1,9 @@
+<div class="page-head"><div><h1><%- icon('trending-up', 24) %> روند و نمودارها</h1></div><div class="actions"><a class="btn" href="<%= u('/reports/trends?format=xlsx&months=' + months) %>"><%- icon('download', 16) %> اکسل</a><button class="btn" data-print><%- icon('printer', 16) %> چاپ</button></div></div>
+<%- include('_nav', { active: 'trends' }) %>
+<form class="filters" method="get"><select name="months" data-autosubmit><% [4, 6, 8, 12].forEach(function(m){ %><option value="<%= m %>" <%= months === m ? 'selected' : '' %>><%= fa(m) %> ماه اخیر</option><% }) %></select></form>
+<div class="grid g2">
+<% if (c.attendance) { %><div class="card"><h3>درصد حضور ماهانه</h3><%- c.attendance %></div><% } %>
+<% if (c.income) { %><div class="card"><h3>درآمد ماهانه (<%= S('currency_label') %>)</h3><%- c.income %></div><% } %>
+<% if (c.terms) { %><div class="card"><h3>میانگین نوبت‌ها به تفکیک کلاس</h3><%- c.terms %><div class="muted" style="font-size:.8rem;margin-top:.5rem"><% t.terms.slice(0, 6).forEach(function(x, i){ %><span style="margin-left:1rem"><%= x.name %></span><% }) %></div></div><% } %>
+</div>
+<% if (!c.attendance && !c.income && !c.terms) { %><div class="empty">ماژول‌های مرتبط (حضور و غیاب، مالی، نمرات) فعال نیستند.</div><% } %>

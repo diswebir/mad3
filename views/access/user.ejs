@@ -1,0 +1,26 @@
+<div class="page-head"><div><h1><%- icon('key-round', 24) %> دسترسی‌های «<%= row.full_name %>»</h1>
+<div class="muted small"><%= L.roles[row.role] %><% if (row.title) { %> — <%= row.title %><% } %> · <span class="ltr"><%= row.username %></span> · <%- row.active ? pill('فعال', 'green') : pill('غیرفعال', 'red') %></div></div>
+<div class="actions"><a class="btn" href="<%= u('/access') %>"><%- icon('arrow-left', 16) %> بازگشت</a></div></div>
+<div class="alert info">اولویت اعمال: <b>تنظیم شخصی</b> ← <b>الگوی دسترسی</b> ← <b>پیش‌فرض نقش</b>. تغییرها بلافاصله و بدون خروج کاربر اعمال می‌شود. مدیر و سوپر ادمین هرگز محدود نمی‌شوند.
+<% if (row.role === 'teacher') { %> مجوزهای «مدیریتی» (مثل افزودن رویداد یا ویرایش برنامه) فقط روی همان مسیر مجاز برای معلم باز می‌شود و برای اقدامات روی کلاس‌های دیگر، مجوز «دسترسی به همه‌ی کلاس‌ها» لازم است.<% } %></div>
+<form method="post" action="<%= u('/access/user/' + row.id) %>" id="cap-form" data-dirty-warn>
+  <input type="hidden" name="_csrf" value="<%= csrf %>">
+  <div class="card cap-top">
+    <div class="field"><label for="profile-select">الگوی دسترسی</label>
+      <select name="profile_id" id="profile-select"><option value="">— بدون الگو —</option><% profiles.filter(function (p) { return p.base_role === row.role; }).forEach(function (p) { %><option value="<%= p.id %>" <%= profileId === p.id ? 'selected' : '' %>><%= p.name %></option><% }) %></select>
+      <div class="muted small">الگو مجموعه‌ای آماده از مجوزهاست؛ هر مورد را می‌توانید برای همین فرد جداگانه تغییر دهید.</div></div>
+    <div class="field"><label for="confirm_password">رمز مدیر (برای مجوزهای ⚠ حساس)</label><input type="password" id="confirm_password" name="confirm_password" class="ltr" autocomplete="current-password" placeholder="فقط هنگام اعطای مجوز حساس"></div>
+  </div>
+  <%- include('_matrix', { groups: groups, mode: 'user' }) %>
+  <div class="form-actions sticky-actions"><button class="btn primary"><%- icon('save', 16) %> ذخیره‌ی دسترسی‌ها</button><a class="btn" href="<%= u('/access') %>">انصراف</a></div>
+</form>
+<div class="grid-2" style="margin-top:1rem">
+  <form method="post" action="<%= u('/access/user/' + row.id + '/copy') %>" class="card"><input type="hidden" name="_csrf" value="<%= csrf %>"><h3>کپی دسترسی از شخص دیگر</h3>
+    <div class="field"><select name="from"><% others.filter(function (o) { return o.role === row.role; }).forEach(function (o) { %><option value="<%= o.id %>"><%= o.full_name %></option><% }) %></select></div>
+    <div class="field"><input type="password" name="confirm_password" class="ltr" placeholder="رمز مدیر (در صورت وجود مجوز حساس)" autocomplete="current-password"></div>
+    <button class="btn" data-confirm="دسترسی‌های فعلی این فرد با دسترسی‌های شخص انتخابی جایگزین شود؟"><%- icon('copy', 15) %> کپی</button></form>
+  <form method="post" action="<%= u('/access/user/' + row.id + '/reset') %>" class="card"><input type="hidden" name="_csrf" value="<%= csrf %>"><h3>بازگشت به پیش‌فرض</h3><p class="muted small">همه‌ی تنظیمات شخصی و الگو حذف می‌شود و فقط پیش‌فرض نقش می‌ماند.</p>
+    <button class="btn danger" data-confirm="همه‌ی دسترسی‌های اختصاصی این فرد حذف شود؟"><%- icon('rotate-ccw', 15) %> بازنشانی</button></form>
+</div>
+<script type="application/json" id="prof-data"><%- JSON.stringify(profilesJson).replace(/</g, '\\u003c') %></script>
+<script src="<%= asset('js/access.js') %>" defer></script>

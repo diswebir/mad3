@@ -1,0 +1,36 @@
+<div class="page-head"><div><h1><%- icon('wallet', 24) %> پرونده‌ی فروش و پشتیبانی</h1><div class="muted">یادداشت خصوصی شما برای قیمت فروش، حق پشتیبانی ماهانه/سالانه و پرداخت‌ها. فقط ثبت و یادآوری است؛ هیچ محدودیتی به‌صورت خودکار اعمال نمی‌شود.</div></div><div class="actions"><a class="btn" href="<%= u('/super') %>">بازگشت به پنل</a></div></div>
+<% if (due) { %><div class="alert <%= due.level === 'red' ? 'error' : due.level === 'amber' ? 'warn' : 'success' %>"><%- icon('calendar-clock', 18) %><div>سررسید بعدی پشتیبانی: <b><%= d(b.sa_next_due) %></b> — <%= due.days < 0 ? fa(-due.days) + ' روز گذشته' : due.days === 0 ? 'امروز' : fa(due.days) + ' روز مانده' %></div></div><% } %>
+<div class="grid g3">
+  <div class="card stat"><span class="ico"><%- icon('banknote', 22) %></span><div><div class="v"><%= money(sums.sale) %></div><div class="l">دریافتی بابت فروش</div></div></div>
+  <div class="card stat"><span class="ico"><%- icon('life-buoy', 22) %></span><div><div class="v"><%= money(sums.support) %></div><div class="l">دریافتی بابت پشتیبانی</div></div></div>
+  <div class="card stat"><span class="ico"><%- icon('wallet', 22) %></span><div><div class="v"><%= money(sums.sale + sums.support + sums.other) %></div><div class="l">مجموع دریافتی (تومان)</div></div></div>
+</div>
+<div class="grid g2" style="margin-top:1rem">
+<form class="card" method="post" action="<%= u('/super/billing') %>"><input type="hidden" name="_csrf" value="<%= csrf %>"><h3><%- icon('file-text', 18) %> قرارداد</h3>
+  <div class="form-grid">
+    <div class="field"><label>نام مشتری (مدرسه)</label><input type="text" name="sa_client" value="<%= b.sa_client %>"></div>
+    <div class="field"><label>تماس مشتری</label><input type="text" name="sa_contact" value="<%= b.sa_contact %>"></div>
+    <div class="field"><label>قیمت فروش (تومان)</label><input class="ltr" type="text" inputmode="numeric" name="sa_sale_price" value="<%= b.sa_sale_price %>"></div>
+    <div class="field"><label>تاریخ فروش</label><input class="jdate ltr" type="text" name="sa_sale_date" value="<%= b.sa_sale_date ? J.isoToJString(b.sa_sale_date) : '' %>" autocomplete="off"></div>
+    <div class="field"><label>طرح پشتیبانی</label><select name="sa_plan"><option value="none" <%= b.sa_plan !== 'monthly' && b.sa_plan !== 'yearly' ? 'selected' : '' %>>بدون طرح</option><option value="monthly" <%= b.sa_plan === 'monthly' ? 'selected' : '' %>>ماهانه</option><option value="yearly" <%= b.sa_plan === 'yearly' ? 'selected' : '' %>>سالانه</option></select></div>
+    <div class="field"><label>مبلغ هر دوره (تومان)</label><input class="ltr" type="text" inputmode="numeric" name="sa_plan_fee" value="<%= b.sa_plan_fee %>"></div>
+    <div class="field"><label>سررسید بعدی</label><input class="jdate ltr" type="text" name="sa_next_due" value="<%= b.sa_next_due ? J.isoToJString(b.sa_next_due) : '' %>" autocomplete="off"></div>
+    <div class="field full"><label>یادداشت</label><textarea name="sa_notes" rows="3"><%= b.sa_notes %></textarea></div>
+  </div>
+  <div class="form-actions"><button class="btn primary" type="submit"><%- icon('save', 16) %> ذخیره</button></div></form>
+<form class="card" method="post" action="<%= u('/super/billing/entries') %>"><input type="hidden" name="_csrf" value="<%= csrf %>"><h3><%- icon('plus', 18) %> ثبت پرداخت</h3>
+  <div class="form-grid">
+    <div class="field"><label>نوع</label><select name="kind"><option value="support">پشتیبانی</option><option value="sale">فروش</option><option value="other">سایر</option></select></div>
+    <div class="field"><label>مبلغ (تومان)</label><input class="ltr" type="text" inputmode="numeric" name="amount" required></div>
+    <div class="field"><label>تاریخ پرداخت</label><input class="jdate ltr" type="text" name="paid_at" value="<%= today %>" autocomplete="off"></div>
+    <div class="field"><label>دوره (مثلاً «مهر ۱۴۰۵»)</label><input type="text" name="period"></div>
+    <div class="field full"><label>توضیح</label><input type="text" name="note"></div>
+    <div class="field full"><label class="check"><input type="checkbox" name="advance" value="1" checked> پس از ثبت پرداخت پشتیبانی، سررسید بعدی یک دوره جلو برود</label></div>
+  </div>
+  <div class="form-actions"><button class="btn primary" type="submit"><%- icon('check', 16) %> ثبت</button></div></form>
+</div>
+<div class="card flush" style="margin-top:1rem"><div class="card-title" style="padding:.8rem 1rem"><%- icon('history', 18) %> تاریخچه‌ی پرداخت‌ها</div>
+<div class="table-wrap"><table class="t"><thead><tr><th>تاریخ</th><th>نوع</th><th>مبلغ</th><th>دوره</th><th>توضیح</th><th></th></tr></thead><tbody>
+<% rows.forEach(function(r){ %><tr><td><%= d(r.paid_at) %></td><td><%= r.kind === 'sale' ? 'فروش' : r.kind === 'support' ? 'پشتیبانی' : 'سایر' %></td><td><b><%= money(r.amount) %></b></td><td><%= r.period || '—' %></td><td class="muted"><%= r.note || '' %></td><td><form method="post" action="<%= u('/super/billing/entries/' + r.id + '/delete') %>"><input type="hidden" name="_csrf" value="<%= csrf %>"><button class="btn sm danger" data-confirm="این ردیف حذف شود؟"><%- icon('trash-2', 14) %></button></form></td></tr><% }) %>
+<% if (!rows.length) { %><tr><td colspan="6" class="empty">هنوز پرداختی ثبت نشده است.</td></tr><% } %>
+</tbody></table></div></div>

@@ -1,0 +1,25 @@
+<div class="page-head"><div><h1><%- icon('send', 24) %> پیام گروهی</h1><div class="muted small">ارسال اعلان درون‌برنامه‌ای و/یا پیامک به اولیا، کلاس‌ها، بدهکاران یا معلمان.</div></div>
+<div class="actions"><a class="btn" href="<%= u('/message-templates') %>"><%- icon('copy', 16) %> قالب‌های پیام</a><a class="btn" href="<%= u('/sms/log') %>"><%- icon('smartphone', 16) %> گزارش پیامک‌ها</a></div></div>
+<% if (errors.length) { %><div class="alert error"><ul><% errors.forEach(function(e){ %><li><%= e %></li><% }) %></ul></div><% } %>
+<% if (!smsOn) { %><div class="alert info"><%- icon('info', 18) %><div>ارسال پیامک غیرفعال است؛ فقط پیام درون‌برنامه‌ای ارسال می‌شود. برای فعال‌سازی به <a href="<%= u('/settings') %>">تنظیمات ← پیامک</a> بروید.</div></div>
+<% } else if (provider !== 'ippanel') { %><div class="alert info"><%- icon('info', 18) %><div>سرویس پیامک در حالت <b>آزمایشی</b> است؛ پیامکی ارسال نمی‌شود و فقط در گزارش ثبت می‌شود.</div></div><% } %>
+<form method="post" class="card" action="<%= u('/messages/send') %>" style="max-width:820px" data-confirm="پیام برای مخاطبان انتخاب‌شده ارسال شود؟">
+<input type="hidden" name="_csrf" value="<%= csrf %>">
+<div class="form-grid">
+  <div class="field"><label>مخاطبان *</label><select name="audience">
+    <option value="all_parents" <%= vals.audience === 'all_parents' ? 'selected' : '' %>>اولیای همه دانش‌آموزان</option>
+    <optgroup label="کلاس"><% classes.forEach(function(c){ %><option value="class:<%= c.id %>" <%= vals.audience === 'class:' + c.id ? 'selected' : '' %>>اولیای کلاس <%= c.name %></option><% }) %></optgroup>
+    <% if (grades.length) { %><optgroup label="پایه"><% grades.forEach(function(g){ %><option value="grade:<%= g %>" <%= vals.audience === 'grade:' + g ? 'selected' : '' %>>اولیای پایه <%= g %></option><% }) %></optgroup><% } %>
+    <% if (enabled('finance')) { %><option value="debtors" <%= vals.audience === 'debtors' ? 'selected' : '' %>>اولیای بدهکار (متغیر {amount} مبلغ بدهی)</option><% } %>
+    <option value="students_all" <%= vals.audience === 'students_all' ? 'selected' : '' %>>همه دانش‌آموزان (درون‌برنامه‌ای)</option>
+    <option value="teachers" <%= vals.audience === 'teachers' ? 'selected' : '' %>>همه معلمان</option>
+  </select></div>
+  <div class="field"><label>کانال ارسال</label><select name="channels"><option value="app" <%= vals.channels === 'app' ? 'selected' : '' %>>اعلان درون‌برنامه‌ای</option><option value="sms" <%= vals.channels === 'sms' ? 'selected' : '' %>>پیامک</option><option value="both" <%= vals.channels === 'both' ? 'selected' : '' %>>هر دو</option></select></div>
+  <div class="field"><label>قالب آماده</label><select data-template><option value="">— بدون قالب —</option><% templates.forEach(function(t){ %><option value="<%= t.id %>" data-title="<%= t.title %>" data-body="<%= t.body %>"><%= t.title %></option><% }) %></select></div>
+  <div class="field"><label>عنوان *</label><input type="text" name="title" value="<%= vals.title || '' %>" maxlength="200" required></div>
+  <div class="field full"><label>متن پیام * <span class="muted small">(متغیرها: {student} {class} {school} {date} {amount})</span></label><textarea name="body" maxlength="600" required style="min-height:110px"><%= vals.body || '' %></textarea></div>
+</div>
+<div class="form-actions"><button class="btn primary"><%- icon('send', 16) %> ارسال</button></div></form>
+<div class="card flush"><h3 style="padding:1rem 1rem 0">آخرین پیام‌ها</h3><div class="table-wrap"><table class="t"><thead><tr><th>تاریخ</th><th>عنوان</th><th>مخاطب</th><th>کانال</th><th>مخاطبان</th><th>پیامک</th><th>فرستنده</th></tr></thead><tbody>
+<% if (!history.length) { %><tr><td colspan="7" class="muted" style="text-align:center">هنوز پیامی ارسال نشده است.</td></tr><% } %>
+<% history.forEach(function(h){ %><tr><td class="muted small"><%= dt(h.created_at) %></td><td><b><%= h.title %></b></td><td><%= h.audience_label %></td><td><%= ({app:'درون‌برنامه‌ای',sms:'پیامک',both:'هر دو'})[h.channels] %></td><td><%= fa(h.recipients) %></td><td><%= fa(h.sms_count) %></td><td><%= h.sender || '—' %></td></tr><% }) %></tbody></table></div></div>

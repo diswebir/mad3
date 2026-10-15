@@ -1,0 +1,21 @@
+<div class="page-head"><div><div class="crumbs"><a href="<%= u('/homework') %>">تکالیف</a></div><h1><%= h.title %></h1><div class="muted"><%= h.subject_name %> — <%= h.class_name %> — مهلت: <%= h.due_date ? ld(h.due_date) : 'ندارد' %> — بیشینه نمره <%= fa(h.max_score) %></div></div>
+<% if (canEdit) { %><div class="actions"><a class="btn" href="<%= u('/homework/' + h.id + '/edit') %>"><%- icon('pencil', 16) %> ویرایش</a><form method="post" action="<%= u('/homework/' + h.id + '/delete') %>" data-confirm="تکلیف و تمام پاسخ‌ها حذف شود؟"><input type="hidden" name="_csrf" value="<%= csrf %>"><button class="btn danger"><%- icon('trash-2', 16) %> حذف</button></form></div><% } %></div>
+<div class="card"><% if (h.description) { %><p style="white-space:pre-wrap"><%= h.description %></p><% } else { %><p class="muted">توضیحاتی ثبت نشده است.</p><% } %>
+<% if (h.attachment) { %><a class="btn sm" href="<%= fileUrl('homework', h.attachment) %>"><%- icon('paperclip', 14) %> <%= h.attachment_name || 'پیوست' %></a><% } %></div>
+<% if (user.role === 'student') { %>
+<% if (mine) { %><div class="card"><h3><%- icon('circle-check', 18) %> پاسخ ثبت‌شده شما <% if (mine.late) { %><span class="badge amber">با تأخیر</span><% } %></h3><p class="muted small">ارسال: <%= dt(mine.submitted_at) %></p><% if (mine.answer) { %><p style="white-space:pre-wrap"><%= mine.answer %></p><% } %><% if (mine.file) { %><a class="btn sm" href="<%= fileUrl('homework', mine.file) %>"><%- icon('paperclip', 14) %> <%= mine.file_name %></a><% } %>
+<% if (mine.score !== null) { %><div class="alert success" style="margin-top:1rem"><%- icon('award', 18) %><div>نمره: <b><%= fa(mine.score) %></b> از <%= fa(h.max_score) %><% if (mine.feedback) { %><br>بازخورد معلم: <%= mine.feedback %><% } %></div></div><% } %></div><% } %>
+<% if (!mine || mine.score === null) { %><form class="card" method="post" enctype="multipart/form-data" action="<%= u('/homework/' + h.id + '/submit') %>?_csrf=<%= csrf %>"><h3><%- icon('upload', 18) %> <%= mine ? 'ویرایش پاسخ' : 'تحویل تکلیف' %></h3>
+<% if (h.due_date && today > h.due_date) { %><div class="alert warn"><%- icon('triangle-alert', 18) %><div>مهلت تحویل گذشته است؛ تکلیف با برچسب «تأخیر» ثبت می‌شود.</div></div><% } %>
+<div class="field"><label>پاسخ متنی</label><textarea name="answer" maxlength="5000"><%= mine && mine.answer ? mine.answer : '' %></textarea></div><div class="field" style="margin-top:.7rem"><label>فایل (حداکثر ۵ مگابایت)</label><input type="file" name="file"></div>
+<div class="form-actions" style="border:0"><button class="btn primary"><%- icon('send', 16) %> ارسال</button></div></form><% } %>
+<% } else { %>
+<form method="post" action="<%= u('/homework/' + h.id + '/grade') %>"><input type="hidden" name="_csrf" value="<%= csrf %>">
+<div class="card flush"><div class="card-title">پاسخ‌های دانش‌آموزان</div><div class="table-wrap"><table class="t"><thead><tr><th>دانش‌آموز</th><th>وضعیت</th><th>پاسخ</th><th>نمره</th><th>بازخورد</th></tr></thead><tbody>
+<% rows.forEach(function(r){ %><tr><td><a href="<%= u('/students/' + r.sid) %>"><%= r.first_name %> <%= r.last_name %></a></td>
+<td><%- r.id ? (r.late ? pill('با تأخیر', 'amber') : pill('تحویل شد', 'green')) : pill('تحویل نشده', 'red') %><% if (r.submitted_at) { %><div class="muted small"><%= dt(r.submitted_at) %></div><% } %></td>
+<td><% if (r.answer) { %><div class="small" style="max-width:260px;white-space:pre-wrap"><%= r.answer.length > 140 ? r.answer.slice(0, 140) + '…' : r.answer %></div><% } %><% if (r.file) { %><a class="btn sm ghost" href="<%= fileUrl('homework', r.file) %>"><%- icon('paperclip', 14) %> <%= r.file_name %></a><% } %></td>
+<td><% if (r.id && canEdit) { %><input class="score-in digits ltr" type="text" name="score[<%= r.sid %>]" value="<%= r.score !== null && r.score !== undefined ? r.score : '' %>" max="<%= h.max_score %>"><% } else { %><%= r.score !== null && r.score !== undefined ? fa(r.score) : '—' %><% } %></td>
+<td><% if (r.id && canEdit) { %><input type="text" name="feedback[<%= r.sid %>]" value="<%= r.feedback || '' %>" maxlength="1000" style="min-width:160px"><% } else { %><%= r.feedback || '' %><% } %></td></tr><% }) %></tbody></table></div></div>
+<% if (canEdit) { %><button class="btn primary"><%- icon('save', 16) %> ذخیره نمرات و بازخوردها</button><% } %></form>
+<% } %>

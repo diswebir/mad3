@@ -1,0 +1,41 @@
+<div class="page-head"><div><div class="crumbs"><a href="<%= u('/tickets') %>">تیکت‌ها</a> / #<%= fa(t.id) %></div><h1><%= t.subject %> <%- pill(L.ticketStatus[t.status], badges_map.ticketStatus[t.status]) %></h1></div>
+<% if (slaInfo && slaInfo.state !== 'na' && (user.role !== 'student')) { %><div class="alert <%= slaInfo.state === 'overdue' ? 'error' : slaInfo.state === 'soon' ? 'warn' : 'info' %>"><%- icon('clock', 16) %> مهلت پاسخ (<%= fa(slaInfo.limit) %> ساعت): <%= slaInfo.state === 'overdue' ? 'از مهلت گذشته است' + (t.escalated_at ? ' و به مدیر ارجاع شده' : '') : fa(Math.max(0, Math.round(slaInfo.remainingH))) + ' ساعت مانده' %></div><% } %>
+<div class="actions"><% if (t.status !== 'closed') { %><% if (isCreator || canManage) { %><form method="post" action="<%= u('/tickets/' + t.id + '/close') %>" data-confirm="تیکت بسته شود؟"><input type="hidden" name="_csrf" value="<%= csrf %>"><button class="btn"><%- icon('check', 16) %> بستن تیکت</button></form><% } %><% } else if (isCreator || canManage) { %><form method="post" action="<%= u('/tickets/' + t.id + '/reopen') %>"><input type="hidden" name="_csrf" value="<%= csrf %>"><button class="btn"><%- icon('rotate-ccw', 16) %> بازگشایی</button></form><% } %></div></div>
+<div class="grid g-side">
+<div>
+  <% if (t.category === 'absence' && t.related_date && canManage && user.role !== 'student') { %>
+  <div class="card" style="border-color:var(--primary)"><h3><%- icon('calendar-check', 18) %> بررسی توجیه غیبت</h3>
+    <p>تاریخ غیبت: <b><%= ld(t.related_date) %></b> — وضعیت فعلی در حضور و غیاب: <%- att ? pill(L.attendance[att.status], badges_map.attendance[att.status]) : pill('ثبت نشده', '') %> <% if (t.justified) { %><%- pill('موجه شده', 'green') %><% } %></p>
+    <div style="display:flex;gap:.6rem;flex-wrap:wrap;align-items:center"><form method="post" action="<%= u('/tickets/' + t.id + '/justify') %>"><input type="hidden" name="_csrf" value="<%= csrf %>"><input type="hidden" name="decision" value="approve"><button class="btn success"><%- icon('circle-check', 16) %> تأیید و موجه‌کردن غیبت</button></form>
+    <form method="post" action="<%= u('/tickets/' + t.id + '/justify') %>" style="display:flex;gap:.4rem"><input type="hidden" name="_csrf" value="<%= csrf %>"><input type="hidden" name="decision" value="reject"><input type="text" name="reason" placeholder="دلیل رد (اختیاری)" style="width:200px"><button class="btn danger"><%- icon('circle-x', 16) %> رد</button></form></div></div>
+  <% } else if (t.category === 'absence' && t.related_date) { %>
+  <div class="alert <%= t.justified ? 'success' : 'info' %>"><%- icon('calendar-check', 18) %><div>توجیه غیبت تاریخ <b><%= ld(t.related_date) %></b> — <%= t.justified ? 'غیبت موجه شد.' : 'در انتظار بررسی.' %></div></div>
+  <% } %>
+  <div class="card"><div class="chat">
+    <% msgs.forEach(function(m, i){ var mine = m.user_id === user.id; %>
+    <div class="msg <%= m.internal ? 'internal' : (mine ? 'mine' : 'other') %>" <%= i === msgs.length - 1 ? 'id=last' : '' %>>
+      <div class="meta"><b><%= m.full_name %></b><span><%= L.roles[m.role] %></span><span><%= dt(m.created_at) %></span><% if (m.internal) { %><span class="badge amber">یادداشت داخلی</span><% } %></div>
+      <div class="body"><%= m.body %></div>
+      <% if (m.attachment && m.is_certificate) { %><div class="cert-box"><span class="badge amber"><%- icon('file-text', 13) %> <%= CERT_TYPES[t.cert_type] || 'گواهی غیبت' %></span><a href="<%= fileUrl('tickets', m.attachment) %>" target="_blank" rel="noopener"><img src="<%= fileUrl('tickets', m.attachment) %>" alt="تصویر گواهی غیبت" loading="lazy"></a></div><% } else if (m.attachment) { %><div style="margin-top:.4rem"><a class="btn sm" href="<%= fileUrl('tickets', m.attachment) %>"><%- icon('paperclip', 14) %> <%= m.attachment_name || 'پیوست' %></a></div><% } %>
+    </div><% }) %></div></div>
+  <% if (canReply) { %>
+  <form class="card" method="post" enctype="multipart/form-data" action="<%= u('/tickets/' + t.id + '/reply') %>?_csrf=<%= csrf %>"><h3><%- icon('send', 18) %> پاسخ</h3>
+    <textarea name="body" required placeholder="پیام خود را بنویسید..." maxlength="5000"></textarea>
+    <div style="display:flex;gap:1rem;align-items:center;flex-wrap:wrap;margin-top:.6rem"><input type="file" name="attachment" style="max-width:260px"><% if (user.role !== 'student') { %><label class="check"><input type="checkbox" name="internal" value="1"> یادداشت داخلی (برای دانش‌آموز نمایش داده نمی‌شود)</label><% } %><span class="grow"></span><button class="btn primary"><%- icon('send', 16) %> ارسال</button></div></form>
+  <% } else { %>
+  <div class="alert info"><%- icon('info', 18) %><div>این تیکت بسته شده است. برای ادامه گفتگو آن را بازگشایی کنید.</div></div>
+  <% if (isCreator && !t.rating) { %><form class="card" method="post" action="<%= u('/tickets/' + t.id + '/rate') %>"><input type="hidden" name="_csrf" value="<%= csrf %>"><h3><%- icon('star', 18) %> امتیاز به پشتیبانی</h3><div style="display:flex;gap:1rem;flex-wrap:wrap;align-items:center"><select name="rating" style="width:auto"><% [5,4,3,2,1].forEach(function(n){ %><option value="<%= n %>"><%= fa(n) %> از ۵</option><% }) %></select><input type="text" name="comment" placeholder="نظر شما (اختیاری)" style="flex:1"><button class="btn primary">ثبت</button></div></form><% } else if (t.rating) { %><div class="card">امتیاز ثبت‌شده: <b><%= fa(t.rating) %> از ۵</b> <%= t.rating_comment ? '— ' + t.rating_comment : '' %></div><% } %>
+  <% } %>
+</div>
+<div>
+  <div class="card"><h3>جزئیات</h3><dl class="kv" style="grid-template-columns:90px 1fr">
+    <dt>فرستنده</dt><dd><%= t.creator_name %> <span class="muted small">(<%= L.roles[t.creator_role] %>)</span></dd>
+    <dt>گیرنده</dt><dd><%= t.recipient_name || 'مدیریت مدرسه' %></dd>
+    <% if (t.student_id && user.role !== 'student') { %><dt>دانش‌آموز</dt><dd><a href="<%= u('/students/' + t.student_id) %>"><%= t.first_name %> <%= t.last_name %></a><div class="muted small"><%= t.class_name || '' %></div></dd><% } %>
+    <dt>دسته</dt><dd><%= L.ticketCategory[t.category] %></dd>
+    <dt>اولویت</dt><dd><%- pill(L.priority[t.priority], badges_map.priority[t.priority]) %></dd>
+    <dt>ایجاد</dt><dd><%= dt(t.created_at) %></dd><dt>بروزرسانی</dt><dd><%= dt(t.updated_at || t.created_at) %></dd>
+    <% if (t.closed_at) { %><dt>بسته‌شدن</dt><dd><%= dt(t.closed_at) %></dd><% } %></dl></div>
+  <% if (canManage) { %><div class="card"><h3>اولویت</h3><form method="post" action="<%= u('/tickets/' + t.id + '/priority') %>" style="display:flex;gap:.4rem"><input type="hidden" name="_csrf" value="<%= csrf %>"><select name="priority"><% Object.keys(L.priority).forEach(function(k){ %><option value="<%= k %>" <%= t.priority === k ? 'selected' : '' %>><%= L.priority[k] %></option><% }) %></select><button class="btn">تغییر</button></form></div><% } %>
+  <% if (reassign.length) { %><div class="card"><h3>ارجاع تیکت</h3><form method="post" action="<%= u('/tickets/' + t.id + '/assign') %>" style="display:flex;gap:.4rem"><input type="hidden" name="_csrf" value="<%= csrf %>"><select name="to"><option value="admin">مدیریت (همه مدیران/معاونان)</option><% reassign.forEach(function(r){ %><option value="<%= r.id %>" <%= r.id === t.recipient_user_id ? 'selected' : '' %>><%= r.full_name %> (<%= L.roles[r.role] %>)</option><% }) %></select><button class="btn">ارجاع</button></form></div><% } %>
+</div></div>

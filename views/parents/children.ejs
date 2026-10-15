@@ -1,0 +1,11 @@
+<div class="page-head"><div><h1><%- icon('baby', 24) %> فرزندان من</h1><div class="muted small">فرزند مورد نظر را برای مشاهده‌ی پرونده انتخاب کنید.</div></div></div>
+<% if (!kids.length) { %><div class="card empty"><%- icon('baby', 42) %><div>هنوز دانش‌آموزی به حساب شما متصل نشده است.</div></div><% } else { %>
+<div class="grid g3">
+<% kids.forEach(function(c){ %>
+  <div class="card" style="<%= c.id === current ? 'border-color:var(--primary)' : '' %>">
+    <h3><%= c.first_name %> <%= c.last_name %> <% if (c.id === current) { %><%- pill('در حال مشاهده', 'blue') %><% } %></h3>
+    <dl class="kv"><dt>کلاس</dt><dd><%= c.class_name %></dd><dt>شماره دانش‌آموزی</dt><dd class="ltr"><%= c.student_code %></dd><dt>وضعیت</dt><dd><%= L.studentStatus[c.status] || c.status %></dd>
+    <dt>غیبت‌ها</dt><dd><%= fa(c.att.absent || 0) %> روز · تأخیر <%= fa(c.att.late || 0) %></dd></dl>
+    <form method="post" action="<%= u('/parent/switch') %>"><input type="hidden" name="_csrf" value="<%= csrf %>"><input type="hidden" name="student_id" value="<%= c.id %>"><button class="btn primary sm">مشاهده‌ی پرونده</button> <a class="btn sm" href="<%= u('/students/me') %>">پرونده</a></form>
+  </div>
+<% }) %></div><% } %>
