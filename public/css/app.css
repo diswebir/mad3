@@ -69,7 +69,7 @@ h1,h2,h3,h4{margin:0 0 .5rem;line-height:1.5}h1{font-size:1.45rem}h2{font-size:1
 .alert.success{background:#16a34a14;border-color:#16a34a55;color:var(--green)}.alert.error{background:#dc262614;border-color:#dc262655;color:var(--red)}.alert.info{background:#2563eb14;border-color:#2563eb55;color:var(--blue)}.alert.warn{background:#d9770614;border-color:#d9770655;color:var(--amber)}
 .alert ul{margin:0;padding-right:1.2rem}
 table.t{width:100%;border-collapse:collapse}
-.table-wrap{overflow-x:auto}
+.table-wrap{overflow-x:auto;position:relative}
 table.t th{background:var(--bg);text-align:right;font-weight:600;font-size:.85rem;color:var(--muted);padding:.65rem .85rem;white-space:nowrap;border-bottom:1px solid var(--border)}
 table.t td{padding:.6rem .85rem;border-bottom:1px solid var(--border);vertical-align:middle}
 table.t tr:last-child td{border-bottom:0}table.t tbody tr:hover{background:color-mix(in srgb,var(--primary) 4%,transparent)}
@@ -417,4 +417,19 @@ button.is-busy::after{content:"";display:inline-block;width:.9em;height:.9em;mar
 .del-toggle span{display:inline-grid;place-items:center;width:34px;height:34px;border-radius:9px;color:var(--muted);border:1px solid var(--border)}
 .del-toggle input:checked+span{background:var(--red);color:#fff;border-color:var(--red)}
 .add-row td{background:var(--bg)}
-@media (max-width:700px){.plan-t .p-teacher{min-width:140px}.stepper input{width:40px}}
+@media (max-width:700px){
+  .plan-t,.plan-t tbody,.plan-t tfoot,.plan-t tr,.plan-t td{display:block;width:100%}
+  .plan-t thead{display:none}
+  .plan-t .plan-row{display:grid;grid-template-columns:1fr 1fr;gap:.55rem .8rem;padding:.8rem .9rem;border-bottom:1px solid var(--border);align-items:end}
+  .plan-t .plan-row td{padding:0;border:0;white-space:normal;text-align:start}
+  .plan-t .plan-row td:nth-child(1){grid-column:1/2;align-self:center;font-size:1rem}
+  .plan-t .plan-row td:last-child{grid-column:2/3;grid-row:1;justify-self:end;width:auto}
+  .plan-t .plan-row td:nth-child(2){grid-column:1/-1}
+  .plan-t .plan-row td:nth-child(3)::before{content:'ساعت در هفته';display:block;font-size:.76rem;color:var(--muted);margin-bottom:.2rem}
+  .plan-t .plan-row td:nth-child(4)::before{content:'حداکثر در روز';display:block;font-size:.76rem;color:var(--muted);margin-bottom:.2rem}
+  .plan-t .plan-row td:nth-child(3),.plan-t .plan-row td:nth-child(4){text-align:start}
+  .plan-t .plan-row td:has(.dist){grid-column:1/-1}
+  .plan-t .plan-row td:has(.dist)::before{content:'توزیع در برنامه‌ی هفتگی';display:block;font-size:.76rem;color:var(--muted);margin-bottom:.2rem}
+  .plan-t .p-teacher{min-width:0}.plan-t .add-row td{padding:.7rem .9rem}
+  .plan-t #plan-empty td{display:block}
+}
