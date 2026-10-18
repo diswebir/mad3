@@ -104,8 +104,9 @@ async function createApp() {
     console.error('[error]', req.method, req.originalUrl, err && err.stack || err);
     if (res.headersSent) return;
     // ورودی ناقص فرم (مقدار undefined در شرط کوئری) خطای سرور نیست؛ پیام راهنما و بازگشت به صفحه‌ی قبل
-    if (req.method === 'POST' && /Undefined binding\(s\) detected/.test(String(err && err.message)) && typeof req.flash === 'function') {
-      req.flash('error', 'اطلاعات فرم ناقص یا نامعتبر است؛ فیلدهای لازم را کامل کنید.');
+    const dataErr = /^(ER_(TRUNCATED_WRONG_VALUE(_FOR_FIELD)?|WARN_DATA_OUT_OF_RANGE|DATA_OUT_OF_RANGE|DATA_TOO_LONG|BAD_NULL_ERROR|NO_DEFAULT_FOR_FIELD|NO_REFERENCED_ROW(_2)?|ROW_IS_REFERENCED(_2)?|DUP_ENTRY|WRONG_VALUE_FOR_TYPE|INVALID_JSON_TEXT)|WARN_DATA_TRUNCATED|SQLITE_CONSTRAINT.*|SQLITE_MISMATCH)$/.test(String(err && err.code));
+    if (req.method === 'POST' && (dataErr || /Undefined binding\(s\) detected/.test(String(err && err.message))) && typeof req.flash === 'function') {
+      req.flash('error', dataErr ? 'مقدار واردشده نامعتبر، تکراری یا وابسته به داده‌ی دیگری است؛ ورودی‌ها را بررسی کنید.' : 'اطلاعات فرم ناقص یا نامعتبر است؛ فیلدهای لازم را کامل کنید.');
       let back = '/'; try { const ref = req.get('referer'); if (ref) { const u = new URL(ref); if (u.host === req.get('host')) back = u.pathname + u.search; } } catch (_) { /* ignore */ }
       return res.redirect(303, back);
     }
