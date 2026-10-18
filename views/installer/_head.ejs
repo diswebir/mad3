@@ -1,0 +1,19 @@
+<% var idx = STEPS.findIndex(function (s) { return s[0] === step; }); var total = STEPS.length; %>
+<div class="iw">
+  <aside class="iw-side" aria-label="مراحل نصب">
+    <div class="iw-brand"><span class="iw-logo"><%- icon('school', 30) %></span><div><b>سامانه مدیریت مدرسه</b><small>ویزارد نصب در <%= fa(total) %> مرحله</small></div></div>
+    <div class="iw-progress" role="progressbar" aria-valuemin="1" aria-valuemax="<%= total %>" aria-valuenow="<%= idx + 1 %>"><i style="width:<%= Math.round(((idx + 1) / total) * 100) %>%"></i></div>
+    <ol class="iw-steps">
+      <% STEPS.forEach(function (s, i) { var done = i < idx; var cur = i === idx; var href = done ? u('/install' + (s[0] === 'welcome' ? '' : '/' + s[0])) : ''; %>
+      <li class="<%= cur ? 'cur' : (done ? 'done' : '') %>"<%- cur ? ' aria-current="step"' : '' %>>
+        <% var inner = '<span class="n">' + (done ? icon('check', 16) : fa(i + 1)) + '</span><span class="t"><b>' + s[1] + '</b>' + (cur ? '<small>' + STEP_HELP[s[0]] + '</small>' : '') + '</span>'; %>
+        <% if (href) { %><a class="iw-step" href="<%= href %>"><%- inner %></a><% } else { %><span class="iw-step"><%- inner %></span><% } %>
+            </li>
+      <% }) %>
+    </ol>
+    <div class="iw-foot"><%- icon('shield-check', 16) %><span>اطلاعات شما فقط روی همین سرور ذخیره می‌شود و جایی ارسال نمی‌شود.</span></div>
+    <div class="iw-ver">v<%= appVersion %></div>
+  </aside>
+  <main class="iw-main" id="main">
+    <div class="iw-mobile-bar"><span class="chip">مرحله <%= fa(idx + 1) %> از <%= fa(total) %></span><b><%= STEPS[idx][1] %></b></div>
+    <header class="iw-head"><span class="chip">مرحله <%= fa(idx + 1) %> از <%= fa(total) %></span><h1><%= heading %></h1><% if (typeof lead !== 'undefined' && lead) { %><p class="lead"><%= lead %></p><% } %></header>

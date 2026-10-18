@@ -103,9 +103,16 @@ async function createApp() {
   app.use((err, req, res, next) => {
     console.error('[error]', req.method, req.originalUrl, err && err.stack || err);
     if (res.headersSent) return;
+    // ورودی ناقص فرم (مقدار undefined در شرط کوئری) خطای سرور نیست؛ پیام راهنما و بازگشت به صفحه‌ی قبل
+    if (req.method === 'POST' && /Undefined binding\(s\) detected/.test(String(err && err.message)) && typeof req.flash === 'function') {
+      req.flash('error', 'اطلاعات فرم ناقص یا نامعتبر است؛ فیلدهای لازم را کامل کنید.');
+      let back = '/'; try { const ref = req.get('referer'); if (ref) { const u = new URL(ref); if (u.host === req.get('host')) back = u.pathname + u.search; } } catch (_) { /* ignore */ }
+      return res.redirect(303, back);
+    }
+    const st = Number(err && (err.status || err.statusCode)); const clientErr = st >= 400 && st < 500;
     const dev = process.env.NODE_ENV !== 'production';
-    const payload = { code: 500, title: 'خطای سرور', message: dev ? String(err && err.message) : 'خطایی رخ داد. لطفاً دوباره تلاش کنید.' };
-    if (typeof res.view === 'function') return res.status(500).view('error', payload, req.user ? 'layout' : 'bare');
+    const payload = { code: clientErr ? st : 500, title: clientErr ? 'درخواست نامعتبر' : 'خطای سرور', message: clientErr ? (st === 413 ? 'حجم داده‌ی ارسالی بیش از حد مجاز است.' : 'درخواست شما قابل پردازش نبود.') : dev ? String(err && err.message) : 'خطایی رخ داد. لطفاً دوباره تلاش کنید.' };
+    if (typeof res.view === 'function') return res.status(clientErr ? st : 500).view('error', payload, req.user ? 'layout' : 'bare');
     res.status(500).send('Server error');
   });
 

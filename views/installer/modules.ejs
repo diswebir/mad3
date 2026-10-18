@@ -1,19 +1,29 @@
-<div class="wizard">
-  <h1 class="center">انتخاب ماژول‌ها</h1>
-  <p class="center muted">هر ماژول را می‌توانید بعداً از بخش «ماژول‌ها» روشن یا خاموش کنید.</p>
-  <%- include('_steps') %>
-  <form method="post" autocomplete="off">
-    <input type="hidden" name="_csrf" value="<%= csrf %>">
-    <div class="mod-grid">
-      <% mods.forEach(function(m){ %>
-      <div class="mod">
+<%- include('_head', { heading: 'انتخاب ماژول‌ها', lead: 'هر بخش سامانه یک ماژول است. موارد موردنیاز را روشن بگذارید؛ هر زمان خواستید (سوپر ادمین) خاموش/روشن می‌شود.' }) %>
+<form method="post" id="mod-form" autocomplete="off">
+  <input type="hidden" name="_csrf" value="<%= csrf %>">
+  <div class="iw-toolbar">
+    <div class="search"><%- icon('search', 16) %><input type="search" id="mod-q" placeholder="جستجوی ماژول…" aria-label="جستجوی ماژول"></div>
+    <div class="btns"><button type="button" class="btn sm" data-mods="all">همه</button><button type="button" class="btn sm" data-mods="none">هیچ‌کدام (جز پایه)</button><span class="chip" id="mod-count" aria-live="polite"></span></div>
+  </div>
+  <% groups.forEach(function (g) { %>
+  <section class="iw-group" data-group>
+    <h3><%= g.title %></h3>
+    <div class="iw-mods">
+      <% g.mods.forEach(function (m) { var on = m.core || chosen.includes(m.key); %>
+      <label class="iw-mod <%= m.core ? 'core' : '' %>" data-name="<%= m.title %> <%= m.desc %>">
         <span class="ico"><%- icon(m.icon, 20) %></span>
-        <div><b><%= m.title %></b> <% if (m.core) { %><span class="badge blue">پایه</span><% } %><div class="muted small"><%= m.desc %></div></div>
-        <label class="switch"><input type="checkbox" name="modules" value="<%= m.key %>" <%= (m.core || chosen.includes(m.key)) ? 'checked' : '' %> <%= m.core ? 'disabled' : '' %>><span></span></label>
-      </div>
+        <span class="tx"><b><%= m.title %></b><% if (m.core) { %> <span class="badge blue">پایه</span><% } %><small><%= m.desc %></small></span>
+        <span class="switch"><input type="checkbox" name="modules" value="<%= m.key %>" <%= on ? 'checked' : '' %> <%= m.core ? 'disabled' : '' %>><span></span></span>
+      </label>
       <% }) %>
     </div>
-    <div class="card" style="margin-top:1rem"><label class="check"><input type="checkbox" name="demo" value="1" <%= demo ? 'checked' : '' %>> <b>نصب داده‌های نمونه (دمو)</b> — ۱۰ معلم، ۶ کلاس، ۷۲ دانش‌آموز با حضور و غیاب، نمرات، تیکت و ...</label><div class="muted small" style="margin-right:1.7rem">برای آشنایی با سامانه توصیه می‌شود. بعداً با پایگاه داده خالی هم می‌توانید نصب تازه انجام دهید.</div></div>
-    <div class="form-actions" style="border:0"><button class="btn primary" type="submit">ادامه <%- icon('chevron-left', 16) %></button><a class="btn ghost" href="<%= u('/install/admin') %>">بازگشت</a></div>
-  </form>
-</div>
+  </section>
+  <% }) %>
+  <div class="iw-empty" id="mod-empty" hidden>ماژولی با این عبارت پیدا نشد.</div>
+  <div class="iw-card demo">
+    <label class="check"><input type="checkbox" name="demo" value="1" <%= demo ? 'checked' : '' %>> <span><b><%- icon('flask-conical', 16) %> نصب داده‌های نمونه (دمو)</b>
+      <span class="muted small" style="display:block">۱۰ معلم، ۶ کلاس، ۷۲ دانش‌آموز با حضور و غیاب، نمرات، تیکت و … — برای آشنایی و آموزش عالی است؛ برای استفاده‌ی واقعی تیک را بردارید تا سامانه خالی نصب شود.</span></span></label>
+  </div>
+  <div class="iw-actions"><button class="btn primary lg" type="submit">ادامه <%- icon('chevron-left', 18) %></button><a class="btn ghost" href="<%= u('/install/admin') %>">بازگشت</a></div>
+</form>
+<%- include('_foot') %>

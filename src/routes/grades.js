@@ -170,7 +170,7 @@ router.get('/grades/class/:id(\\d+)', staff, async (req, res, next) => {
       const rows = [...r.students].sort((a, b) => (a.rank || 999) - (b.rank || 999)).map((s) => [s.rank || '', s.student_code, `${s.first_name} ${s.last_name}`, ...r.subjects.map((x) => (s.subjects[x.id] ? s.subjects[x.id].avg : '')), s.overall === null ? '' : s.overall]);
       return res.set('Content-Type', 'text/csv; charset=utf-8').set('Content-Disposition', `attachment; filename="class-${c.id}-grades.csv"`).send(toCSV(head, rows));
     }
-    res.view('grades/class', { title: 'کارنامه کلاس ' + c.name, c, r, term, terms: settings.num('terms_count') || 2 });
+    res.view('grades/class', { title: 'کارنامه کلاس ' + c.name, c, r, term, terms: settings.num('terms_count') || 2, canCards: !!(await classForCards(req, c.id)) });
   } catch (e) { next(e); }
 });
 

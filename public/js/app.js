@@ -281,3 +281,32 @@ document.addEventListener('click', function (e) {
   });
   var act = nav.querySelector('.nav-inner a.active'); if (act && act.scrollIntoView) act.scrollIntoView({ block: 'nearest' });
 })();
+
+/* دسترس‌پذیری: به کنترل‌های فرمِ بدون برچسب، نام قابل‌خواندن برای صفحه‌خوان می‌دهد */
+(function () {
+  function pretty(n) { return String(n || '').replace(/\[\d*\]/g, ' ').replace(/[_\-.]+/g, ' ').replace(/\s+/g, ' ').trim(); }
+  function nameFor(el) {
+    var dl = el.getAttribute('data-label'); if (dl) return dl;
+    var td = el.closest('td'); var tr = td && td.closest('tr'); var tbl = tr && tr.closest('table');
+    if (td && tbl && tbl.tHead && tbl.tHead.rows[0]) { var ci = Array.prototype.indexOf.call(tr.cells, td); var th = tbl.tHead.rows[0].cells[ci]; if (th && th.textContent.trim()) return th.textContent.trim(); }
+    var p = el.previousElementSibling; if (p && /^(LABEL|SPAN|B|STRONG|SMALL)$/.test(p.tagName) && p.textContent.trim() && p.textContent.length < 60) return p.textContent.trim();
+    if (el.tagName === 'SELECT' && el.options.length) { var o = el.options[0].textContent.trim(); if (o) return o; }
+    return pretty(el.name) || pretty(el.id) || (el.type === 'file' ? 'انتخاب فایل' : 'ورودی');
+  }
+  function run(root) {
+    (root || document).querySelectorAll('input:not([type=hidden]):not([type=submit]):not([type=button]):not([type=reset]):not([type=image]),select,textarea').forEach(function (el) {
+      if (el.hasAttribute('aria-label') || el.hasAttribute('aria-labelledby') || el.title || el.placeholder) return;
+      if (el.labels && el.labels.length) return;
+      el.setAttribute('aria-label', nameFor(el));
+    });
+  }
+  function runBtns() {
+    document.querySelectorAll('button:not([aria-label]):not([title])').forEach(function (b) {
+      if (b.textContent.trim()) return;
+      var f = b.closest('form'); var act = (f && f.getAttribute('action')) || '';
+      b.setAttribute('aria-label', b.classList.contains('danger') || /delete|remove/.test(act) ? 'حذف' : /edit|update|save/.test(act) ? 'ذخیره' : 'اجرا');
+    });
+  }
+  function all() { run(); runBtns(); }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', all); else all();
+})();

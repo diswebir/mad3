@@ -211,7 +211,7 @@ router.post('/tickets/:id(\\d+)/assign', async (req, res, next) => {
   try {
     const k = db.get(); const t = await getTicket(req, req.params.id); if (!t || !isManager(req.user)) return nf(res);
     if (req.body.to === 'admin') await k('tickets').where({ id: t.id }).update(stamp({ recipient_user_id: null, recipient_role: 'admin' }));
-    else { const target = await k('users').where({ id: req.body.to, active: 1 }).first(); if (!target || target.role === 'student') { req.flash('error', 'گیرنده نامعتبر است.'); return res.redirect('/tickets/' + t.id); } await k('tickets').where({ id: t.id }).update(stamp({ recipient_user_id: target.id, recipient_role: null })); await svc.notify([target.id], 'تیکتی به شما ارجاع شد', t.subject, '/tickets/' + t.id); }
+    else { const target = await k('users').where({ id: Number(req.body.to) || 0, active: 1 }).first(); if (!target || target.role === 'student') { req.flash('error', 'گیرنده نامعتبر است.'); return res.redirect('/tickets/' + t.id); } await k('tickets').where({ id: t.id }).update(stamp({ recipient_user_id: target.id, recipient_role: null })); await svc.notify([target.id], 'تیکتی به شما ارجاع شد', t.subject, '/tickets/' + t.id); }
     await k('ticket_messages').insert({ ticket_id: t.id, user_id: req.user.id, body: 'تیکت ارجاع داده شد.', internal: 1 });
     invalidateBadges(); req.flash('success', 'تیکت ارجاع داده شد.'); res.redirect('/tickets/' + t.id);
   } catch (e) { next(e); }

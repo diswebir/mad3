@@ -8,11 +8,13 @@
 <link rel="icon" type="image/svg+xml" href="<%= base %>/assets/favicon.svg">
 <link rel="stylesheet" href="<%= asset('css/app.css') %>">
 <% if (typeof S === 'function' && /^#[0-9a-fA-F]{6}$/.test(S('primary_color') || '')) { %><style>:root{--primary:<%= S('primary_color') %>}</style><% } %>
+<% if (typeof extraCss !== 'undefined' && extraCss) { %><link rel="stylesheet" href="<%= asset(extraCss) %>"><% } %>
 <script src="<%= asset('js/theme.js') %>"></script>
 </head>
 <body>
 <%- body %>
 <script src="<%= asset('js/jalaali.js') %>" defer></script>
 <script src="<%= asset('js/app.js') %>" defer></script>
+<% if (typeof extraJs !== 'undefined' && extraJs) { %><script src="<%= asset(extraJs) %>" defer></script><% } %>
 </body>
 </html>

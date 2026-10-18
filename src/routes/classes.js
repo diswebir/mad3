@@ -146,7 +146,7 @@ router.get('/classes/:id(\\d+)/print', requireRole('admin', 'deputy', 'teacher')
 router.post('/classes/:id(\\d+)/subjects', mgr, async (req, res, next) => {
   try {
     const k = db.get(); const c = await getClass(req, req.params.id); if (!c) return nf(res);
-    const subject = await k('subjects').where({ id: req.body.subject_id }).first();
+    const subject = await k('subjects').where({ id: Number(req.body.subject_id) || 0 }).first();
     if (!subject) { req.flash('error', 'درس را انتخاب کنید.'); return res.redirect('/classes/' + c.id); }
     if (await k('class_subjects').where({ classroom_id: c.id, subject_id: subject.id }).first()) { req.flash('error', 'این درس قبلاً به کلاس اضافه شده است.'); return res.redirect('/classes/' + c.id); }
     const hours = Math.max(1, Math.min(20, Number(req.body.weekly_hours) || subject.weekly_hours || 2));

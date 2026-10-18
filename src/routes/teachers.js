@@ -34,7 +34,7 @@ router.get('/teachers', async (req, res, next) => {
     if (q) qb.where((b) => b.where('u.full_name', 'like', `%${q}%`).orWhere('t.personnel_code', 'like', `%${q}%`).orWhere('t.specialty', 'like', `%${q}%`).orWhere('u.phone', 'like', `%${q}%`));
     if (req.query.status) qb.where('t.status', req.query.status);
     const total = Number((await qb.clone().count({ c: '*' }).first()).c);
-    const rows = await qb.orderBy('u.full_name').limit(per).offset((page - 1) * per).select('t.id', 't.personnel_code', 't.specialty', 't.status', 'u.full_name', 'u.phone', 'u.avatar',
+    const rows = await qb.orderBy('u.full_name').limit(per).offset((page - 1) * per).select('t.id', 't.user_id', 't.personnel_code', 't.specialty', 't.status', 'u.full_name', 'u.phone', 'u.avatar',
       k.raw('(select count(*) from classrooms c where c.homeroom_teacher_id = t.id) as homeroom_count'), k.raw('(select count(distinct classroom_id) from class_subjects cs where cs.teacher_id = t.id) as class_count'), k.raw('(select coalesce(sum(weekly_hours),0) from class_subjects cs where cs.teacher_id = t.id) as hours'));
     const homerooms = await k('classrooms').whereNotNull('homeroom_teacher_id').select('id', 'name', 'homeroom_teacher_id');
     res.view('teachers/index', { title: 'معلمان', rows, total, q, status: req.query.status || '', page, pages: Math.max(1, Math.ceil(total / per)), homerooms });

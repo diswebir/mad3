@@ -32,7 +32,7 @@ router.get('/library/loans', async (req, res, next) => {
 });
 router.post('/library/loans', mgr, async (req, res, next) => {
   try {
-    const k = db.get(); const b = req.body; const book = await k('books').where({ id: b.book_id }).first();
+    const k = db.get(); const b = req.body; const book = await k('books').where({ id: Number(b.book_id) || 0 }).first();
     if (!book) { req.flash('error', 'کتاب را انتخاب کنید.'); return res.redirect('/library/loans'); }
     const lent = Number((await k('book_loans').where({ book_id: book.id }).whereNull('returned_at').count({ c: '*' }).first()).c);
     if (lent >= book.copies) { req.flash('error', 'همه نسخه‌های این کتاب در امانت است.'); return res.redirect('/library/loans'); }

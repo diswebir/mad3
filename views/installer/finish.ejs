@@ -1,23 +1,30 @@
-<div class="wizard">
-  <h1 class="center">تأیید و نصب</h1>
-  <%- include('_steps') %>
-  <form method="post" class="card">
-    <input type="hidden" name="_csrf" value="<%= csrf %>">
-    <% if (typeof error !== 'undefined') { %><div class="alert error"><%- icon('circle-x', 18) %><div><%= error %></div></div><% } %>
-    <dl class="kv">
-      <dt>پایگاه داده</dt><dd><%= st.db.client === 'mysql' ? 'MySQL — ' + st.db.database + '@' + st.db.host : 'SQLite (فایل محلی)' %></dd>
-      <dt>مدرسه</dt><dd><%= st.school.school_name %> (<%= st.school.school_type %>)</dd>
-      <dt>مدیر سامانه</dt><dd><%= st.admin.full_name %> — <span class="ltr"><%= st.admin.username %></span></dd>
-      <dt>ماژول‌ها</dt><dd><%= fa(st.modules.length) %> ماژول اختیاری + هسته</dd>
-      <dt>داده نمونه</dt><dd><%= st.demo ? 'بله' : 'خیر' %></dd>
+<%- include('_head', { heading: 'مرور نهایی و نصب', lead: 'همه‌چیز را یک بار مرور کنید. با «شروع نصب» جدول‌ها و داده‌ها ساخته می‌شوند.' }) %>
+<% var isLocal = !host || host === 'localhost' || host === '127.0.0.1' || host === '::1' || /\.(local|test)$/.test(host); %>
+<form method="post" id="finish-form" class="iw-form">
+  <input type="hidden" name="_csrf" value="<%= csrf %>">
+  <% if (typeof error !== 'undefined') { %><div class="iw-banner error"><%- icon('circle-x', 20) %><div><%= error %></div></div><% } %>
+  <section class="iw-card">
+    <h2 class="iw-h"><span class="ico"><%- icon('clipboard-list', 20) %></span> خلاصه‌ی انتخاب‌ها</h2>
+    <dl class="iw-sum">
+      <dt>پایگاه‌داده</dt><dd><%= st.db.client === 'mysql' ? 'MySQL — ' + st.db.database + '@' + st.db.host : 'SQLite (فایل محلی)' %></dd><dd class="edit"><a href="<%= u('/install/db') %>"><%- icon('pencil', 14) %> ویرایش</a></dd>
+      <dt>مدرسه</dt><dd><%= st.school.school_name %> (<%= st.school.school_type %>)، <%= fa(st.school.periods_count) %> زنگ در روز</dd><dd class="edit"><a href="<%= u('/install/school') %>"><%- icon('pencil', 14) %> ویرایش</a></dd>
+      <dt>مدیر مدرسه</dt><dd><%= st.admin.full_name %> — <span class="ltr"><%= st.admin.username %></span></dd><dd class="edit"><a href="<%= u('/install/admin') %>"><%- icon('pencil', 14) %> ویرایش</a></dd>
+      <dt>سوپر ادمین</dt><dd><span class="ltr"><%= st.super.username %></span></dd><dd class="edit"><a href="<%= u('/install/admin') %>"><%- icon('pencil', 14) %> ویرایش</a></dd>
+      <dt>ماژول‌ها</dt><dd><%= fa(st.modules.length) %> ماژول اختیاری + هسته</dd><dd class="edit"><a href="<%= u('/install/modules') %>"><%- icon('pencil', 14) %> ویرایش</a></dd>
+      <dt>داده‌ی نمونه</dt><dd><%= st.demo ? 'بله — دمو نصب می‌شود' : 'خیر — سامانه‌ی خالی' %></dd><dd class="edit"><a href="<%= u('/install/modules') %>"><%- icon('pencil', 14) %> ویرایش</a></dd>
     </dl>
-    <fieldset class="dl-pick"><legend><%- icon('lock', 16) %> قفل دامنه</legend>
-      <label><input type="radio" name="domain_lock" value="this" checked> <b>قفل روی همین دامنه</b> <span class="muted small">(پیشنهادی؛ نصب فقط روی دامنه‌ای که اکنون با آن باز شده کار می‌کند)</span></label>
-      <label><input type="radio" name="domain_lock" value="manual"> <b>بعداً دستی</b> <span class="muted small">(چیزی قفل نمی‌شود تا سوپر ادمین از پنل دامنه را ثبت کند)</span></label>
-      <label><input type="radio" name="domain_lock" value="off"> <b>بدون قفل</b> <span class="muted small">(مناسب آزمایش و دمو)</span></label>
-      <div class="muted small">این مورد را بعداً فقط سوپر ادمین می‌تواند تغییر دهد. اگر با localhost نصب می‌کنید، قفل تا اولین ورود با دامنه‌ی واقعی ثبت نمی‌شود.</div>
-    </fieldset>
-    <div class="alert info" style="margin-top:1rem"><%- icon('info', 18) %><div>ساخت جدول‌ها و داده‌ها ممکن است تا یک دقیقه طول بکشد؛ صفحه را نبندید.</div></div>
-    <div class="form-actions"><button class="btn primary" type="submit"><%- icon('package-check', 17) %> شروع نصب</button><a class="btn ghost" href="<%= u('/install/modules') %>">بازگشت</a></div>
-  </form>
-</div>
+  </section>
+  <section class="iw-card">
+    <h2 class="iw-h"><span class="ico"><%- icon('lock', 20) %></span> قفل دامنه <small>جلوگیری از کپی و اجرای سامانه روی دامنه‌ی دیگر</small></h2>
+    <div class="iw-choice col" role="radiogroup" aria-label="قفل دامنه">
+      <label class="opt on"><input type="radio" name="domain_lock" value="this" checked><span class="tx"><b>قفل روی همین دامنه</b> <span class="badge blue">پیشنهادی</span><small><% if (isLocal) { %>الان با آدرس محلی (localhost) نصب می‌کنید؛ قفل در اولین ورود با دامنه‌ی واقعی ثبت می‌شود.<% } else { %>نصب فقط روی <span class="ltr"><%= host %></span> کار می‌کند.<% } %></small></span></label>
+      <label class="opt"><input type="radio" name="domain_lock" value="manual"><span class="tx"><b>بعداً دستی</b><small>چیزی قفل نمی‌شود تا سوپر ادمین از پنل «قفل دامنه» دامنه را ثبت کند.</small></span></label>
+      <label class="opt"><input type="radio" name="domain_lock" value="off"><span class="tx"><b>بدون قفل</b><small>مناسب آزمایش و دمو.</small></span></label>
+    </div>
+    <div class="muted small">این مورد را بعداً فقط سوپر ادمین می‌تواند تغییر دهد.</div>
+  </section>
+  <div class="iw-banner info"><%- icon('info', 20) %><div>ساخت جدول‌ها<%= st.demo ? ' و داده‌های نمونه' : '' %> ممکن است تا یک دقیقه طول بکشد. صفحه را نبندید و دوباره‌بارگذاری نکنید.</div></div>
+  <div class="iw-actions"><button class="btn primary lg" type="submit" id="btn-install"><%- icon('package-check', 18) %> شروع نصب</button><a class="btn ghost" href="<%= u('/install/modules') %>">بازگشت</a></div>
+</form>
+<div class="iw-overlay" id="install-overlay" hidden role="alert" aria-live="assertive"><div class="box"><div class="spin" aria-hidden="true"></div><h2>در حال نصب…</h2><ol id="install-steps"><li>ساخت جدول‌های پایگاه‌داده</li><li>ثبت مدرسه و حساب‌ها</li><li><%= st.demo ? 'ساخت داده‌های نمونه' : 'آماده‌سازی تنظیمات' %></li><li>قفل دامنه و پایان</li></ol><p class="muted small">لطفاً صفحه را نبندید.</p></div></div>
+<%- include('_foot') %>
