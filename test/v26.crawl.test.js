@@ -76,7 +76,7 @@ const { boot, inproc, t, done, assert, flash } = require('./helpers');
       const [m, p0] = r.split(' '); if (m !== 'POST' || skipR.test(p0)) continue; const path = p0.replace(/:\w+/g, '1');
       for (const body of payloads) { const res = await a.post(path, body, '/'); if (res.status >= 500 || /خطای سرور/.test(res.text)) bad.push(r + ' ' + res.status); }
     }
-    assert.deepStrictEqual(bad, []); assert.ok(Number((await k('users').count({ c: '*' }).first()).c) > 10, 'جدول کاربران باید سالم بماند');
+    assert.strictEqual(bad.join(' ; '), ''); assert.ok(Number((await k('users').count({ c: '*' }).first()).c) > 10, 'جدول کاربران باید سالم بماند');
   });
   await t('فیلد ناقص (id گم‌شده) به پیام فارسی و بازگشت می‌انجامد، نه ۵۰۰', async () => {
     const a = await app.login('admin', 'Admin#12345');
@@ -84,6 +84,10 @@ const { boot, inproc, t, done, assert, flash } = require('./helpers');
       const r = await a.req('POST', path, {}, { follow: false, headers: { referer: app.base + '/' } });
       assert.ok(r.status < 500, path + ' → ' + r.status);
     }
+  });
+  await t('مقدار NaN/Infinity در کوئری به NULL تبدیل می‌شود (در MySQL «ستون NaN» ۵۰۰ می‌داد)', async () => {
+    const kk = require('../src/db').buildKnex({ client: 'sqlite', filename: ':memory:' });
+    try { const r = await kk.raw('select ? as a, ? as b, ? as c', [NaN, Infinity, 2]); assert.deepStrictEqual([r[0].a, r[0].b, r[0].c], [null, null, 2]); } finally { await kk.destroy(); }
   });
   await app.stop(); process.exit(done() ? 0 : 1);
 })();

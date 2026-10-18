@@ -20,7 +20,15 @@ function sqliteAvailable() { return sqliteStatus().ok; }
 const SQLITE_HELP = `درایور SQLite (better-sqlite3) برای نسخه‌ی Node این سیستم (${process.version}) کامپایل/دانلود نشده است. راه‌حل‌ها: ۱) در پوشه‌ی پروژه اجرا کنید: npm install better-sqlite3@latest --build-from-source=false (یا npm rebuild better-sqlite3) و سپس سرور را دوباره اجرا کنید؛ ۲) اگر کامپایل لازم شد، Visual Studio Build Tools (Desktop development with C++) و Python را نصب کنید یا از Node نسخه‌ی LTS (۲۰ یا ۲۲) استفاده کنید؛ ۳) یا به‌جای SQLite در مرحله‌ی پایگاه‌داده، MySQL را انتخاب کنید (لاراگون MySQL دارد).`;
 const isBindingError = (e) => /bindings file|better_sqlite3\.node|NODE_MODULE_VERSION|was compiled against/i.test(String((e && e.message) || e));
 
-function buildKnex(dbCfg) {
+/** مقدار NaN (مثلاً Number('abc')) در MySQL به‌صورت ستون «NaN» در کوئری می‌نشیند و ۵۰۰ می‌دهد؛ آن را به NULL (یعنی «یافت نشد») تبدیل می‌کنیم */
+function guardNaN(k) {
+  const c = k.client; const orig = c.prepBindings.bind(c);
+  c.prepBindings = (b) => orig(Array.isArray(b) ? b.map((v) => (typeof v === 'number' && !Number.isFinite(v) ? null : v)) : b);
+  return k;
+}
+
+function buildKnex(dbCfg) { return guardNaN(buildKnexRaw(dbCfg)); }
+function buildKnexRaw(dbCfg) {
   if (dbCfg.client === 'mysql') {
     return knexLib({
       client: 'mysql2',
