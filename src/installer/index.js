@@ -30,7 +30,7 @@ function requirements() {
   let writable = true;
   try { config.ensureDirs(); const f = config.DATA_DIR + '/.w'; fs.writeFileSync(f, '1'); fs.unlinkSync(f); } catch (_) { writable = false; }
   out.push({ label: 'دسترسی نوشتن در پوشه data (تنظیمات، فایل‌های بارگذاری‌شده، SQLite)', ok: writable, hint: 'مجوز نوشتن پوشه data را بررسی کنید.' });
-  out.push({ label: 'درایور SQLite (better-sqlite3)', ok: dbm.sqliteAvailable(), optional: true, hint: 'اختیاری؛ اگر نصب نشده باشد از MySQL استفاده کنید.' });
+  out.push({ label: 'درایور SQLite (better-sqlite3)', ok: dbm.sqliteAvailable(), optional: true, hint: dbm.sqliteAvailable() ? '' : 'اختیاری؛ اگر کار نمی‌کند MySQL را انتخاب کنید یا «npm rebuild better-sqlite3» را اجرا کنید.' + (dbm.sqliteStatus().error ? ' (' + dbm.sqliteStatus().error.slice(0, 90) + ')' : '') });
   let my = true; try { require('mysql2'); } catch (_) { my = false; }
   out.push({ label: 'درایور MySQL (mysql2)', ok: my, optional: true, hint: 'اگر نصب نشده، «Run NPM Install» را اجرا کنید.' });
   out.push({ label: `حافظه آزاد سیستم (${toFa(Math.round(os.freemem() / 1048576))} مگابایت)`, ok: os.freemem() > 100 * 1048576, optional: true, hint: 'حداقل ۱۰۰ مگابایت پیشنهاد می‌شود.' });
@@ -68,7 +68,7 @@ function createRouter(onComplete) {
   router.get('/install/db', (req, res) => render(res, 'db', { sqlite: dbm.sqliteAvailable(), db: readState().db || { client: dbm.sqliteAvailable() ? 'sqlite' : 'mysql', host: 'localhost', port: 3306 } }));
   async function testDb(b) {
     if (b.client === 'sqlite') {
-      if (!dbm.sqliteAvailable()) throw new Error('درایور SQLite روی این سرور نصب نیست؛ MySQL را انتخاب کنید.');
+      if (!dbm.sqliteAvailable()) throw new Error(dbm.SQLITE_HELP);
       return { client: 'sqlite' };
     }
     const cfg = { client: 'mysql', host: b.host || 'localhost', port: Number(b.port) || 3306, database: b.database, user: b.user, password: b.password || '' };
@@ -161,7 +161,7 @@ function createRouter(onComplete) {
       try { fs.unlinkSync(config.CONFIG_FILE); } catch (_) { /* ignore */ }
       try { if (created && k) await dropAll(k); } catch (_) { /* ignore */ }
       try { await dbm.close(); } catch (_) { /* ignore */ }
-      render(res, 'finish', { st, error: 'نصب با خطا مواجه شد: ' + e.message });
+      render(res, 'finish', { st, error: 'نصب با خطا مواجه شد: ' + (dbm.isBindingError(e) ? dbm.SQLITE_HELP : e.message) });
     }
   });
   router.use((req, res) => res.redirect('/install'));

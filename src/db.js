@@ -5,9 +5,20 @@ const config = require('./config');
 
 let instance = null;
 
-function sqliteAvailable() {
-  try { require.resolve('better-sqlite3'); require('better-sqlite3'); return true; } catch (_) { return false; }
+let sqliteProbe = null;
+/** require() به‌تنهایی کافی نیست: فایل بومی (.node) فقط هنگام ساختن اولین اتصال بارگذاری می‌شود، پس واقعاً یک پایگاه‌داده‌ی حافظه‌ای باز می‌کنیم */
+function sqliteStatus() {
+  if (sqliteProbe) return sqliteProbe;
+  try {
+    require.resolve('better-sqlite3'); const D = require('better-sqlite3'); const d = new D(':memory:'); d.prepare('select 1').get(); d.close();
+    sqliteProbe = { ok: true, error: '' };
+  } catch (e) { sqliteProbe = { ok: false, error: String((e && e.message) || e).split('\n')[0].slice(0, 200) }; }
+  return sqliteProbe;
 }
+function sqliteAvailable() { return sqliteStatus().ok; }
+/** راهنمای فارسی برای خطای نبودن فایل بومی SQLite (ویندوز/لاراگون و نسخه‌ی جدید Node) */
+const SQLITE_HELP = `درایور SQLite (better-sqlite3) برای نسخه‌ی Node این سیستم (${process.version}) کامپایل/دانلود نشده است. راه‌حل‌ها: ۱) در پوشه‌ی پروژه اجرا کنید: npm install better-sqlite3@latest --build-from-source=false (یا npm rebuild better-sqlite3) و سپس سرور را دوباره اجرا کنید؛ ۲) اگر کامپایل لازم شد، Visual Studio Build Tools (Desktop development with C++) و Python را نصب کنید یا از Node نسخه‌ی LTS (۲۰ یا ۲۲) استفاده کنید؛ ۳) یا به‌جای SQLite در مرحله‌ی پایگاه‌داده، MySQL را انتخاب کنید (لاراگون MySQL دارد).`;
+const isBindingError = (e) => /bindings file|better_sqlite3\.node|NODE_MODULE_VERSION|was compiled against/i.test(String((e && e.message) || e));
 
 function buildKnex(dbCfg) {
   if (dbCfg.client === 'mysql') {
@@ -54,4 +65,4 @@ function get() { if (!instance) throw new Error('پایگاه داده مقدا�
 async function close() { if (instance) { await instance.destroy(); instance = null; } }
 const isMysql = () => (config.load().db.client === 'mysql');
 
-module.exports = { init, get, close, buildKnex, sqliteAvailable, isMysql };
+module.exports = { init, get, close, buildKnex, sqliteAvailable, sqliteStatus, SQLITE_HELP, isBindingError, isMysql };

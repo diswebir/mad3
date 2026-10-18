@@ -1,12 +1,12 @@
 {
   "name": "mad3-school-management",
-  "version": "2.5.0",
+  "version": "2.5.1",
   "description": "سامانه مدیریت مدرسه (Node.js) با ویزارد نصب و سازگار با cPanel",
   "main": "app.js",
   "private": true,
   "license": "UNLICENSED",
   "engines": {
-    "node": ">=18"
+    "node": ">=20"
   },
   "scripts": {
     "start": "node app.js",
@@ -25,7 +25,7 @@
     "test:v23": "node test/v23.super.test.js && node test/v23.ui.test.js",
     "loadtest": "node scripts/loadtest.js",
     "test:v24": "node test/v24.locks.test.js && node test/v24.offsite.test.js && node test/v24.ui.test.js",
-    "test:v25": "node test/v25.access.test.js && node test/v25.curriculum.test.js && node test/v25.ui.test.js"
+    "test:v25": "node test/v25.access.test.js && node test/v25.curriculum.test.js && node test/v25.ui.test.js && node test/v25.sqlite.test.js"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
@@ -41,7 +41,7 @@
     "qrcode": "^1.5.4"
   },
   "optionalDependencies": {
-    "better-sqlite3": "^11.10.0"
+    "better-sqlite3": "^12.11.1"
   },
   "devDependencies": {
     "lucide-static": "^0.460.0",
