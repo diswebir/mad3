@@ -272,7 +272,7 @@ document.addEventListener('click', function (e) {
   function setOpen(g, open) { g.classList.toggle('open', open); var b = g.querySelector('.nav-head'); if (b) b.setAttribute('aria-expanded', open ? 'true' : 'false'); }
   function openOnly(key) { groups.forEach(function (g) { setOpen(g, g.getAttribute('data-key') === key); }); }
   var hasActive = groups.some(function (g) { return g.classList.contains('has-active'); });
-  if (!hasActive) { var saved = null; try { saved = localStorage.getItem(KEY); } catch (e) {} openOnly(saved !== null ? saved : groups[0].getAttribute('data-key')); }
+  if (!hasActive) { var saved = null; try { saved = localStorage.getItem(KEY); } catch (e) {} openOnly(saved !== null ? saved : ''); }
   groups.forEach(function (g) {
     g.querySelector('.nav-head').addEventListener('click', function () {
       var willOpen = !g.classList.contains('open'); openOnly(willOpen ? g.getAttribute('data-key') : '');
@@ -280,6 +280,27 @@ document.addEventListener('click', function (e) {
     });
   });
   var act = nav.querySelector('.nav-inner a.active'); if (act && act.scrollIntoView) act.scrollIntoView({ block: 'nearest' });
+
+  /* جستجوی سریع در منو: گروه‌های دارای نتیجه باز می‌شوند، بقیه پنهان؛ با پاک‌کردن، حالت قبلی برمی‌گردد */
+  var q = document.getElementById('nav-q'); var none = document.getElementById('nav-none');
+  if (q) {
+    var before = null;
+    var norm = function (t) { return String(t).replace(/[يى]/g, 'ی').replace(/ك/g, 'ک').replace(/[\u200c\s]+/g, ' ').trim().toLowerCase(); };
+    var apply = function () {
+      var v = norm(q.value);
+      if (!v) { if (before) { groups.forEach(function (g, i) { setOpen(g, before[i]); }); before = null; } nav.classList.remove('filtering'); nav.querySelectorAll('.nav-hide').forEach(function (e) { e.classList.remove('nav-hide'); }); if (none) none.hidden = true; return; }
+      if (!before) before = groups.map(function (g) { return g.classList.contains('open'); });
+      nav.classList.add('filtering'); var any = false;
+      nav.querySelectorAll('.nav-top').forEach(function (a) { var hit = norm(a.textContent).indexOf(v) > -1; a.classList.toggle('nav-hide', !hit); any = any || hit; });
+      groups.forEach(function (g) {
+        var hits = 0; g.querySelectorAll('.nav-inner a').forEach(function (a) { var hit = norm(a.textContent).indexOf(v) > -1 || norm(g.querySelector('.nh-t').textContent).indexOf(v) > -1; a.classList.toggle('nav-hide', !hit); if (hit) hits++; });
+        g.classList.toggle('nav-hide', !hits); setOpen(g, hits > 0); any = any || hits > 0;
+      });
+      if (none) none.hidden = any;
+    };
+    q.addEventListener('input', apply);
+    q.addEventListener('keydown', function (e) { if (e.key === 'Escape') { q.value = ''; apply(); } if (e.key === 'Enter') { e.preventDefault(); var first = nav.querySelector('.nav-inner a:not(.nav-hide), .nav-top:not(.nav-hide)'); if (first && q.value.trim()) location.href = first.href; } });
+  }
 })();
 
 /* دسترس‌پذیری: به کنترل‌های فرمِ بدون برچسب، نام قابل‌خواندن برای صفحه‌خوان می‌دهد */

@@ -23,7 +23,7 @@
     <td class="num"><%= fa(s.student_code) %></td><td><%= s.class_name || '—' %></td>
     <td><%- pill(L.studentStatus[s.status] || s.status, badges_map.studentStatus[s.status]) %></td>
     <td class="ltr num small"><%= fa(s.father_phone || s.mother_phone || '—') %></td>
-    <td class="actions"><a class="btn sm ghost" href="<%= u('/students/' + s.id) %>"><%- icon('eye', 15) %> پرونده</a><% if (isManager) { %><a class="btn sm ghost" href="<%= u('/students/' + s.id + '/edit') %>"><%- icon('pencil', 15) %></a><% } %></td></tr><% }) %>
+    <td class="actions"><a class="btn sm ghost" href="<%= u('/students/' + s.id) %>"><%- icon('eye', 15) %> پرونده</a><% if (isManager) { %><a class="btn sm ghost" href="<%= u('/students/' + s.id + '/edit') %>" title="ویرایش" aria-label="ویرایش"><%- icon('pencil', 15) %></a><% } %></td></tr><% }) %>
   </tbody></table></div>
   <% if (isManager) { %><div class="toolbar" style="border-top:1px solid var(--border);border-bottom:0"><span class="muted small">با انتخاب‌شده‌ها:</span>
     <select name="classroom_id" style="width:auto"><option value="">انتقال به کلاس...</option><% classes.forEach(function(c){ %><option value="<%= c.id %>"><%= c.name %></option><% }) %></select><button class="btn sm" name="action" value="move">انتقال</button>

@@ -8,7 +8,7 @@ input,select,textarea,button{font-family:inherit;font-size:inherit;color:inherit
 a{color:var(--primary);text-decoration:none}a:hover{text-decoration:underline}
 h1,h2,h3,h4{margin:0 0 .5rem;line-height:1.5}h1{font-size:1.45rem}h2{font-size:1.2rem}h3{font-size:1.05rem}
 .ic{vertical-align:-.28em;flex:none}
-.muted{color:var(--muted)}.small{font-size:.85rem}.center{text-align:center}.nowrap{white-space:nowrap}.grow{flex:1}.num{font-variant-numeric:tabular-nums}.ltr{direction:ltr;unicode-bidi:embed;text-align:left}
+.muted{color:var(--muted)}.small{font-size:.85rem}.center{text-align:center}.nowrap{white-space:nowrap}.grow{flex:1}.num{font-variant-numeric:tabular-nums}.ltr{direction:ltr;unicode-bidi:isolate;text-align:left}
 .hidden{display:none!important}
 /* layout */
 .app{display:flex;min-height:100vh}
@@ -432,4 +432,27 @@ button.is-busy::after{content:"";display:inline-block;width:.9em;height:.9em;mar
   .plan-t .plan-row td:has(.dist)::before{content:'توزیع در برنامه‌ی هفتگی';display:block;font-size:.76rem;color:var(--muted);margin-bottom:.2rem}
   .plan-t .p-teacher{min-width:0}.plan-t .add-row td{padding:.7rem .9rem}
   .plan-t #plan-empty td{display:block}
+}
+
+/* منوی کناری: جستجو، آیکن‌های رنگی بخش‌ها، حالت فیلتر */
+.nav-search{position:sticky;top:-.5rem;z-index:2;margin:-.5rem -.7rem .6rem;padding:.6rem .7rem .4rem;background:var(--side)}
+.nav-search svg{position:absolute;right:1.45rem;top:50%;transform:translateY(-35%);color:#64748b;pointer-events:none}
+.nav-search input{width:100%;padding:.5rem .8rem .5rem 2rem;padding-right:2.3rem;border-radius:10px;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.06);color:#e2e8f0;font-size:.85rem}
+.nav-search input::placeholder{color:#64748b}.nav-search input:focus{outline:0;border-color:var(--primary);background:rgba(255,255,255,.09)}
+.nav-head .nh-ic{width:30px;height:30px;border-radius:9px;place-items:center;background:rgba(255,255,255,.07);color:#cbd5e1;flex:none}
+.nh-ic.ns-main{background:#2563eb33;color:#93c5fd}.nh-ic.ns-edu{background:#16a34a2e;color:#86efac}.nh-ic.ns-comm{background:#9333ea33;color:#d8b4fe}.nh-ic.ns-services{background:#d977062e;color:#fcd34d}.nh-ic.ns-system{background:#64748b40;color:#cbd5e1}.nh-ic.ns-super{background:#dc262633;color:#fca5a5}
+.nav-group.open>.nav-head .nh-ic{box-shadow:0 0 0 2px rgba(255,255,255,.12)}
+.nav-group.has-active:not(.open)>.nav-head .nh-ic{color:#fff;background:var(--primary)}
+.nav-group{border-radius:12px;transition:background .2s}.nav-group.open{background:rgba(255,255,255,.03)}
+.nav-hide{display:none!important}
+.nav-none{color:#94a3b8;text-align:center;font-size:.85rem;padding:1rem}
+.nav.filtering .nav-head .nh-n{display:none}
+
+/* v2.7 — هدف‌های لمسی بزرگ‌تر روی گوشی (حداقل ~۳۲px) */
+@media (max-width:700px){
+  .btn.sm{min-height:34px;min-width:34px;display:inline-flex;align-items:center;justify-content:center}
+  .card h3 a.h-link{display:inline-block;padding:.35rem 0}
+  .card td a:not(.btn),.card li a:not(.btn),.card p a:not(.btn){display:inline-block;padding:.3rem .1rem;min-height:30px;line-height:1.5}
+  .cal .ev{padding:.3rem .4rem;font-size:.75rem}
+  .crumbs a,.breadcrumb a{display:inline-block;padding:.3rem .1rem}
 }

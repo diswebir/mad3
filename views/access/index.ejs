@@ -12,7 +12,7 @@
 <% } else if (tab === 'profiles') { %>
 <div class="card flush"><div class="table-wrap"><table class="t"><thead><tr><th>الگو</th><th>مخصوص</th><th>مجاز</th><th>ممنوع</th><th>کاربران</th><th></th></tr></thead><tbody>
 <% profiles.forEach(function (p) { %><tr><td><b><%= p.name %></b><div class="muted small"><%= p.description || '' %></div></td><td><%= L.roles[p.base_role] %></td><td><%- pill(fa(p.nAllow), 'green') %></td><td><%- pill(fa(p.nDeny), 'red') %></td><td><%= fa(p.users) %></td>
-<td class="actions"><a class="btn sm ghost" href="<%= u('/access/profiles/' + p.id + '/edit') %>"><%- icon('pencil', 15) %></a>
+<td class="actions"><a class="btn sm ghost" href="<%= u('/access/profiles/' + p.id + '/edit') %>" title="ویرایش" aria-label="ویرایش"><%- icon('pencil', 15) %></a>
 <form method="post" action="<%= u('/access/profiles/' + p.id + '/delete') %>" style="display:inline" data-confirm="این الگو حذف شود؟"><input type="hidden" name="_csrf" value="<%= csrf %>"><button class="btn sm ghost danger"><%- icon('trash-2', 15) %></button></form></td></tr>
 <% }) %><% if (!profiles.length) { %><tr><td colspan="6" class="center muted">الگویی ساخته نشده است.</td></tr><% } %></tbody></table></div></div>
 <% } else { %>

@@ -24,6 +24,7 @@
     <dl class="iw-kv"><% sys.forEach(function (r) { %><dt><%= r[0] %></dt><dd class="ltr"><%= r[1] %></dd><% }) %></dl></details>
   <div class="iw-need"><b><%- icon('list-checks', 18) %> پیش از شروع آماده کنید:</b>
     <ul><li>نام مدرسه و چند مشخصات ساده (نشانی، تلفن، تعداد زنگ‌ها)</li><li>نام کاربری و رمز مدیر مدرسه و سوپر ادمین (دو حساب جدا)</li><li>در صورت انتخاب MySQL: نام پایگاه‌داده، کاربر و رمز (از cPanel ← MySQL Databases)</li></ul></div>
+  <div class="iw-banner info"><%- icon('book-open', 20) %><div><b>نصب روی هاست یا کامپیوتر خودتان را بلد نیستید؟</b> راهنمای تصویری گام‌به‌گام برای cPanel و لوکال‌هاست (ویندوز، مک، لینوکس) آماده است.</div><div class="iw-banner-actions"><a class="btn sm primary" href="<%= u('/install/guide#cpanel') %>" target="_blank" rel="noopener">راهنمای cPanel</a><a class="btn sm" href="<%= u('/install/guide#local') %>" target="_blank" rel="noopener">راهنمای لوکال‌هاست</a></div></div>
   <div class="iw-actions"><button class="btn primary lg" type="submit" <%= blockers.length ? 'disabled' : '' %>>شروع <%- icon('chevron-left', 18) %></button><a class="btn" href="<%= u('/install') %>"><%- icon('refresh-cw', 16) %> بررسی دوباره</a></div>
 </form>
 <%- include('_foot') %>

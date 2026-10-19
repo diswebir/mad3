@@ -87,6 +87,7 @@ const MODULES = [
     { label: 'سطوح دسترسی', href: '/access', icon: 'key-round', roles: ['admin'], section: 'system' },
     { label: 'تنظیمات', href: '/settings', icon: 'settings', roles: ['admin'], section: 'system' },
     { label: 'امنیت و قفل‌ها', href: '/security', icon: 'shield-check', roles: ['admin'], section: 'system' },
+    { label: 'راهنمای نصب', href: '/help/install', icon: 'book-open', roles: ['admin'], section: 'system' },
     ] },
   { key: 'superadmin', title: 'پنل سوپر ادمین', icon: 'shield-check', core: true, hidden: true, desc: 'قفل دامنه، ماژول‌ها، پیامک و تنظیمات فنی (فقط سوپر ادمین)', nav: [
     { label: 'پنل سوپر ادمین', href: '/super', icon: 'shield-check', roles: ['admin'], section: 'super', super: true },

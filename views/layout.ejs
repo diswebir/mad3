@@ -8,6 +8,7 @@
 <link rel="preload" href="<%= base %>/assets/fonts/Vazirmatn-Variable.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="<%= asset('css/app.css') %>">
 <style>:root{--primary:<%= /^#[0-9a-fA-F]{6}$/.test(S('primary_color')) ? S('primary_color') : '#2563eb' %>}</style>
+<% if (typeof extraCss !== 'undefined' && extraCss) { %><link rel="stylesheet" href="<%= asset(extraCss) %>"><% } %>
 <script src="<%= asset('js/theme.js') %>"></script>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%232563eb' stroke-width='2'%3E%3Cpath d='m4 10 8-5 8 5-8 5z'/%3E%3Cpath d='M18 12v4c0 1-2.5 2-6 2s-6-1-6-2v-4'/%3E%3C/svg%3E">
 </head>
@@ -24,11 +25,12 @@
        var topItems = []; var secs = (nav || []).map(function(sec){ var rest = sec.items.filter(function(it){ if (it.href === '/') { topItems.push(it); return false; } return true; }); return { key: sec.key, title: sec.title, items: rest }; }).filter(function(sec){ return sec.items.length; });
        var activeSec = ''; secs.forEach(function(sec){ if (sec.items.some(function(it){ return activeHref === it.href; })) activeSec = sec.key; });
        if (!activeSec && secs.length) activeSec = ''; %>
+    <div class="nav-search"><%- icon('search', 15) %><input type="search" id="nav-q" placeholder="جستجو در منو…" aria-label="جستجو در منو" autocomplete="off"></div>
     <% topItems.forEach(function(it){ %><a href="<%= u(it.href) %>"<%- activeHref === it.href ? ' aria-current="page"' : '' %> class="nav-top <%= activeHref === it.href ? 'active' : '' %>"><%- icon(it.icon, 18) %><span><%= it.label %></span></a><% }) %>
     <% secs.forEach(function(sec){ var open = sec.key === activeSec; var bsum = sec.items.reduce(function(a, it){ return a + (it.badgeCount || 0); }, 0); %>
     <div class="nav-group<%= open ? ' open' : '' %><%= sec.items.some(function(it){ return activeHref === it.href; }) ? ' has-active' : '' %>" data-key="<%= sec.key %>">
       <button type="button" class="nav-head" aria-expanded="<%= open ? 'true' : 'false' %>" aria-controls="ng-<%= sec.key %>">
-        <span class="nh-ic"><%- icon(NAV_ICONS[sec.key] || 'layout-grid', 18) %></span><span class="nh-t"><%= sec.title %></span>
+        <span class="nh-ic ns-<%= sec.key %>"><%- icon(NAV_ICONS[sec.key] || 'layout-grid', 18) %></span><span class="nh-t"><%= sec.title %></span>
         <% if (bsum) { %><span class="badge-n"><%= fa(bsum) %></span><% } %><span class="nh-n"><%= fa(sec.items.length) %></span><span class="nh-chev"><%- icon('chevron-down', 16) %></span>
       </button>
       <div class="nav-body" id="ng-<%= sec.key %>"><div class="nav-inner">
@@ -36,6 +38,7 @@
       </div></div>
     </div>
     <% }) %>
+    <p class="nav-none" id="nav-none" hidden>گزینه‌ای پیدا نشد.</p>
     <noscript><style>.nav-body{grid-template-rows:1fr!important}</style></noscript>
   </nav>
 </aside>
@@ -65,5 +68,6 @@
 </div>
 <script src="<%= asset('js/jalaali.js') %>" defer></script>
 <script src="<%= asset('js/app.js') %>" defer></script>
+<% if (typeof extraJs !== 'undefined' && extraJs) { %><script src="<%= asset(extraJs) %>" defer></script><% } %>
 </body>
 </html>

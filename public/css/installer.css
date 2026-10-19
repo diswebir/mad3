@@ -119,7 +119,7 @@ a.iw-step:hover{text-decoration:none}a.iw-step:hover .t b{text-decoration:underl
 .iw-next{text-align:start;background:var(--bg);border-radius:12px;padding:1rem 1.2rem;margin:1rem 0}.iw-next b{display:flex;gap:.4rem;align-items:center}.iw-next ol{margin:.5rem 0 0;padding-inline-start:1.3rem;line-height:2}
 /* واکنشگرا */
 @media (max-width:900px){
-  .iw{grid-template-columns:1fr}
+  .iw{grid-template-columns:1fr;grid-template-rows:auto 1fr}
   .iw-side{position:static;height:auto;padding:1rem 1rem .9rem;gap:.7rem}
   .iw-steps,.iw-foot,.iw-ver{display:none}
   .iw-brand b{font-size:.98rem}.iw-logo{width:42px;height:42px}
@@ -138,3 +138,7 @@ a.iw-step:hover{text-decoration:none}a.iw-step:hover .t b{text-decoration:underl
 @media (prefers-reduced-motion:reduce){.iw *{transition:none!important;animation:none!important}}
 .iw-grid .field:empty{display:none}
 @media (max-width:640px){.iw-checks li.ok .tag{display:none}}
+.iw-guide{display:flex;gap:.7rem;align-items:center;background:#ffffff1f;border:1px solid #ffffff40;border-radius:12px;padding:.7rem .9rem;color:#fff;text-decoration:none}.iw-guide:hover{background:#ffffff33;text-decoration:none}
+.iw-guide small{display:block;opacity:.8;font-size:.78rem}
+@media (max-width:900px){.iw-guide{display:none}}
+.iw-banner.info{margin-top:1rem}.iw-banner-actions{margin-top:.2rem}

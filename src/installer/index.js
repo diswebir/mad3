@@ -114,6 +114,7 @@ function createRouter(onComplete) {
   const render = (res, step, data = {}) => res.view('installer/' + step, { step, extraCss: 'css/installer.css', extraJs: 'js/installer.js', STEP_HELP, appVersion: require('../version').VERSION, ...data }, 'bare');
   router.get('/', (req, res) => res.redirect('/install'));
 
+  router.get('/install/guide', (req, res) => render(res, 'guide', { extraCss: 'css/guide.css', extraJs: 'js/guide.js' }));
   router.get('/install', (req, res) => render(res, 'welcome', { reqs: requirements(), sys: sysInfo(req), progress: progressOf(readState()) }));
   router.post('/install/reset', (req, res) => { try { const st = readState(); fs.writeFileSync(config.STATE_FILE, JSON.stringify({ csrf: st.csrf }), { mode: 0o600 }); } catch (_) { /* ignore */ } res.redirect('/install'); });
   router.post('/install', (req, res) => {

@@ -22,6 +22,11 @@ const free = () => new Promise((res) => { const s = net.createServer().listen(0,
     assert.ok(/Node\.js/.test(r.text) && /iw-checks/.test(r.text) && /اطلاعات فنی سرور/.test(r.text));
     assert.ok(!/شروع از اول/.test(r.text), 'بدون وضعیت ذخیره‌شده نباید «شروع از اول» باشد');
   });
+  await t('راهنمای نصب (cPanel و لوکال) پیش از نصب بدون ورود باز می‌شود و از ویزارد به آن لینک هست', async () => {
+    const r = await get('/install/guide'); assert.strictEqual(r.status, 200);
+    assert.ok(/id="p-cpanel"/.test(r.text) && /id="p-local"/.test(r.text) && /id="p-fix"/.test(r.text) && /guide\.js/.test(r.text));
+    const w = await get('/install'); assert.ok(/\/install\/guide#cpanel/.test(w.text) && /\/install\/guide#local/.test(w.text), 'لینک راهنما در صفحه‌ی خوش‌آمد نیست');
+  });
   await t('آزمایش اتصال بدون توکن CSRF رد می‌شود', async () => {
     const r = await fetch(base + '/install/db/test', { method: 'POST', headers: { 'content-type': 'application/x-www-form-urlencoded' }, body: 'client=sqlite' }); assert.strictEqual(r.status, 403);
   });
@@ -74,6 +79,7 @@ const free = () => new Promise((res) => { const s = net.createServer().listen(0,
     assert.ok(!/Strong#Pass99|Own3r#Pass77x/.test(r.text));
     assert.ok(fs.existsSync(path.join(dir, 'installed.lock')));
     for (let i = 0; i < 20; i++) { const l = await get('/login'); if (l.status === 200 && /name="username"/.test(l.text)) break; await new Promise((x) => setTimeout(x, 300)); }
+    const g = await get('/install/guide'); assert.ok(!/id="p-cpanel"/.test(g.text), 'راهنمای ویزارد پس از نصب نباید عمومی بماند');
     const again = await get('/install'); assert.ok([301, 302, 303, 404].includes(again.status) || !/iw-steps/.test(again.text), 'ویزارد پس از نصب نباید باز بماند');
   });
   child.kill('SIGTERM');

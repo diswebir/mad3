@@ -29,7 +29,7 @@ const { boot, t, done, assert, inproc } = require('./helpers');
   });
   await t('هر مسیر کد (GET/POST) یا قابلیت دارد یا در فهرست صریح «مسیرهای خودخدمت/مدیر/سوپر» است — مسیر تازه‌ی بدون مالک شکست می‌خورد', async () => {
     const dir = path.join(__dirname, '../src/routes'); const un = [];
-    const ALLOW = [/^\/access/, /^\/login/, /^\/logout/, /^\/backup/, /^\/cron/, /^\/$/, /^\/files\//, /^\/grades\/my$/, /^\/attendance\/my$/, /^\/students\/me$/, /^\/homework\/\d+\/submit$/, /^\/parent\//, /^\/profile/, /^\/notifications/, /^\/search/, /^\/security/, /^\/settings/, /^\/modules/, /^\/super/, /^\/tickets\/\d+\/rate$/, /^\/users/];
+    const ALLOW = [/^\/access/, /^\/login/, /^\/logout/, /^\/backup/, /^\/cron/, /^\/$/, /^\/files\//, /^\/grades\/my$/, /^\/attendance\/my$/, /^\/students\/me$/, /^\/homework\/\d+\/submit$/, /^\/parent\//, /^\/profile/, /^\/notifications/, /^\/search/, /^\/security/, /^\/settings/, /^\/modules/, /^\/super/, /^\/tickets\/\d+\/rate$/, /^\/users/, /^\/help\/install$/];
     for (const f of fs.readdirSync(dir)) {
       const s = fs.readFileSync(path.join(dir, f), 'utf8'); const re = /\b(?:router|r|app)\.(get|post)\(\s*'([^']+)'/g; let m;
       while ((m = re.exec(s))) {
