@@ -1,0 +1,28 @@
+<% /* ماتریس قابلیت‌ها: groups، mode = user | profile */ %>
+<div class="cap-tools no-print">
+  <input type="search" id="cap-search" placeholder="جستجوی قابلیت… (مثلاً رویداد، نمره، حذف)" aria-label="جستجوی قابلیت">
+  <label class="check"><input type="checkbox" id="cap-only-changed"> فقط موارد تغییریافته</label>
+  <label class="check"><input type="checkbox" id="cap-only-high"> فقط موارد حساس ⚠</label>
+  <span class="grow"></span>
+  <span class="badge green" id="cnt-allow">۰ مجاز</span><span class="badge red" id="cnt-deny">۰ ممنوع</span>
+</div>
+<% groups.forEach(function (g) { %>
+<details class="card cap-group" open data-group="<%= g.key %>">
+  <summary><b><%= g.title %></b> <span class="muted small">(<%= fa(g.items.length) %> قابلیت)</span>
+    <span class="cap-bulk no-print"><button type="button" class="btn sm ghost" data-bulk="allow">همه مجاز</button><button type="button" class="btn sm ghost" data-bulk="deny">همه ممنوع</button><button type="button" class="btn sm ghost" data-bulk="inherit">همه پیش‌فرض</button></span></summary>
+  <div class="table-wrap"><table class="t cap-t"><thead><tr><th>قابلیت</th><th class="center">پیش‌فرض <%= mode === 'user' ? 'نقش' : 'نقش پایه' %></th><% if (mode === 'user') { %><th class="center">الگو</th><% } %><th class="center">تنظیم</th><% if (mode === 'user') { %><th class="center">نتیجه‌ی نهایی</th><% } %></tr></thead><tbody>
+  <% g.items.forEach(function (c) { %>
+    <tr class="cap-row" data-key="<%= c.key %>" data-def="<%= c.def ? 1 : 0 %>" data-prof="<%= c.prof %>" data-high="<%= c.risk === 'high' ? 1 : 0 %>" data-text="<%= c.label + ' ' + c.key + ' ' + c.hint %>">
+      <td><b><%= c.label %></b><% if (c.risk === 'high') { %> <span class="badge amber" title="این مجوز حساس است؛ برای اعطای آن رمز مدیر لازم است">⚠ حساس</span><% } %><div class="muted small ltr" style="display:inline-block;margin-inline-start:.4rem"><%= c.key %></div><% if (c.hint) { %><div class="muted small"><%= c.hint %></div><% } %></td>
+      <td class="center"><%- c.def ? '<span class="badge green">دارد</span>' : '<span class="badge">ندارد</span>' %></td>
+      <% if (mode === 'user') { %><td class="center cap-prof"><%- c.prof === 'allow' ? '<span class="badge green">مجاز</span>' : c.prof === 'deny' ? '<span class="badge red">ممنوع</span>' : '<span class="muted">—</span>' %></td><% } %>
+      <td class="center"><div class="seg" role="radiogroup" aria-label="<%= c.label %>">
+        <label><input type="radio" name="cap[<%= c.key %>]" value="inherit" <%= c.mine === 'inherit' ? 'checked' : '' %>><span><%= mode === 'user' ? 'پیش‌فرض' : 'بدون تغییر' %></span></label>
+        <label class="s-allow"><input type="radio" name="cap[<%= c.key %>]" value="allow" <%= c.mine === 'allow' ? 'checked' : '' %>><span>مجاز</span></label>
+        <label class="s-deny"><input type="radio" name="cap[<%= c.key %>]" value="deny" <%= c.mine === 'deny' ? 'checked' : '' %>><span>ممنوع</span></label></div></td>
+      <% if (mode === 'user') { %><td class="center"><span class="cap-eff badge"></span></td><% } %>
+    </tr>
+  <% }) %>
+  </tbody></table></div>
+</details>
+<% }) %>

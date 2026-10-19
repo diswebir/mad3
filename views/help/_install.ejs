@@ -1,0 +1,240 @@
+<%
+  var code = function (txt, lang) { return '<div class="gd-code" dir="ltr"><button type="button" class="gd-copy" aria-label="کپی دستور">کپی</button><pre><code>' + String(txt).replace(/&/g, '&amp;').replace(/</g, '&lt;') + '</code></pre></div>'; };
+%>
+<div class="gd" id="gd">
+  <div class="gd-tabs" role="tablist" aria-label="روش نصب">
+    <button type="button" role="tab" id="t-cpanel" aria-controls="p-cpanel" aria-selected="true" data-tab="cpanel"><%- icon('server', 18) %> نصب روی هاست cPanel</button>
+    <button type="button" role="tab" id="t-local" aria-controls="p-local" aria-selected="false" data-tab="local"><%- icon('monitor', 18) %> نصب روی لوکال‌هاست (کامپیوتر شخصی)</button>
+    <button type="button" role="tab" id="t-fix" aria-controls="p-fix" aria-selected="false" data-tab="fix"><%- icon('wrench', 18) %> عیب‌یابی و نگهداری</button>
+  </div>
+
+  <!-- ===================== cPanel ===================== -->
+  <section class="gd-panel" role="tabpanel" id="p-cpanel" aria-labelledby="t-cpanel" data-panel="cpanel">
+    <div class="gd-intro">
+      <h2>نصب روی هاست cPanel</h2>
+      <p>حدود ۲۰ تا ۳۰ دقیقه زمان می‌برد. هر گام را که انجام دادید «انجام شد» را بزنید تا پیشرفت‌تان ذخیره شود.</p>
+      <div class="gd-prog" data-prog><i></i><span></span></div>
+    </div>
+
+    <div class="gd-need">
+      <b>پیش‌نیازهای هاست</b>
+      <ul>
+        <li><b>Setup Node.js App</b> (Node.js Selector) در cPanel — بدون آن نصب ممکن نیست؛ اگر نمی‌بینید از پشتیبانی هاست بخواهید فعالش کنند.</li>
+        <li><b>Node.js نسخه ۱۸ یا بالاتر</b> (۲۰ یا ۲۲ پیشنهاد می‌شود).</li>
+        <li><b>MySQL / MariaDB</b> — برای هاست اشتراکی بهترین انتخاب است. (SQLite روی بسیاری از هاست‌ها کامپایل نمی‌شود.)</li>
+        <li>حداقل ۲۵۶ مگابایت حافظه (۵۱۲ بهتر) و گواهی <b>SSL</b> برای دامنه (cPanel ← SSL/TLS Status ← Run AutoSSL).</li>
+      </ul>
+    </div>
+
+    <ol class="gd-steps">
+      <li class="gd-step" data-step="c1">
+        <div class="gd-h"><span class="n">۱</span><h3>آماده‌کردن فایل‌ها</h3><label class="gd-done"><input type="checkbox"> انجام شد</label></div>
+        <p>فایل‌های پروژه را به‌صورت ZIP داشته باشید (GitHub ← Code ← <b>Download ZIP</b>). پوشه‌های <span class="ltr">node_modules</span> و <span class="ltr">.git</span> را آپلود نکنید؛ <span class="ltr">node_modules</span> روی خود هاست ساخته می‌شود. فونت وزیرمتن و آیکن‌ها داخل پروژه هستند و نیاز به اینترنت ندارند.</p>
+      </li>
+      <li class="gd-step" data-step="c2">
+        <div class="gd-h"><span class="n">۲</span><h3>آپلود در File Manager</h3><label class="gd-done"><input type="checkbox"> انجام شد</label></div>
+        <ol>
+          <li>cPanel ← <b>File Manager</b> ← به پوشه‌ی خانگی (<span class="ltr">/home/USER</span>) بروید — <b>نه داخل public_html</b>. (تا فایل‌های برنامه و پوشه‌ی <span class="ltr">data</span> مستقیم از وب قابل دسترس نباشند.)</li>
+          <li>پوشه‌ای مثل <span class="ltr">school</span> بسازید، واردش شوید، <b>Upload</b> ← فایل ZIP ← روی آن راست‌کلیک ← <b>Extract</b>.</li>
+          <li>اگر همه‌چیز داخل یک پوشه‌ی تو در تو استخراج شد، محتویات را بیرون بیاورید تا <span class="ltr">app.js</span> و <span class="ltr">package.json</span> <b>مستقیماً</b> داخل <span class="ltr">/home/USER/school</span> باشند.</li>
+          <li>پوشه‌ی <span class="ltr">data</span> را (اگر نبود) بسازید و مجوزش را <b>755</b> بگذارید.</li>
+        </ol>
+      </li>
+      <li class="gd-step" data-step="c3">
+        <div class="gd-h"><span class="n">۳</span><h3>ساخت پایگاه‌داده MySQL</h3><label class="gd-done"><input type="checkbox"> انجام شد</label></div>
+        <ol>
+          <li>cPanel ← <b>MySQL® Databases</b> ← <b>Create New Database</b> (مثلاً <span class="ltr">school</span> که می‌شود <span class="ltr">cpuser_school</span>).</li>
+          <li>پایین‌تر <b>Add New User</b>: نام کاربری (مثلاً <span class="ltr">sch</span>) و یک رمز قوی (Password Generator). <b>نام کامل و رمز را یادداشت کنید.</b></li>
+          <li><b>Add User To Database</b> ← کاربر و پایگاه‌داده را انتخاب کنید ← تیک <b>ALL PRIVILEGES</b> ← Make Changes.</li>
+        </ol>
+        <p>اطلاعاتی که در ویزارد لازم دارید:</p>
+        <table class="gd-table"><thead><tr><th>فیلد ویزارد</th><th>مقدار</th></tr></thead><tbody>
+          <tr><td>میزبان (Host)</td><td class="ltr">localhost</td></tr>
+          <tr><td>پورت</td><td class="ltr">3306</td></tr>
+          <tr><td>نام پایگاه‌داده</td><td class="ltr">cpuser_school <span class="muted small">(با پیشوند cPanel)</span></td></tr>
+          <tr><td>نام کاربری</td><td class="ltr">cpuser_sch <span class="muted small">(با پیشوند cPanel)</span></td></tr>
+          <tr><td>رمز</td><td>رمزی که ساختید</td></tr></tbody></table>
+        <div class="gd-note warn"><%- icon('triangle-alert', 18) %><div>پایگاه‌داده باید <b>خالی</b> باشد؛ ویزارد روی پایگاه‌داده‌ی دارای اطلاعات قبلی نصب نمی‌کند.</div></div>
+      </li>
+      <li class="gd-step" data-step="c4">
+        <div class="gd-h"><span class="n">۴</span><h3>ساخت اپلیکیشن Node.js</h3><label class="gd-done"><input type="checkbox"> انجام شد</label></div>
+        <p>cPanel ← <b>Setup Node.js App</b> ← <b>Create Application</b> و فرم را این‌طور پر کنید:</p>
+        <table class="gd-table"><thead><tr><th>فیلد</th><th>مقدار</th></tr></thead><tbody>
+          <tr><td>Node.js version</td><td class="ltr">20 <span class="muted small">(یا 22؛ حداقل 18)</span></td></tr>
+          <tr><td>Application mode</td><td class="ltr">Production</td></tr>
+          <tr><td>Application root</td><td class="ltr">school</td></tr>
+          <tr><td>Application URL</td><td>دامنه یا زیردامنه‌ی شما <span class="muted small">(برای زیرپوشه: <span class="ltr">example.com/school</span>)</span></td></tr>
+          <tr><td>Application startup file</td><td class="ltr">app.js</td></tr></tbody></table>
+        <p>روی <b>Create</b> بزنید، سپس دکمه‌ی <b>Run NPM Install</b> را بزنید و صبر کنید تا تمام شود (چند دقیقه).</p>
+        <div class="gd-note tip"><%- icon('lightbulb', 18) %><div>هشدار یا خطای ساخت (build) برای <span class="ltr">better-sqlite3</span> <b>عادی و بی‌خطر</b> است؛ در ویزارد MySQL را انتخاب می‌کنید. اگر NPM Install وسط کار قطع شد (محدودیت منابع)، یک بار دیگر بزنید.</div></div>
+        <details class="gd-more"><summary>متغیرهای محیطی (اختیاری)</summary>
+          <table class="gd-table"><tbody>
+            <tr><td class="ltr">BASE_PATH</td><td>فقط برای نصب در زیرپوشه اگر تشخیص خودکار کار نکرد؛ مثل <span class="ltr">/school</span></td></tr>
+            <tr><td class="ltr">SECURE_COOKIES</td><td><span class="ltr">true</span> برای اجبار کوکی امن (روی https معمولاً خودکار است)</td></tr>
+            <tr><td class="ltr">SCHOOL_DATA_DIR</td><td>مسیر دلخواه پوشه‌ی data (مثل <span class="ltr">/home/USER/school-data</span>)</td></tr>
+            <tr><td class="ltr">SESSION_SECRET</td><td>اگر نگذارید، ویزارد کلید تصادفی می‌سازد (پیشنهاد: نگذارید)</td></tr></tbody></table></details>
+        <p>در پایان <b>Restart</b> را بزنید.</p>
+      </li>
+      <li class="gd-step" data-step="c5">
+        <div class="gd-h"><span class="n">۵</span><h3>اجرای ویزارد نصب در مرورگر</h3><label class="gd-done"><input type="checkbox"> انجام شد</label></div>
+        <div class="gd-note warn"><%- icon('triangle-alert', 18) %><div>همین لحظه ویزارد را کامل کنید؛ تا پایان نصب هر کسی که نشانی را باز کند می‌تواند ویزارد را ببیند.</div></div>
+        <p>نشانی سایت را باز کنید (مثلاً <span class="ltr">https://school.example.com</span>) و ۶ مرحله را بروید:</p>
+        <ol>
+          <li><b>پیش‌نیازها:</b> موارد «ضروری» باید سبز باشند (اگر «دسترسی نوشتن در data» قرمز بود مجوز پوشه را ۷۵۵ کنید).</li>
+          <li><b>پایگاه‌داده:</b> <b>MySQL</b> را انتخاب کنید، اطلاعات گام ۳ را بنویسید و حتماً «آزمایش اتصال» را بزنید تا «اتصال موفق» بیاید.</li>
+          <li><b>اطلاعات مدرسه:</b> نام و مشخصات، تعداد زنگ‌ها و روزهای فعال.</li>
+          <li><b>حساب‌ها:</b> مدیر مدرسه و <b>سوپر ادمین</b> (دو حساب جدا با رمز قوی). رمزها را یادداشت کنید.</li>
+          <li><b>ماژول‌ها:</b> هر چه لازم ندارید خاموش کنید. تیک <b>«نصب داده‌های نمونه (دمو)»</b> را برای نصب واقعی <b>بردارید</b> (پیش‌فرض روشن است).</li>
+          <li><b>تأیید و نصب:</b> قفل دامنه را روی «همین دامنه» بگذارید و «شروع نصب» را بزنید.</li>
+        </ol>
+      </li>
+      <li class="gd-step" data-step="c6">
+        <div class="gd-h"><span class="n">۶</span><h3>کارهای لازم بعد از نصب</h3><label class="gd-done"><input type="checkbox"> انجام شد</label></div>
+        <ul class="gd-check">
+          <li><b>HTTPS:</b> در cPanel ← Domains ← <b>Force HTTPS Redirect</b> را روشن کنید.</li>
+          <li><b>تنظیمات مدرسه:</b> لوگو، سال تحصیلی، ساعت زنگ‌ها، تعطیلات، دروس، معلمان، کلاس‌ها و دانش‌آموزان.</li>
+          <li><b>Cron:</b> بدون آن پشتیبان‌گیری روزانه، قفل خودکار نمرات و پاک‌سازی انجام نمی‌شود. در «تنظیمات ← نگهداری و پشتیبان» نشانی و توکن را کپی کنید، سپس cPanel ← <b>Cron Jobs</b> ← هر ۱۵ دقیقه:
+            <%- code('curl -fsS "https://school.example.com/cron?token=TOKEN" >/dev/null 2>&1') %></li>
+          <li><b>پشتیبان خودکار:</b> در همان تب روشن کنید و گاهی یک نسخه را دانلود و جای دیگر نگه دارید (پوشه‌ی <span class="ltr">data/uploads</span> را جداگانه کپی کنید).</li>
+          <li><b>پیامک (اختیاری):</b> سوپر ادمین ← تنظیمات فنی و پیامک ← IPPanel.</li>
+        </ul>
+      </li>
+    </ol>
+    <div class="gd-note ok"><%- icon('circle-check', 18) %><div>تمام شد! اگر مشکلی پیش آمد به تب «عیب‌یابی و نگهداری» بروید.</div></div>
+  </section>
+
+  <!-- ===================== Local ===================== -->
+  <section class="gd-panel" role="tabpanel" id="p-local" aria-labelledby="t-local" data-panel="local" hidden>
+    <div class="gd-intro">
+      <h2>نصب روی لوکال‌هاست</h2>
+      <p>برای آزمایش، آموزش یا استفاده در یک کامپیوتر. مراحل روی <b>ویندوز</b>، مک و لینوکس تقریباً یکسان است. حدود ۱۰ دقیقه.</p>
+      <div class="gd-prog" data-prog><i></i><span></span></div>
+    </div>
+    <div class="gd-os" role="group" aria-label="سیستم‌عامل">
+      <button type="button" class="on" data-os="win">ویندوز</button><button type="button" data-os="nix">مک / لینوکس</button>
+    </div>
+
+    <ol class="gd-steps">
+      <li class="gd-step" data-step="l1">
+        <div class="gd-h"><span class="n">۱</span><h3>نصب Node.js</h3><label class="gd-done"><input type="checkbox"> انجام شد</label></div>
+        <div data-os-box="win">
+          <p>از <span class="ltr">nodejs.org</span> نسخه‌ی <b>LTS</b> (۲۰ یا ۲۲؛ ۲۴ هم پشتیبانی می‌شود) را دانلود و نصب کنید. گزینه‌ی <b>Add to PATH</b> روشن بماند. سپس یک پنجره‌ی <b>Command Prompt</b> باز کنید و بررسی کنید:</p>
+        </div>
+        <div data-os-box="nix" hidden>
+          <p>مک: <span class="ltr">brew install node</span> — لینوکس: با <span class="ltr">nvm</span> (<span class="ltr">nvm install 22</span>) یا مدیر بسته‌ی توزیع. سپس در Terminal بررسی کنید:</p>
+        </div>
+        <%- code('node -v\nnpm -v') %>
+        <p>شماره‌ی Node باید <b>۱۸ یا بالاتر</b> باشد.</p>
+      </li>
+      <li class="gd-step" data-step="l2">
+        <div class="gd-h"><span class="n">۲</span><h3>گرفتن و بازکردن پروژه</h3><label class="gd-done"><input type="checkbox"> انجام شد</label></div>
+        <div data-os-box="win">
+          <ol><li>فایل ZIP پروژه را دانلود و در پوشه‌ای مثل <span class="ltr">C:\school</span> استخراج کنید تا <span class="ltr">app.js</span> مستقیماً داخل آن باشد.</li>
+          <li>در Explorer داخل همان پوشه، روی <b>نوار آدرس</b> کلیک کنید، <span class="ltr">cmd</span> بنویسید و Enter بزنید (پنجره‌ی فرمان در همان پوشه باز می‌شود).</li></ol>
+        </div>
+        <div data-os-box="nix" hidden>
+          <p>ZIP را استخراج کنید (یا با <span class="ltr">git clone</span> بگیرید) و در Terminal وارد پوشه شوید:</p><%- code('cd ~/school') %>
+        </div>
+      </li>
+      <li class="gd-step" data-step="l3">
+        <div class="gd-h"><span class="n">۳</span><h3>نصب وابستگی‌ها و اجرا</h3><label class="gd-done"><input type="checkbox"> انجام شد</label></div>
+        <%- code('npm install\nnpm start') %>
+        <p>پس از پیام <span class="ltr">School management is running on port 3000</span> مرورگر را باز کنید و بروید به:</p>
+        <%- code('http://localhost:3000') %>
+        <div class="gd-note tip"><%- icon('lightbulb', 18) %><div>پنجره‌ی فرمان را نبندید؛ با بستن آن سامانه خاموش می‌شود. برای توقف <span class="ltr">Ctrl+C</span> و برای اجرای دوباره فقط <span class="ltr">npm start</span> بزنید.</div></div>
+      </li>
+      <li class="gd-step" data-step="l4">
+        <div class="gd-h"><span class="n">۴</span><h3>ویزارد نصب</h3><label class="gd-done"><input type="checkbox"> انجام شد</label></div>
+        <ol>
+          <li><b>پایگاه‌داده:</b> ساده‌ترین حالت <b>SQLite</b> است (بدون هیچ تنظیمی). اگر ویزارد گفت درایور SQLite فعال نیست، به‌جای آن MySQL را انتخاب کنید (پایین‌تر).</li>
+          <li>نام مدرسه، حساب مدیر و حساب سوپر ادمین را بسازید.</li>
+          <li>برای دیدن همه‌ی امکانات، تیک «داده‌های نمونه (دمو)» را روشن بگذارید.</li>
+          <li>در مرحله‌ی آخر قفل دامنه را روی <b>«بدون قفل»</b> بگذارید (برای آزمایش محلی مناسب است).</li>
+        </ol>
+      </li>
+      <li class="gd-step" data-step="l5">
+        <div class="gd-h"><span class="n">۵</span><h3>(اختیاری) استفاده از MySQL در لوکال</h3><label class="gd-done"><input type="checkbox"> انجام شد</label></div>
+        <div data-os-box="win">
+          <p><b>Laragon</b> یا <b>XAMPP</b> را نصب کنید و <b>MySQL</b> را روشن کنید (Laragon: Start All — XAMPP: دکمه‌ی Start کنار MySQL). سپس در ویزارد:</p>
+        </div>
+        <div data-os-box="nix" hidden>
+          <p>MySQL یا MariaDB را نصب و اجرا کنید (مک: <span class="ltr">brew install mysql</span>). سپس در ویزارد:</p>
+        </div>
+        <table class="gd-table"><thead><tr><th>فیلد</th><th>مقدار معمول لوکال</th></tr></thead><tbody>
+          <tr><td>میزبان</td><td class="ltr">127.0.0.1</td></tr>
+          <tr><td>پورت</td><td class="ltr">3306</td></tr>
+          <tr><td>نام کاربری</td><td class="ltr">root</td></tr>
+          <tr><td>رمز</td><td>خالی <span class="muted small">(در Laragon و XAMPP پیش‌فرض)</span></td></tr>
+          <tr><td>نام پایگاه‌داده</td><td class="ltr">school <span class="muted small">— تیک «اگر نبود بساز» را بزنید</span></td></tr></tbody></table>
+      </li>
+      <li class="gd-step" data-step="l6">
+        <div class="gd-h"><span class="n">۶</span><h3>(میان‌بر) نصب سریع با داده‌ی نمونه، بدون ویزارد</h3><label class="gd-done"><input type="checkbox"> انجام شد</label></div>
+        <p>برای فقط دیدن سامانه می‌توانید به‌جای ویزارد این را بزنید (پایگاه‌داده باید خالی باشد):</p>
+        <%- code('npm run demo\nnpm start') %>
+        <table class="gd-table"><thead><tr><th>نقش</th><th>نام کاربری</th><th>رمز</th></tr></thead><tbody>
+          <tr><td>مدیر مدرسه</td><td class="ltr">admin</td><td class="ltr">Admin#12345</td></tr>
+          <tr><td>سوپر ادمین</td><td class="ltr">super</td><td class="ltr">Super#12345</td></tr>
+          <tr><td>معاون</td><td class="ltr">deputy</td><td class="ltr">deputy123</td></tr>
+          <tr><td>معلم</td><td class="ltr">t.ahmadi</td><td class="ltr">teacher123</td></tr>
+          <tr><td>دانش‌آموز</td><td class="ltr">14050001</td><td class="ltr">student123</td></tr></tbody></table>
+        <p class="muted small">این رمزها عمومی‌اند؛ فقط برای کامپیوتر خودتان.</p>
+      </li>
+      <li class="gd-step" data-step="l7">
+        <div class="gd-h"><span class="n">۷</span><h3>نکته‌ها</h3><label class="gd-done"><input type="checkbox"> انجام شد</label></div>
+        <ul class="gd-check">
+          <li>تغییر پورت: ویندوز (cmd) <span class="ltr">set PORT=8080 &amp;&amp; npm start</span> — PowerShell <span class="ltr">$env:PORT=8080; npm start</span> — مک/لینوکس <span class="ltr">PORT=8080 npm start</span>.</li>
+          <li>دسترسی از گوشی یا کامپیوتر دیگر در همان شبکه: برنامه روی همه‌ی کارت‌های شبکه گوش می‌دهد؛ با <span class="ltr">http://IP-کامپیوتر:3000</span> باز کنید (در صورت نیاز پورت را در فایروال ویندوز مجاز کنید). اگر نمی‌خواهید از شبکه دیده شود، فایروال را روی «بلاک» بگذارید.</li>
+          <li>اگر Node را عوض کردید: پوشه‌ی <span class="ltr">node_modules</span> را پاک و <span class="ltr">npm install</span> را دوباره بزنید.</li>
+          <li>اطلاعات در پوشه‌ی <span class="ltr">data</span> ذخیره می‌شود؛ برای پشتیبان آن را کپی کنید.</li>
+          <li>شروع تازه از ویزارد: <span class="ltr">npm run reset:install</span> (همه‌چیز پاک می‌شود).</li>
+        </ul>
+      </li>
+    </ol>
+  </section>
+
+  <!-- ===================== Troubleshooting ===================== -->
+  <section class="gd-panel" role="tabpanel" id="p-fix" aria-labelledby="t-fix" data-panel="fix" hidden>
+    <div class="gd-intro"><h2>عیب‌یابی و نگهداری</h2><p>خطاهای رایج و راه‌حل آن‌ها. اگر چیزی حل نشد، آخرین بخش فایل <span class="ltr">stderr.log</span> (یا پنجره‌ی فرمان در لوکال) دقیق‌ترین سرنخ است.</p></div>
+    <input type="search" class="gd-search" id="gd-q" placeholder="جستجو در عیب‌یابی… (مثلاً: بدون استایل، npm، پیامک)" aria-label="جستجو در عیب‌یابی">
+    <div class="gd-faq" id="gd-faq">
+      <% [
+        ['خطای Passenger، ۵۰۳ یا «Incomplete response» (cPanel)', 'لاگ را ببینید (stderr.log در پوشه‌ی اپلیکیشن یا cPanel ← Errors). معمولاً Run NPM Install انجام نشده، نسخه‌ی Node کمتر از ۱۸ است یا Startup file برابر app.js نیست.'],
+        ['Cannot find module …', 'NPM Install ناقص مانده؛ دوباره Run NPM Install (لوکال: npm install) و سپس Restart. مطمئن شوید package.json مستقیماً در Application root است نه در پوشه‌ی تو در تو.'],
+        ['NPM Install وسط کار قطع می‌شود', 'محدودیت CPU/حافظه‌ی هاست. چند دقیقه صبر کنید و دوباره بزنید، یا از پشتیبانی هاست محدودیت را بالا ببرند.'],
+        ['خطای better-sqlite3 / «Could not locate the bindings file»', 'روی هاست بی‌خطر است؛ در ویزارد MySQL را انتخاب کنید. روی ویندوز: پروژه را به‌روز کنید، node_modules را پاک و npm install بزنید؛ یا npm rebuild better-sqlite3؛ یا MySQL (لاراگون: root بدون رمز).'],
+        ['ویزارد: «دسترسی نوشتن در data ندارد»', 'مجوز پوشه‌ی data را روی 755 (یا 775) بگذارید و مطمئن شوید مالک آن کاربر cPanel است.'],
+        ['ویزارد: «آزمایش اتصال» ناموفق است', 'نام پایگاه‌داده و کاربر باید با پیشوند cPanel باشند (cpuser_…)؛ کاربر باید با ALL PRIVILEGES به پایگاه‌داده اضافه شده باشد؛ میزبان localhost. پیام فارسی زیر دکمه علت را می‌گوید.'],
+        ['ویزارد: «پایگاه‌داده از نصب قبلی داده دارد»', 'یک پایگاه‌داده‌ی خالی بسازید، یا جدول‌ها را در phpMyAdmin حذف کنید، یا npm run reset:install (روی هاست: node scripts/reset-install.js --yes).'],
+        ['سایت بدون استایل و فونت است (نصب در زیرپوشه)', 'متغیر BASE_PATH را برابر مسیر Application URL بگذارید (مثل /school) و Restart کنید.'],
+        ['بعد از ورود دوباره به صفحه‌ی ورود برمی‌گردم', 'روی http هستید ولی SECURE_COOKIES=true است (یا ساعت سرور اشتباه است). متغیر را بردارید یا SSL را فعال کنید.'],
+        ['رمز مدیر را فراموش کرده‌ام', 'مدیر دیگر/سوپر ادمین از «کاربران» رمز را بازنشانی کند، یا در Terminal: node scripts/reset-admin.js نام‌کاربری رمز-جدید.'],
+        ['«حالت تعمیر» روشن مانده و وارد نمی‌شوم', 'با حساب سوپر ادمین وارد شوید (مستثنی است) و در تنظیمات خاموشش کنید.'],
+        ['cron جواب ۴۰۳ یا ۴۲۹ می‌دهد', '۴۰۳: توکن اشتباه است، دستور را دوباره از تنظیمات کپی کنید. ۴۲۹: کمتر از ۶۰ ثانیه از اجرای قبلی گذشته؛ زمان‌بندی ۱۵ دقیقه‌ای بگذارید.'],
+        ['پیامک نمی‌رود', 'کلید API، شماره‌ی ارسال‌کننده و اعتبار پنل IPPanel را بررسی کنید؛ خطا در «مرکز پیامک ← گزارش» ثبت می‌شود. تا زمانی که سرویس‌دهنده روی «آزمایشی» باشد پیامک واقعی نمی‌رود.'],
+        ['آپلود گواهی غیبت رد می‌شود', 'فقط تصویر JPG/PNG/WebP تا ۵ مگابایت و فایل باید واقعاً تصویر باشد.'],
+        ['بعد از به‌روزرسانی خطا می‌دهد', 'NPM Install را دوباره بزنید و Restart کنید؛ در صورت نیاز از «پشتیبان‌گیری» بازیابی کنید (تأیید دوگانه).'],
+        ['پورت 3000 اشغال است (لوکال)', 'سامانه را روی پورت دیگری اجرا کنید: PORT=8080 (ویندوز cmd: set PORT=8080 && npm start).']
+      ].forEach(function (f) { %>
+      <details class="gd-q" data-text="<%= f[0] %> <%= f[1] %>"><summary><%= f[0] %></summary><p><%= f[1] %></p></details>
+      <% }) %>
+      <p class="gd-none muted" id="gd-none" hidden>موردی پیدا نشد.</p>
+    </div>
+
+    <h3 class="gd-sub">دستورهای مفید</h3>
+    <p class="muted small">روی هاست ابتدا «Enter to the virtual environment» را از صفحه‌ی اپلیکیشن Node.js اجرا کنید (Terminal یا SSH).</p>
+    <table class="gd-table"><thead><tr><th>کار</th><th>دستور</th></tr></thead><tbody>
+      <tr><td>بازنشانی رمز یک کاربر</td><td class="ltr"><code>node scripts/reset-admin.js USERNAME NEWPASS</code></td></tr>
+      <tr><td>پاک‌کردن نصب و بازگشت به ویزارد</td><td class="ltr"><code>node scripts/reset-install.js --yes [--uploads] [--backups]</code></td></tr>
+      <tr><td>نصب دمو بدون ویزارد</td><td class="ltr"><code>node scripts/install-demo.js</code></td></tr>
+      <tr><td>بررسی سلامت</td><td>باز کردن <span class="ltr">/healthz</span> (باید <span class="ltr">{"ok":true}</span> بدهد)</td></tr>
+      <tr><td>ری‌استارت بدون پنل (cPanel)</td><td class="ltr"><code>mkdir -p tmp &amp;&amp; touch tmp/restart.txt</code></td></tr></tbody></table>
+
+    <h3 class="gd-sub">به‌روزرسانی</h3>
+    <ol class="gd-plain">
+      <li>پشتیبان بگیرید (منوی «پشتیبان‌گیری») و <span class="ltr">data/uploads</span> را کپی کنید؛ در صورت تمایل حالت تعمیر را روشن کنید.</li>
+      <li>فایل‌های نسخه‌ی جدید را روی قبلی کپی کنید؛ <b>پوشه‌ی data را حذف یا جایگزین نکنید</b>.</li>
+      <li>Run NPM Install ← Restart (لوکال: <span class="ltr">npm install</span> و دوباره اجرا). جدول‌های جدید خودکار ساخته می‌شوند.</li>
+    </ol>
+    <p class="muted small">راهنمای کامل‌تر در پوشه‌ی <span class="ltr">docs</span> پروژه: <span class="ltr">CPANEL.md</span>، <span class="ltr">INSTALL-NO-SSH.md</span>، <span class="ltr">WINDOWS.md</span>.</p>
+  </section>
+</div>

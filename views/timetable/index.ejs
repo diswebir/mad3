@@ -1,0 +1,55 @@
+<%
+  var DAYCOL = ['#2563eb','#16a34a','#d97706','#9333ea','#dc2626','#0891b2','#be185d','#4d7c0f','#7c3aed','#ea580c','#0f766e','#64748b'];
+  function colorOf(id){ return DAYCOL[Math.abs(Number(id) || 0) % DAYCOL.length]; }
+  var slotOf = function(d, n){ return grid.slots[d] && grid.slots[d][n]; };
+%>
+<div class="page-head"><div><h1><%- icon('clock', 24) %> برنامه هفتگی <%= subject ? '— ' + subject : '' %></h1><div class="muted"><%= mode === 'teacher' ? 'برنامه تدریس معلم' : 'برنامه هفتگی کلاس' %><% if (versionInfo && !versionInfo.current) { %> — نسخه‌ی قدیمی (فقط‌خواندنی)<% } %></div></div>
+<div class="actions">
+<% if (user.role === 'teacher') { %><a class="btn <%= mode === 'teacher' ? 'primary' : '' %>" href="<%= u('/timetable') %>">برنامه من</a><% } %>
+<% if (true) { %>
+  <% if (cap('timetable.auto')) { %><a class="btn" href="<%= u('/timetable/auto') %>"><%- icon('shuffle', 16) %> تولید خودکار</a><% } %>
+  <% if (cap('timetable.substitutes')) { %><a class="btn" href="<%= u('/timetable/substitutes') %>"><%- icon('user-check', 16) %> جانشین</a><% } %>
+  <% if (cap('timetable.availability')) { %><a class="btn" href="<%= u('/timetable/availability') %>"><%- icon('user-cog', 16) %> ساعت‌های غیرمجاز</a><% } %>
+  <% if (cap('timetable.bells')) { %><a class="btn" href="<%= u('/timetable/bells') %>"><%- icon('bell', 16) %> ساعت زنگ‌ها</a><% } %>
+  <% if (cap('timetable.overview')) { %><a class="btn" href="<%= u('/timetable/overview') %>"><%- icon('layout-grid', 16) %> نمای کل مدرسه</a><% } %>
+<% } %>
+<% if (mode === 'class' && typeof cls !== 'undefined' && cls && !edit) { %><a class="btn" href="<%= u('/timetable/export.xlsx?by=class&class_id=' + cls.id) %>"><%- icon('file-spreadsheet', 16) %> اکسل</a><% } %>
+<% if (mode === 'teacher' && teacherId) { %><a class="btn" href="<%= u('/timetable/export.xlsx?by=teacher&teacher_id=' + teacherId) %>"><%- icon('file-spreadsheet', 16) %> اکسل</a><% } %>
+<% if (cap('timetable.edit') && mode === 'class' && cls && !edit && !(versionInfo && !versionInfo.current)) { %><a class="btn primary" href="<%= u('/timetable?class_id=' + cls.id + '&edit=1') %>"><%- icon('pencil', 16) %> ویرایش برنامه</a><% } %>
+<button class="btn" data-print><%- icon('printer', 16) %> چاپ</button></div></div>
+
+<% if (typeof classes !== 'undefined' && classes && classes.length > 1 && user.role !== 'student') { %>
+<form class="card tt-filter" method="get"><div class="field"><label>کلاس</label><select name="class_id" data-autosubmit><% classes.forEach(function(c){ %><option value="<%= c.id %>" <%= cls && cls.id === c.id ? 'selected' : '' %>><%= c.name %></option><% }) %></select></div>
+<% if (mode === 'class' && cls && !edit) { %><div class="field"><label>مشاهده‌ی برنامه در تاریخ</label><input type="text" name="date" class="ltr jdate" placeholder="خالی = برنامه‌ی فعلی" value="<%= dateStr || '' %>"></div><button class="btn"><%- icon('history', 16) %> نمایش</button><% if (dateStr) { %><a class="btn ghost" href="<%= u('/timetable?class_id=' + cls.id) %>">برنامه‌ی فعلی</a><% } %><% } %></form>
+<% } %>
+
+<% if (versionInfo && !versionInfo.current) { %><div class="alert info"><%- icon('history', 18) %><div>این برنامه‌ی <b>قدیمی</b> است و در بازه‌ی <b><%= versionInfo.from ? d(versionInfo.from) : 'ابتدا' %></b> تا <b><%= versionInfo.to ? d(versionInfo.to) : '—' %></b> اجرا می‌شده است. <% if (!versionInfo.rows || !versionInfo.rows.length) { %>برای این تاریخ برنامه‌ای ثبت نشده است.<% } %></div></div><% } %>
+<% if (isManager && typeof hiddenRows !== 'undefined' && hiddenRows > 0 && !edit) { %><div class="alert warn"><%- icon('triangle-alert', 18) %><div><%= fa(hiddenRows) %> خانه از برنامه‌ی این کلاس با «ساعت زنگ‌ها/روزهای مدرسه» ناسازگار است و نمایش داده نمی‌شود. در «ویرایش برنامه» ذخیره کنید تا پاک‌سازی شود.</div></div><% } %>
+
+<% if (mode === 'class' && typeof cls === 'undefined' || (mode === 'class' && !cls)) { %><div class="card empty">کلاسی برای نمایش وجود ندارد.</div><% } else { %>
+<% if (edit) { %><form method="post" action="<%= u('/timetable') %>" id="tt-form"><input type="hidden" name="_csrf" value="<%= csrf %>"><input type="hidden" name="class_id" value="<%= cls.id %>">
+<div class="card tt-palette" id="tt-palette"><div class="tt-pal-head"><b><%- icon('palette', 16) %> درس‌ها</b><span class="muted small">یک درس را انتخاب کنید و روی خانه‌ها کلیک کنید، یا آن را روی خانه بکشید. برای پاک‌کردن: دکمه‌ی ✕ یا کلید Delete.</span></div>
+<div class="tt-chips"><% options.forEach(function(o){ %><button type="button" class="tt-chip" draggable="true" data-cs="<%= o.id %>" style="--c:<%= colorOf(o.id) %>"><span class="nm"><%= o.name %></span><span class="tc"><%= o.teacher || 'بدون معلم' %></span><span class="cn" data-count="<%= o.id %>">۰/<%= fa(o.weekly_hours) %></span></button><% }) %><button type="button" class="tt-chip erase" data-cs="0"><span class="nm"><%- icon('eraser', 14) %> پاک‌کن</span></button></div>
+<div class="tt-issues hidden" id="tt-issues" role="alert"></div></div>
+<% } %>
+<div class="card flush"><div class="table-wrap"><table class="t tt <%= edit ? 'tt-edit' : '' %>"><thead><tr><th style="width:120px">زنگ</th><% days.forEach(function(d){ %><th><%= WEEKDAYS[d] %></th><% }) %></tr></thead><tbody>
+<% for (var n = 1; n <= grid.max; n++) { var def = grid.def.find(function(x){ return x.n === n; }); %><tr><th><%= fa(n) %><div class="muted small ltr" style="font-weight:400;text-align:center"><%= def ? fa(def.start) + ' - ' + fa(def.end) : '' %></div></th>
+<% days.forEach(function(d){ var key = d + '-' + n; var c = cells[key]; var sl = slotOf(d, n); var show = (mode === 'teacher') ? true : !!sl;
+   if (skip[key]) return; var rs = span[key] || 1; %>
+<% if (mode === 'class' && !sl) { %><td class="cell na" title="در ساعت زنگ‌های این روز، زنگ <%= n %> وجود ندارد"><span class="muted small">—</span></td>
+<% } else if (edit) { %><td class="cell" data-d="<%= d %>" data-p="<%= n %>"><select name="cell[<%= key %>]" aria-label="<%= WEEKDAYS[d] %> زنگ <%= n %>"><option value="">—</option><% options.forEach(function(o){ %><option value="<%= o.id %>" <%= c && c.class_subject_id === o.id ? 'selected' : '' %>><%= o.name %><%= o.teacher ? ' — ' + o.teacher : '' %></option><% }) %></select><button type="button" class="tt-x" aria-label="پاک‌کردن" tabindex="-1">✕</button><div class="tt-msg"></div><% if (sl) { %><div class="tt-time"><%= fa(sl.start) %>-<%= fa(sl.end) %></div><% } %></td>
+<% } else if (c) { var csl = mode === 'teacher' ? (bell.periodsFor({ day: d, grade: c.grade_level }).find(function(x){ return x.n === n; })) : sl; var endSl = rs > 1 ? (bell.periodsFor({ day: d, grade: c.grade_level }).find(function(x){ return x.n === n + rs - 1; })) : csl; %>
+<td class="cell filled" <% if (rs > 1) { %>rowspan="<%= rs %>"<% } %> style="--c:<%= colorOf(c.class_subject_id) %>"><b><%= c.subject_name %></b><div class="muted small"><%= mode === 'teacher' ? c.class_name : (c.teacher_name || '') %></div><% if (rs > 1) { %><span class="badge blue" title="زنگ‌های پیوسته"><%= fa(rs) %> زنگ پیوسته</span><% } %><% if (csl && (mode === 'teacher' || (def && csl.start !== def.start))) { %><div class="tt-time"><%= fa(csl.start) %>-<%= fa((endSl || csl).end) %></div><% } %></td>
+<% } else { %><td class="cell"><span class="muted">—</span></td><% } %>
+<% }) %></tr><% } %>
+<% if (mode === 'teacher' && daySummary) { %><tr class="tt-sum"><th>جمع روز</th><% daySummary.forEach(function(s){ %><td><b><%= fa(s.total) %> ساعت</b><div class="small muted"><% s.classes.forEach(function(c, i){ %><%= i ? '، ' : '' %><%= c.name %><% if (c.n > 1) { %> <span class="badge amber">×<%= fa(c.n) %></span><% } %><% }) %><% if (!s.classes.length) { %>آزاد<% } %></div><% if (s.free > 0 && s.total) { %><div class="small muted">آزاد: <%= fa(s.free) %></div><% } %></td><% }) %></tr><% } %>
+</tbody></table></div></div>
+<% if (mode === 'teacher' && typeof weekTotal !== 'undefined') { %><div class="muted small" style="margin-bottom:1rem">جمع ساعات تدریس هفتگی: <b><%= fa(weekTotal) %></b> ساعت<% if (daySummary && daySummary.some(function(s){ return s.classes.some(function(c){ return c.n > 1; }); })) { %> — «×۲» یعنی در همان روز بیش از یک ساعت با همان کلاس دارید.<% } %></div><% } %>
+<% if (edit) { %><div style="display:flex;gap:.6rem;position:sticky;bottom:.6rem"><button class="btn primary" id="tt-save"><%- icon('save', 16) %> ذخیره برنامه</button><% if (cap('classes.curriculum')) { %><label class="check" title="ساعت هفتگی هر درس برابر تعداد زنگ‌های چیده‌شده و سقف روزانه متناسب با چیدمان به‌روز شود"><input type="checkbox" name="sync_hours" value="1" form="tt-form"> هم‌گام‌سازی ساعت‌های درس‌ها با این چیدمان</label><% } %><a class="btn" href="<%= u('/timetable?class_id=' + cls.id) %>">انصراف</a></div></form>
+<script type="application/json" id="tt-data"><%- JSON.stringify(editData).replace(/</g, '\\u003c') %></script><script src="<%= asset('js/timetable-editor.js') %>" defer></script>
+<% } %>
+<% if (mode === 'class' && typeof hours !== 'undefined' && hours.length) { %><div class="card" style="margin-top:1rem"><h3>جمع ساعات دروس</h3><div style="display:flex;gap:.6rem;flex-wrap:wrap"><% hours.forEach(function(h){ var p = placed[h.id] || 0; %><span class="badge <%= p === h.weekly_hours ? 'green' : (p > h.weekly_hours ? 'red' : 'amber') %>" title="سقف در روز: <%= h.max_per_day || 'نامحدود' %>"><%= h.name %>: <%= fa(p) %> از <%= fa(h.weekly_hours) %><% if (h.max_per_day) { %> · حداکثر <%= fa(h.max_per_day) %> در روز<% } %></span><% }) %></div></div><% } %>
+<% if (mode === 'class' && typeof versions !== 'undefined' && versions && versions.length > 1 && !edit) { %><div class="card"><h3><%- icon('history', 18) %> تاریخچه‌ی نسخه‌های برنامه</h3><ul class="list"><% versions.forEach(function(v){ %><li><span><%= v.current ? 'برنامه‌ی فعلی' : 'نسخه‌ی قبلی' %> — از <b><%= v.from ? d(v.from) : 'ابتدا' %></b><%= v.to ? ' تا ' + d(v.to) : ' تاکنون' %> (<%= fa(v.n) %> ساعت)</span><% if (!v.current) { %><a class="btn sm" href="<%= u('/timetable?class_id=' + cls.id + '&date=' + encodeURIComponent(d(v.to))) %>">مشاهده</a><% } %></li><% }) %></ul></div><% } %>
+<% } %>
+
+<% if (typeof subs !== 'undefined' && subs && subs.length) { %><div class="card" style="margin-top:1rem"><h3><%- icon('user-check', 18) %> جانشینی‌های پیش‌رو</h3><ul class="list"><% subs.forEach(function(x){ %><li>زنگ <%= fa(x.period) %> کلاس <%= x.class_name %> — <%= d(x.date) %></li><% }) %></ul></div><% } %>

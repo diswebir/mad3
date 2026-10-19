@@ -1,0 +1,10 @@
+<div class="page-head"><div><h1><%- icon('calendar-x', 24) %> <%= isM ? 'ثبت مرخصی معلم' : 'درخواست مرخصی' %></h1></div></div>
+<%- include('_nav', { active: 'leaves' }) %>
+<form method="post" action="<%= u('/hr/leaves') %>" class="card" style="max-width:760px"><input type="hidden" name="_csrf" value="<%= csrf %>">
+<div class="form-grid">
+<% if (isM) { %><div class="field"><label>معلم *</label><select name="teacher_id" required><option value="">انتخاب…</option><% teachers.forEach(function(t){ %><option value="<%= t.id %>"><%= t.full_name %></option><% }) %></select></div><% } %>
+<div class="field"><label>نوع *</label><select name="kind"><% Object.keys(LK).forEach(function(k){ %><option value="<%= k %>"><%= LK[k] %></option><% }) %></select></div>
+<div class="field"><label>از تاریخ *</label><input class="jdate ltr" type="text" name="start_date" value="<%= J.isoToJString(J.todayISO()) %>" required autocomplete="off"></div>
+<div class="field"><label>تا تاریخ *</label><input class="jdate ltr" type="text" name="end_date" value="<%= J.isoToJString(J.todayISO()) %>" required autocomplete="off"></div>
+<div class="field full"><label>دلیل</label><input type="text" name="reason" maxlength="1000"></div></div>
+<div class="form-actions"><button class="btn primary"><%- icon('check', 16) %> ثبت</button><a class="btn" href="<%= u('/hr/leaves') %>">انصراف</a></div></form>

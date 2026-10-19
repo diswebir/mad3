@@ -1,0 +1,27 @@
+<div class="page-head"><div><h1><%- icon('monitor', 24) %> دستگاه‌ها و نشست‌های فعال</h1><div class="sub">هر مرورگری که با حساب شما وارد شده است. اگر دستگاهی را نمی‌شناسید، آن را ببندید و رمز عبور را عوض کنید.</div></div>
+  <div class="actions"><a class="btn" href="<%= u('/profile/password') %>"><%- icon('key-round', 16) %> تغییر رمز</a></div></div>
+
+<div class="card">
+  <div class="card-head" style="display:flex;justify-content:space-between;align-items:center;gap:.6rem;flex-wrap:wrap"><h3 style="margin:0">نشست‌های فعال <span class="muted">(<%= fa(list.length) %>)</span></h3>
+    <% if (list.length > 1) { %><form method="post" action="<%= u('/profile/sessions/end') %>" data-confirm="همه‌ی دستگاه‌های دیگر خارج شوند؟"><input type="hidden" name="_csrf" value="<%= csrf %>"><input type="hidden" name="all" value="1"><button class="btn danger sm" type="submit"><%- icon('log-out', 15) %> خروج از همه‌ی دستگاه‌های دیگر</button></form><% } %></div>
+  <ul class="ss-list">
+    <% list.forEach(function(s){ %>
+    <li class="ss-item<%= s.current ? ' current' : '' %>">
+      <span class="ss-ic"><%- icon(s.mobile ? 'smartphone' : 'monitor', 22) %></span>
+      <div class="ss-main">
+        <b><%= s.label %></b> <% if (s.current) { %><%- pill('این دستگاه', 'green') %><% } %>
+        <div class="muted small"><span class="ltr"><%= s.ip %></span><% if (s.started) { %> · ورود: <%= dt(new Date(s.started).toISOString()) %><% } %><% if (s.seen) { %> · آخرین فعالیت: <%= dt(new Date(s.seen).toISOString()) %><% } %></div>
+      </div>
+      <% if (!s.current) { %><form method="post" action="<%= u('/profile/sessions/end') %>" data-confirm="این دستگاه خارج شود؟"><input type="hidden" name="_csrf" value="<%= csrf %>"><input type="hidden" name="token" value="<%= s.token %>"><button class="btn sm" type="submit">بستن نشست</button></form><% } %>
+    </li>
+    <% }) %>
+  </ul>
+</div>
+
+<div class="card" style="margin-top:1rem">
+  <h3>تاریخچه‌ی ورود و رویدادهای امنیتی من</h3>
+  <% if (!hist.length) { %><div class="muted">رویدادی ثبت نشده است.</div><% } else { %>
+  <div class="table-wrap"><table class="data"><thead><tr><th>رویداد</th><th>نشانی IP</th><th>زمان</th></tr></thead><tbody>
+    <% hist.forEach(function(h){ %><tr><td><%= ({ login: 'ورود به سامانه', password_change: 'تغییر رمز عبور', password_reset_otp: 'بازیابی رمز با پیامک', sessions_end: 'بستن نشست‌های دیگر' })[h.action] || h.action %></td><td class="ltr"><%= h.ip || '—' %></td><td><%= dt(h.created_at) %></td></tr><% }) %>
+  </tbody></table></div><% } %>
+</div>

@@ -1,0 +1,34 @@
+<%- include('_head', { heading: 'پایگاه‌داده', lead: 'اطلاعات مدرسه در پایگاه‌داده نگهداری می‌شود. اگر مطمئن نیستید: روی هاست cPanel «MySQL» و روی کامپیوتر شخصی «SQLite» را انتخاب کنید.' }) %>
+<form method="post" class="iw-card" id="db-form" autocomplete="off" novalidate>
+  <input type="hidden" name="_csrf" value="<%= csrf %>">
+  <% if (typeof error !== 'undefined') { %><div class="iw-banner error"><%- icon('circle-x', 20) %><div><%= error %></div></div><% } %>
+  <% if (typeof ok !== 'undefined') { %><div class="iw-banner success"><%- icon('circle-check', 20) %><div><%= ok %></div></div><% } %>
+  <div class="iw-choice" role="radiogroup" aria-label="نوع پایگاه‌داده">
+    <label class="opt <%= db.client !== 'sqlite' ? 'on' : '' %>"><input type="radio" name="client" value="mysql" <%= db.client !== 'sqlite' ? 'checked' : '' %>>
+      <span class="ico"><%- icon('server', 24) %></span><span class="tx"><b>MySQL / MariaDB</b><span class="badge blue">پیشنهادی برای هاست</span><small>سریع‌تر و مناسب چندکاربره. ابتدا در cPanel ← «MySQL Databases» یک پایگاه‌داده و کاربر بسازید و کاربر را به پایگاه‌داده اضافه کنید.</small></span></label>
+    <label class="opt <%= db.client === 'sqlite' ? 'on' : '' %> <%= sqlite ? '' : 'off' %>"><input type="radio" name="client" value="sqlite" <%= db.client === 'sqlite' ? 'checked' : '' %> <%= sqlite ? '' : 'disabled' %>>
+      <span class="ico"><%- icon('hard-drive', 24) %></span><span class="tx"><b>SQLite</b><span class="badge"><%= sqlite ? 'بدون تنظیمات' : 'روی این سرور فعال نیست' %></span>
+      <small><%= sqlite ? 'یک فایل در پوشه‌ی data؛ مناسب مدارس کوچک، آزمایش و نصب روی کامپیوتر شخصی.' : 'درایور بومی بارگذاری نشد. MySQL را انتخاب کنید یا «npm rebuild better-sqlite3» را اجرا کنید.' %></small></span></label>
+  </div>
+  <% if (!sqlite) { %><div class="iw-banner warn"><%- icon('triangle-alert', 20) %><div><%= sqliteErr || 'درایور SQLite در دسترس نیست.' %> — راهنما: <span class="ltr">docs/WINDOWS.md</span></div></div><% } %>
+
+  <section id="pane-mysql" class="iw-pane">
+    <div class="iw-grid">
+      <div class="field"><label for="f-host">میزبان (Host)</label><input id="f-host" type="text" class="ltr" name="host" value="<%= db.host || 'localhost' %>" autocomplete="off"><div class="hint">cPanel: localhost — لاراگون/XAMPP: 127.0.0.1</div></div>
+      <div class="field"><label for="f-port">پورت</label><input id="f-port" type="text" inputmode="numeric" class="ltr digits" name="port" value="<%= db.port || 3306 %>"></div>
+      <div class="field"><label for="f-db">نام پایگاه‌داده</label><input id="f-db" type="text" class="ltr" name="database" value="<%= db.database || '' %>" placeholder="cpuser_school" autocapitalize="off"></div>
+      <div class="field"><label for="f-user">نام کاربری</label><input id="f-user" type="text" class="ltr" name="user" value="<%= db.user || '' %>" placeholder="cpuser_school" autocapitalize="off"></div>
+      <div class="field full"><label for="f-pass">رمز عبور</label>
+        <div class="iw-pw"><input id="f-pass" type="password" data-no-toggle="1" class="ltr" name="password" value="" autocomplete="new-password" placeholder="<%= db.hasPassword ? '•••••••• (ذخیره‌شده؛ برای تغییر تایپ کنید)' : '' %>"><button type="button" class="iw-pwt" data-toggle-pw="f-pass" aria-label="نمایش رمز"><%- icon('eye', 18) %></button></div>
+        <% if (db.hasPassword) { %><input type="hidden" name="keep_password" value="1"><% } %></div>
+      <div class="field full"><label class="check"><input type="checkbox" name="create_db" value="1"> اگر پایگاه‌داده وجود نداشت، بساز <span class="muted small">(نیاز به دسترسی ساخت؛ در لاراگون/XAMPP کار می‌کند، در هاست اشتراکی معمولاً از cPanel بسازید)</span></label></div>
+    </div>
+  </section>
+  <section id="pane-sqlite" class="iw-pane">
+    <div class="iw-note"><%- icon('info', 18) %><div>پایگاه‌داده در فایل <span class="ltr"><%= dataDir %>/school.sqlite</span> ساخته می‌شود. این پوشه را در پشتیبان‌گیری نگه دارید.</div></div>
+  </section>
+
+  <div id="test-result" class="iw-test" hidden aria-live="polite"></div>
+  <div class="iw-actions"><button class="btn primary lg" type="submit">ذخیره و ادامه <%- icon('chevron-left', 18) %></button><button class="btn" type="submit" name="test_only" value="1" id="btn-test"><%- icon('plug-zap', 16) %> آزمایش اتصال</button><a class="btn ghost" href="<%= u('/install') %>">بازگشت</a></div>
+</form>
+<%- include('_foot') %>

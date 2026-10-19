@@ -1,0 +1,8 @@
+<div class="page-head"><h1><%- icon('bell', 24) %> اعلان‌ها</h1><div class="actions">
+  <form method="post" action="<%= u('/notifications/read-all') %>"><input type="hidden" name="_csrf" value="<%= csrf %>"><button class="btn"><%- icon('check', 16) %> همه خوانده شد</button></form>
+  <form method="post" action="<%= u('/notifications/clear') %>"><input type="hidden" name="_csrf" value="<%= csrf %>"><button class="btn"><%- icon('trash-2', 16) %> پاک‌کردن خوانده‌شده‌ها</button></form></div></div>
+<div class="card flush">
+<% if (!rows.length) { %><div class="empty"><%- icon('bell', 42) %><div>اعلانی ندارید.</div></div><% } else { %>
+<ul class="list" style="padding:0 1.2rem"><% rows.forEach(function(n){ %><li style="<%= n.is_read ? 'opacity:.65' : '' %>"><span style="color:var(--primary)"><%- icon(n.is_read ? 'check' : 'bell', 18) %></span><div class="grow"><a href="<%= u('/notifications/' + n.id + '/go') %>"><b><%= n.title %></b></a><% if (n.body) { %><div class="muted small"><%= n.body %></div><% } %></div><span class="muted small nowrap"><%= dt(n.created_at) %></span></li><% }) %></ul>
+<%- include('partials/pager', { page: page, pages: pages }) %><% } %>
+</div>

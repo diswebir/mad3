@@ -1,0 +1,46 @@
+<div class="page-head"><div><div class="crumbs"><%= ld(today) %><% if (!isSchoolDay) { %> — امروز تعطیل است<% } %></div><h1>سلام <%= user.full_name %> 👋</h1></div>
+  <div class="actions"><a class="btn" href="<%= u('/students/new') %>"><%- icon('user-plus', 16) %> دانش‌آموز جدید</a><a class="btn" href="<%= u('/teachers/new') %>"><%- icon('plus', 16) %> معلم جدید</a><% if (enabled('attendance')) { %><a class="btn primary" href="<%= u('/attendance') %>"><%- icon('calendar-check', 16) %> حضور و غیاب امروز</a><% } %></div></div>
+<div class="grid g4" style="margin-bottom:1.1rem">
+  <a class="card stat link" style="margin:0" href="<%= u('/students') %>"><div class="ico"><%- icon('graduation-cap', 24) %></div><div><div class="v"><%= fa(counts.students) %></div><div class="l">دانش‌آموز فعال</div></div></a>
+  <a class="card stat green link" style="margin:0" href="<%= u('/teachers') %>"><div class="ico"><%- icon('briefcase', 24) %></div><div><div class="v"><%= fa(counts.teachers) %></div><div class="l">معلم</div></div></a>
+  <a class="card stat amber link" style="margin:0" href="<%= u('/classes') %>"><div class="ico"><%- icon('school', 24) %></div><div><div class="v"><%= fa(counts.classes) %></div><div class="l">کلاس</div></div></a>
+  <% if (typeof ticketCount !== 'undefined') { %><a class="card stat red link" style="margin:0" href="<%= u('/tickets') %>"><div class="ico"><%- icon('life-buoy', 24) %></div><div><div class="v"><%= fa(ticketCount) %></div><div class="l">تیکت منتظر پاسخ</div></div></a><% } else { %><a class="card stat link" style="margin:0" href="<%= u('/subjects') %>"><div class="ico"><%- icon('book-open', 24) %></div><div><div class="v"><%= fa(counts.subjects) %></div><div class="l">درس</div></div></a><% } %>
+</div>
+<div class="grid g-side">
+  <div>
+    <%- include('../partials/todo-card') %>
+    <% if (typeof att !== 'undefined') { %>
+    <div class="card"><h3><a class="h-link" href="<%= u('/attendance/report') %>"><%- icon('calendar-check', 18) %> وضعیت حضور و غیاب امروز</a></h3>
+      <% if (!att.total) { %><div class="alert warn"><%- icon('triangle-alert', 18) %><div>هنوز حضور و غیاب امروز ثبت نشده است. <a href="<%= u('/attendance') %>">ثبت حضور و غیاب</a></div></div>
+      <% } else { %>
+      <div class="grid g4">
+        <a class="mini-link" href="<%= u('/attendance/report') %>"><div class="muted small">درصد حضور</div><div class="v" style="font-size:1.6rem;font-weight:700"><%= fa(att.rate) %>٪</div></a>
+        <a class="mini-link" href="<%= u('/attendance/absentees') %>"><div class="muted small">غایب</div><div style="font-size:1.6rem;font-weight:700;color:var(--red)"><%= fa(att.absent) %></div></a>
+        <a class="mini-link" href="<%= u('/attendance/late') %>"><div class="muted small">تأخیر</div><div style="font-size:1.6rem;font-weight:700;color:var(--amber)"><%= fa(att.late) %></div></a>
+        <a class="mini-link" href="<%= u('/attendance') %>"><div class="muted small">کلاس‌های ثبت‌شده</div><div style="font-size:1.6rem;font-weight:700"><%= fa(att.classesRecorded) %>/<%= fa(att.classesTotal) %></div></a>
+      </div>
+      <% } %>
+      <% if (trend && trend.length) { %><h4 style="margin-top:1rem">روند حضور ۷ روز اخیر</h4><div class="bars"><% trend.forEach(function(t){ %><div class="row"><span><%= d(t.date) %></span><div class="progress <%= t.rate >= 90 ? 'green' : t.rate >= 80 ? 'amber' : 'red' %>"><i style="width:<%= t.rate %>%"></i></div><span class="num"><%= fa(t.rate) %>٪</span></div><% }) %></div><% } %>
+    </div>
+    <% if (absentees && absentees.length) { %>
+    <div class="card flush"><div class="card-title"><%- icon('user-round', 18) %> غایبین امروز</div>
+      <div class="table-wrap"><table class="t"><tbody><% absentees.forEach(function(a){ %><tr><td><a href="<%= u('/students/' + a.id) %>"><%= a.first_name %> <%= a.last_name %></a></td><td><%= a.class_name %></td></tr><% }) %></tbody></table></div></div>
+    <% } %>
+    <% } %>
+    <% if (typeof tickets !== 'undefined' && tickets.length) { %>
+    <div class="card flush"><div class="card-title"><%- icon('life-buoy', 18) %> تیکت‌های باز <a class="btn sm ghost" style="margin-right:auto" href="<%= u('/tickets') %>">همه تیکت‌ها</a></div>
+      <div class="table-wrap"><table class="t"><tbody><% tickets.forEach(function(t){ %><tr><td><a href="<%= u('/tickets/' + t.id) %>"><%= t.subject %></a></td><td><%= t.creator %></td><td><%- pill(L.ticketStatus[t.status], badges_map.ticketStatus[t.status]) %></td><td class="muted small"><%= dt(t.created_at) %></td></tr><% }) %></tbody></table></div></div>
+    <% } %>
+  </div>
+  <div>
+    <% if (typeof fin !== 'undefined') { %>
+    <div class="card"><h3><a class="h-link" href="<%= u('/finance') %>"><%- icon('wallet', 18) %> وضعیت مالی</a></h3>
+      <dl class="kv" style="grid-template-columns:100px 1fr"><dt><a href="<%= u('/finance') %>">صورت‌حساب</a></dt><dd class="num"><%= money(fin.billed) %> <%= S('currency_label') %></dd><dt>دریافتی</dt><dd class="num" style="color:var(--green)"><%= money(fin.paid) %></dd><dt><a href="<%= u('/finance/debtors') %>">مانده</a></dt><dd class="num" style="color:var(--red)"><%= money(Math.max(0, fin.billed - fin.paid)) %></dd></dl>
+      <div class="progress green" style="margin-top:.7rem"><i style="width:<%= fin.billed ? Math.min(100, Math.round(fin.paid * 100 / fin.billed)) : 0 %>%"></i></div>
+    </div>
+    <% } %>
+    <% if (typeof overdueLoans !== 'undefined' && overdueLoans) { %><div class="alert warn"><%- icon('library-big', 18) %><div><%= fa(overdueLoans) %> کتاب با دیرکرد در امانت است. <a href="<%= u('/library/loans') %>">مشاهده</a></div></div><% } %>
+    <%- include('../partials/bd-card') %>
+    <%- include('../partials/common-widgets') %>
+  </div>
+</div>

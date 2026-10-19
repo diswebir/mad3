@@ -1,0 +1,23 @@
+<div class="iw done-wrap">
+  <main class="iw-main" id="main">
+    <div class="iw-card done">
+      <div class="okmark" aria-hidden="true"><%- icon('circle-check', 56) %></div>
+      <h1>نصب با موفقیت انجام شد</h1>
+      <p class="lead">سامانه آماده‌ی استفاده است. با اطلاعاتی که در مرحله‌ی «حساب‌های کاربری» ساختید وارد شوید.</p>
+      <dl class="iw-sum acc">
+        <dt>مدیر مدرسه</dt><dd><span class="ltr" id="u-admin"><%= adminName %></span> <button type="button" class="link" data-copy="u-admin"><%- icon('copy', 14) %> کپی</button></dd>
+        <dt>سوپر ادمین</dt><dd><span class="ltr" id="u-super"><%= superName %></span> <button type="button" class="link" data-copy="u-super"><%- icon('copy', 14) %> کپی</button></dd>
+      </dl>
+      <% if (demo) { %><div class="iw-banner info"><%- icon('flask-conical', 20) %><div><b>داده‌ی نمونه نصب شد.</b> ورودهای دمو — معلم: <b class="ltr">t.ahmadi / teacher123</b> • دانش‌آموز: <b class="ltr">14050001 / student123</b> • معاون: <b class="ltr">deputy / deputy123</b>. پیش از استفاده‌ی واقعی، رمزها را عوض کنید.</div></div><% } %>
+      <div class="iw-next"><b><%- icon('list-checks', 18) %> گام‌های بعدی پیشنهادی</b>
+        <ol>
+          <li>با حساب مدیر وارد شوید و «تنظیمات» (نام، لوگو، سال تحصیلی، زنگ‌ها) را کامل کنید.</li>
+          <li>با حساب سوپر ادمین وارد شوید و پیامک (ippanel)، پشتیبان بیرونی و قفل دامنه را تنظیم کنید.</li>
+          <li>معلمان را بسازید، کلاس و دروس را در «برنامه‌ریز دروس» مشخص کنید و دانش‌آموزان را وارد کنید (دستی یا از اکسل).</li>
+          <li><% if (demo) { %>پس از آشنایی، رمز حساب‌های نمونه را عوض کنید یا آن‌ها را غیرفعال کنید؛ برای شروع واقعی می‌توانید دوباره بدون داده‌ی نمونه نصب کنید (docs/INSTALL-NO-SSH.md ← reset:install).<% } else { %>یک پشتیبان آزمایشی بگیرید تا از کارکرد آن مطمئن شوید.<% } %></li>
+        </ol></div>
+      <% if (lock === 'this' && host && !/^(localhost|127\.|\[?::1)/.test(host)) { %><div class="iw-note"><%- icon('lock', 18) %><div>سامانه روی دامنه‌ی <span class="ltr"><%= host.split(':')[0] %></span> قفل شد.</div></div><% } %>
+      <div class="iw-actions center"><a class="btn primary lg" href="<%= u('/login') %>"><%- icon('log-in', 18) %> ورود به سامانه</a></div>
+    </div>
+  </main>
+</div>

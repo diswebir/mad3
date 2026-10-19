@@ -1,0 +1,24 @@
+<%- include('_head', { heading: 'اطلاعات مدرسه', lead: 'فقط چند مورد پایه؛ بقیه‌ی تنظیمات را بعداً از بخش «تنظیمات» کامل می‌کنید.' }) %>
+<form method="post" class="iw-card" autocomplete="off" novalidate>
+  <input type="hidden" name="_csrf" value="<%= csrf %>">
+  <% if (typeof error !== 'undefined') { %><div class="iw-banner error"><%- icon('circle-x', 20) %><div><%= error %></div></div><% } %>
+  <div class="iw-grid">
+    <div class="field full"><label for="s-name">نام مدرسه <span class="req">*</span></label><input id="s-name" type="text" name="school_name" value="<%= school.school_name || '' %>" required minlength="3" placeholder="مثلاً: دبیرستان شهید بهشتی" autofocus></div>
+    <div class="field"><label for="s-type">مقطع</label><select id="s-type" name="school_type"><% types.forEach(function (t) { %><option <%= school.school_type === t ? 'selected' : '' %>><%= t %></option><% }) %></select></div>
+    <div class="field"><label for="s-principal">نام مدیر مدرسه</label><input id="s-principal" type="text" name="school_principal" value="<%= school.school_principal || '' %>"></div>
+    <div class="field"><label for="s-phone">تلفن</label><input id="s-phone" type="text" inputmode="tel" class="ltr" name="school_phone" value="<%= school.school_phone || '' %>" placeholder="021xxxxxxxx"></div>
+    <div class="field"><label for="s-address">نشانی</label><input id="s-address" type="text" name="school_address" value="<%= school.school_address || '' %>"></div>
+    <div class="field"><label for="s-periods">تعداد زنگ‌های روزانه</label>
+      <div class="iw-stepper"><button type="button" data-step="-1" aria-label="کمتر">−</button><input id="s-periods" type="text" inputmode="numeric" class="ltr digits" name="periods_count" value="<%= school.periods_count || 6 %>"><button type="button" data-step="1" aria-label="بیشتر">＋</button></div><div class="hint">بین ۱ تا ۱۰؛ ساعت دقیق زنگ‌ها را بعداً تنظیم می‌کنید.</div></div>
+    <div class="field"><label for="s-prefix">پیشوند شماره‌ی دانش‌آموزی</label><input id="s-prefix" type="text" inputmode="numeric" class="ltr digits" name="student_code_prefix" value="<%= school.student_code_prefix || '1405' %>"><div class="hint">مثلاً ۱۴۰۵ ← ۱۴۰۵۰۰۰۱، ۱۴۰۵۰۰۰۲، …</div></div>
+    <div class="field full"><label>روزهای فعال مدرسه</label>
+      <% var sel = String(school.week_days || '0,1,2,3,4').split(','); %>
+      <div class="iw-days" role="group" aria-label="روزهای فعال">
+        <% ['شنبه','یکشنبه','دوشنبه','سه‌شنبه','چهارشنبه','پنجشنبه','جمعه'].forEach(function (n, i) { %><label class="day"><input type="checkbox" name="week_days" value="<%= i %>" <%= sel.includes(String(i)) ? 'checked' : '' %>><span><%= n %></span></label><% }) %>
+      </div>
+      <div class="iw-presets muted small">انتخاب سریع: <button type="button" class="link" data-days="0,1,2,3,4">شنبه تا چهارشنبه</button> · <button type="button" class="link" data-days="0,1,2,3,4,5">شنبه تا پنجشنبه</button> · <button type="button" class="link" data-days="0,1,2,3">شنبه تا سه‌شنبه</button></div>
+    </div>
+  </div>
+  <div class="iw-actions"><button class="btn primary lg" type="submit">ادامه <%- icon('chevron-left', 18) %></button><a class="btn ghost" href="<%= u('/install/db') %>">بازگشت</a></div>
+</form>
+<%- include('_foot') %>

@@ -1,0 +1,33 @@
+<%- include('_head', { heading: 'حساب‌های کاربری', lead: 'دو حساب جدا ساخته می‌شود: «مدیر مدرسه» برای کارهای روزانه و «سوپر ادمین» برای تنظیمات فنی.' }) %>
+<form method="post" class="iw-form" id="admin-form" autocomplete="off" novalidate>
+  <input type="hidden" name="_csrf" value="<%= csrf %>">
+  <% if (typeof errors !== 'undefined' && errors.length) { %><div class="iw-banner error"><%- icon('circle-x', 20) %><div><b>لطفاً این موارد را اصلاح کنید:</b><ul><% errors.forEach(function (e) { %><li><%= e %></li><% }) %></ul></div></div><% } %>
+  <section class="iw-card">
+    <h2 class="iw-h"><span class="ico"><%- icon('school', 20) %></span> حساب مدیر مدرسه <small>مدیریت روزانه: دانش‌آموزان، معلمان، کلاس‌ها، گزارش‌ها</small></h2>
+    <div class="iw-grid">
+      <div class="field"><label for="a-name">نام و نام خانوادگی <span class="req">*</span></label><input id="a-name" type="text" name="full_name" value="<%= admin.full_name || '' %>" required autofocus></div>
+      <div class="field"><label for="a-user">نام کاربری <span class="req">*</span></label><input id="a-user" type="text" class="ltr" name="username" value="<%= admin.username || '' %>" required autocapitalize="off" autocomplete="off"><div class="hint">حروف لاتین، عدد، نقطه، _ و - (۳ تا ۳۰ نویسه)</div></div>
+      <div class="field"><label for="a-pass">رمز عبور <span class="req">*</span></label>
+        <div class="iw-pw"><input id="a-pass" type="password" data-no-toggle="1" class="ltr" name="password" required minlength="8" autocomplete="new-password" data-strength="a-meter"><button type="button" class="iw-pwt" data-toggle-pw="a-pass" aria-label="نمایش رمز"><%- icon('eye', 18) %></button></div>
+        <div class="iw-meter" id="a-meter" aria-live="polite"><i></i><span>حداقل ۸ نویسه؛ ترکیب حروف، عدد و نماد قوی‌تر است</span></div>
+        <button type="button" class="link gen" data-gen="a-pass,a-pass2"><%- icon('wand-sparkles', 14) %> پیشنهاد رمز قوی</button></div>
+      <div class="field"><label for="a-pass2">تکرار رمز عبور <span class="req">*</span></label><input id="a-pass2" type="password" data-no-toggle="1" class="ltr" name="password2" required autocomplete="new-password" data-match="a-pass"><div class="hint match-hint" aria-live="polite"></div></div>
+      <div class="field full"><label for="a-mail">ایمیل <span class="muted small">(اختیاری)</span></label><input id="a-mail" type="text" class="ltr" name="email" value="<%= admin.email || '' %>" inputmode="email"></div>
+    </div>
+  </section>
+  <section class="iw-card sa">
+    <h2 class="iw-h"><span class="ico"><%- icon('shield-check', 20) %></span> حساب سوپر ادمین <small>پشتیبان فنی: ماژول‌ها، پیامک، پشتیبان‌گیری و قفل دامنه</small></h2>
+    <div class="iw-note"><%- icon('lock-keyhole', 18) %><div>این حساب بالاتر از مدیر مدرسه است. اطلاعاتش را نزد خود نگه دارید و به مدیر مدرسه ندهید؛ رمز آن باید با رمز مدیر متفاوت باشد.</div></div>
+    <div class="iw-grid">
+      <div class="field"><label for="s-user">نام کاربری سوپر ادمین <span class="req">*</span></label><input id="s-user" type="text" class="ltr" name="super_username" value="<%= admin.super_username || '' %>" required autocapitalize="off" autocomplete="off"></div>
+      <div class="field"></div>
+      <div class="field"><label for="s-pass">رمز عبور سوپر ادمین <span class="req">*</span></label>
+        <div class="iw-pw"><input id="s-pass" type="password" data-no-toggle="1" class="ltr" name="super_password" required minlength="8" autocomplete="new-password" data-strength="s-meter"><button type="button" class="iw-pwt" data-toggle-pw="s-pass" aria-label="نمایش رمز"><%- icon('eye', 18) %></button></div>
+        <div class="iw-meter" id="s-meter" aria-live="polite"><i></i><span>حداقل ۸ نویسه، متفاوت از رمز مدیر</span></div>
+        <button type="button" class="link gen" data-gen="s-pass,s-pass2"><%- icon('wand-sparkles', 14) %> پیشنهاد رمز قوی</button></div>
+      <div class="field"><label for="s-pass2">تکرار رمز <span class="req">*</span></label><input id="s-pass2" type="password" data-no-toggle="1" class="ltr" name="super_password2" required autocomplete="new-password" data-match="s-pass"><div class="hint match-hint" aria-live="polite"></div></div>
+    </div>
+  </section>
+  <div class="iw-actions"><button class="btn primary lg" type="submit">ادامه <%- icon('chevron-left', 18) %></button><a class="btn ghost" href="<%= u('/install/school') %>">بازگشت</a></div>
+</form>
+<%- include('_foot') %>

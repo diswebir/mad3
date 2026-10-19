@@ -1,0 +1,13 @@
+<div class="page-head"><div><div class="crumbs"><a href="<%= u('/homework') %>">تکالیف</a> / <%= row ? 'ویرایش' : 'جدید' %></div><h1><%= title %></h1></div></div>
+<form class="card" method="post" enctype="multipart/form-data" action="<%= u('/homework/' + (row ? row.id + '/edit' : 'new')) %>?_csrf=<%= csrf %>" autocomplete="off">
+  <% if (errors.length) { %><div class="alert error"><ul><% errors.forEach(function(e){ %><li><%= e %></li><% }) %></ul></div><% } %>
+  <div class="form-grid">
+    <div class="field"><label>درس و کلاس *</label><select name="class_subject_id" <%= row ? 'disabled' : 'required' %>><option value="">— انتخاب کنید —</option><% opts.forEach(function(o){ %><option value="<%= o[0] %>" <%= String(vals.class_subject_id) === String(o[0]) ? 'selected' : '' %>><%= o[1] %></option><% }) %></select></div>
+    <div class="field"><label>مهلت تحویل</label><input class="jdate ltr" type="text" name="due_date" value="<%= vals.due_date || '' %>" autocomplete="off"></div>
+    <div class="field full"><label>عنوان *</label><input type="text" name="title" value="<%= vals.title || '' %>" required maxlength="200"></div>
+    <div class="field full"><label>توضیحات</label><textarea name="description"><%= vals.description || '' %></textarea></div>
+    <div class="field"><label>بیشینه نمره</label><input type="text" class="digits ltr" name="max_score" value="<%= vals.max_score || 20 %>"></div>
+    <div class="field"><label>فایل پیوست (حداکثر ۵ مگابایت)</label><input type="file" name="attachment"><% if (row && row.attachment) { %><div class="hint">فایل فعلی: <%= row.attachment_name %></div><% } %></div>
+  </div>
+  <div class="form-actions"><button class="btn primary"><%- icon('save', 16) %> ذخیره</button><a class="btn" href="<%= u('/homework') %>">انصراف</a></div>
+</form>

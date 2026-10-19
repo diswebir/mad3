@@ -1,0 +1,31 @@
+<div class="page-head"><div><h1><%- icon('book-open-check', 24) %> دفتر کلاسی</h1><div class="sub"><%= user.role === 'student' ? 'درس‌هایی که در کلاس تدریس شده و تکلیف هر جلسه' : 'ثبت مبحث تدریس‌شده، تکلیف و یادداشت هر جلسه' %></div></div>
+  <div class="actions"><% if (isManager) { %><a class="btn" href="<%= u('/lessonlog/coverage') %>"><%- icon('chart-bar', 16) %> پوشش دفتر</a><% } %><% if (canWrite) { %><a class="btn primary" href="<%= u('/lessonlog/new') %>"><%- icon('plus', 16) %> ثبت جلسه</a><% } %></div></div>
+<form class="card filters" method="get" style="margin-bottom:1rem">
+  <div class="form-grid" style="grid-template-columns:repeat(auto-fit,minmax(170px,1fr))">
+    <% if (opts.length) { %><div class="field"><label for="ll-cs">درس / کلاس</label><select id="ll-cs" name="cs"><option value="">همه</option><% opts.forEach(function(o){ %><option value="<%= o.id %>" <%= f.cs === o.id ? 'selected' : '' %>><%= o.cname %> — <%= o.sname %></option><% }) %></select></div><% } %>
+    <div class="field"><label for="ll-from">از تاریخ</label><input id="ll-from" class="jdate ltr" type="text" name="from" value="<%= f.from %>" autocomplete="off"></div>
+    <div class="field"><label for="ll-to">تا تاریخ</label><input id="ll-to" class="jdate ltr" type="text" name="to" value="<%= f.to %>" autocomplete="off"></div>
+    <div class="field"><label for="ll-q">جستجو در مبحث/تکلیف</label><input id="ll-q" type="text" name="q" value="<%= f.q %>"></div>
+  </div>
+  <div class="form-actions"><button class="btn" type="submit"><%- icon('search', 16) %> اعمال فیلتر</button><% if (f.cs || f.from || f.to || f.q) { %><a class="btn ghost" href="<%= u('/lessonlog') %>">پاک‌کردن</a><% } %></div>
+</form>
+<% if (!rows.length) { %><div class="card"><div class="empty"><%- icon('book-open-check', 42) %><div>جلسه‌ای ثبت نشده است.</div><% if (canWrite) { %><a class="btn primary" href="<%= u('/lessonlog/new') %>">ثبت اولین جلسه</a><% } %></div></div>
+<% } else { %>
+<div class="ll-list">
+  <% rows.forEach(function(l){ %>
+  <article class="card ll-item<%= l.status === 'cancelled' ? ' cancelled' : '' %>">
+    <div class="ll-date"><b><%= d(l.log_date) %></b><span class="muted small"><%= l.period ? 'زنگ ' + fa(l.period) : '' %></span></div>
+    <div class="ll-body">
+      <div class="ll-head"><b><%= l.subject_name %></b> <span class="muted">— <%= l.class_name %></span> <% if (l.status === 'cancelled') { %><%- pill('برگزار نشد', 'red') %><% } %><% if (!l.visible && user.role !== 'student') { %><%- pill('مخفی از دانش‌آموز', 'gray') %><% } %></div>
+      <div class="ll-topic"><%= l.topic %></div>
+      <% if (l.content) { %><div class="ll-content"><%= l.content %></div><% } %>
+      <% if (l.homework) { %><div class="ll-hw"><%- icon('notebook-pen', 15) %> <b>تکلیف:</b> <%= l.homework %></div><% } %>
+      <div class="muted small"><%= l.teacher_name || '' %></div>
+    </div>
+    <% if (canEditRow(l)) { %><div class="ll-act"><a class="btn sm ghost" href="<%= u('/lessonlog/' + l.id + '/edit') %>" title="ویرایش" aria-label="ویرایش"><%- icon('pencil', 15) %></a>
+      <form method="post" action="<%= u('/lessonlog/' + l.id + '/delete') %>" data-confirm="این جلسه حذف شود؟"><input type="hidden" name="_csrf" value="<%= csrf %>"><button class="btn sm ghost danger" type="submit" title="حذف" aria-label="حذف"><%- icon('trash-2', 15) %></button></form></div><% } %>
+  </article>
+  <% }) %>
+</div>
+<%- include('../partials/pager', { page: page, pages: pages }) %>
+<% } %>

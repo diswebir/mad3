@@ -1,0 +1,15 @@
+<div class="page-head"><h1><%= title %></h1></div>
+<form method="post" class="card" style="max-width:820px" action="<%= u('/questions/' + (row ? row.id + '/edit' : 'new')) %>"><input type="hidden" name="_csrf" value="<%= csrf %>">
+<% if (errors.length) { %><div class="alert error"><ul><% errors.forEach(function(e){ %><li><%= e %></li><% }) %></ul></div><% } %>
+<div class="form-grid">
+<div class="field"><label>درس *</label><select name="subject_id" required><option value="">—</option><% subjects.forEach(function(s){ %><option value="<%= s.id %>" <%= String(vals.subject_id) === String(s.id) ? 'selected' : '' %>><%= s.name %></option><% }) %></select></div>
+<div class="field"><label>پایه</label><select name="grade_level"><option value="">—</option><% grades.forEach(function(g){ %><option <%= vals.grade_level === g ? 'selected' : '' %>><%= g %></option><% }) %></select></div>
+<div class="field"><label>نوع سؤال</label><select name="type" id="q-type"><% Object.keys(TYPES).forEach(function(t){ %><option value="<%= t %>" <%= vals.type === t ? 'selected' : '' %>><%= TYPES[t] %></option><% }) %></select></div>
+<div class="field"><label>سطح دشواری</label><select name="difficulty"><% Object.keys(DIFF).forEach(function(t){ %><option value="<%= t %>" <%= String(vals.difficulty) === t ? 'selected' : '' %>><%= DIFF[t] %></option><% }) %></select></div>
+<div class="field"><label>بارم</label><input type="text" class="ltr digits" name="score" value="<%= vals.score || 1 %>"></div>
+<div class="field full"><label>متن سؤال *</label><textarea name="text" required style="min-height:100px"><%= vals.text || '' %></textarea></div>
+<div class="field full"><label>گزینه‌ها (برای چندگزینه‌ای) — گزینه‌ی صحیح را انتخاب کنید</label>
+<% opts.concat(['', '', '', '']).slice(0, Math.max(4, opts.length)).forEach(function(o, i){ %><div style="display:flex;gap:.5rem;align-items:center;margin-bottom:.35rem"><input type="radio" name="answer_index" value="<%= i %>" <%= String(vals.answer_index) === String(i) ? 'checked' : '' %>><input type="text" name="opt" value="<%= o %>" placeholder="گزینه <%= fa(i + 1) %>" style="flex:1"></div><% }) %></div>
+<div class="field"><label>پاسخ صحیح/غلط</label><select name="answer_tf"><option value="true" <%= vals.answer_tf !== 'false' ? 'selected' : '' %>>صحیح</option><option value="false" <%= vals.answer_tf === 'false' ? 'selected' : '' %>>غلط</option></select></div>
+<div class="field full"><label>پاسخ نمونه (برای کوتاه‌پاسخ/تشریحی)</label><textarea name="answer_text" style="min-height:70px"><%= vals.type === 'short' || vals.type === 'descriptive' ? (vals.answer_text || '') : '' %></textarea></div></div>
+<div class="form-actions"><button class="btn primary"><%- icon('save', 16) %> ذخیره</button><a class="btn" href="<%= u('/questions') %>">انصراف</a></div></form>

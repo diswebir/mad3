@@ -1,0 +1,19 @@
+<main style="max-width:520px;margin:3rem auto;padding:0 1rem">
+  <div class="card" style="text-align:center">
+    <% if (out.state === 'paid') { %>
+      <div style="width:72px;height:72px;margin:0 auto .8rem;border-radius:50%;background:#16a34a1a;color:#16a34a;display:grid;place-items:center"><%- icon('circle-check', 40) %></div>
+      <h1 style="font-size:1.35rem;margin:0 0 .4rem">پرداخت با موفقیت انجام شد</h1>
+      <p class="muted"><%= tx.title %> — <b><%= money(tx.amount) %></b> <%= S('currency_label') %></p>
+      <dl class="kv" style="max-width:320px;margin:.8rem auto;text-align:start"><dt>شماره سند</dt><dd><%= tx.doc_no ? fa(tx.doc_no) : '—' %></dd><dt>کد پیگیری</dt><dd class="ltr" style="text-align:right"><%= tx.ref_id || '—' %></dd></dl>
+    <% } else if (out.state === 'pending') { %>
+      <div style="width:72px;height:72px;margin:0 auto .8rem;border-radius:50%;background:#d977061a;color:#d97706;display:grid;place-items:center"><%- icon('clock', 40) %></div>
+      <h1 style="font-size:1.35rem;margin:0 0 .4rem">در انتظار تأیید درگاه</h1>
+      <p class="muted"><%= out.msg || 'نتیجه‌ی پرداخت هنوز تأیید نشده است.' %> اگر مبلغ از حساب شما کم شده است، نگران نباشید؛ مدرسه وضعیت را بررسی و سند را ثبت می‌کند.</p>
+    <% } else { %>
+      <div style="width:72px;height:72px;margin:0 auto .8rem;border-radius:50%;background:#dc26261a;color:#dc2626;display:grid;place-items:center"><%- icon('circle-x', 40) %></div>
+      <h1 style="font-size:1.35rem;margin:0 0 .4rem"><%= out.state === 'cancelled' ? 'پرداخت لغو شد' : 'پرداخت ناموفق بود' %></h1>
+      <p class="muted"><%= out.msg || 'مبلغی از حساب شما برداشت نشده یا در صورت برداشت، طی ۷۲ ساعت توسط بانک بازگردانده می‌شود.' %></p>
+    <% } %>
+    <a class="btn primary" href="<%= payerHome %>" style="margin-top:.6rem">بازگشت به صورت‌حساب</a>
+  </div>
+</main>

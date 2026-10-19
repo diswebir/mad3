@@ -1,0 +1,7 @@
+<div class="page-head no-print"><h1>پرونده چاپی</h1><div class="actions"><button class="btn primary" data-print><%- icon('printer', 16) %> چاپ</button><a class="btn" href="<%= u('/students/' + s.id) %>">بازگشت</a></div></div>
+<div class="card">
+  <div style="text-align:center;margin-bottom:1rem"><h2 style="margin:0"><%= S('school_name') %></h2><div class="muted">پرونده دانش‌آموزی — <%= ld(J.todayISO()) %></div></div>
+  <div style="display:flex;gap:1rem;align-items:center;margin-bottom:1rem"><span class="avatar lg"><% if (s.photo) { %><img src="<%= fileUrl('photos', s.photo) %>" alt=""><% } else { %><%= initials(s.first_name + ' ' + s.last_name) %><% } %></span><div><h2 style="margin:0"><%= s.first_name %> <%= s.last_name %></h2><div>شماره دانش‌آموزی: <%= fa(s.student_code) %> — کلاس: <%= s.class_name || '—' %></div><% if (Object.keys(att).length) { %><div class="muted small">غیبت: <%= fa(att.absent || 0) %> روز — تأخیر: <%= fa(att.late || 0) %> بار</div><% } %></div></div>
+  <% groups.forEach(function(g){ %><h3 style="border-bottom:1px solid var(--border);padding-bottom:.3rem;margin-top:1rem"><%= g.title %></h3><dl class="kv"><%- include('_kv', { g: g, disp: disp }) %></dl><% }) %>
+  <div style="display:flex;justify-content:space-between;margin-top:3rem"><span>امضای مدیر/معاون</span><span>امضای اولیا</span></div>
+</div>

@@ -1,0 +1,8 @@
+<div class="page-head"><div><div class="crumbs"><a href="<%= u('/teachers') %>">معلمان</a> / <%= row ? 'ویرایش' : 'افزودن' %></div><h1><%= title %></h1></div></div>
+<form method="post" class="card" action="<%= u('/teachers/' + (row ? row.id + '/edit' : 'new')) %>" autocomplete="off">
+  <input type="hidden" name="_csrf" value="<%= csrf %>">
+  <% if (errors.length) { %><div class="alert error"><ul><% errors.forEach(function(e){ %><li><%= e %></li><% }) %></ul></div><% } %>
+  <% if (!row) { %><div class="alert info"><%- icon('info', 18) %><div>پنل کاربری معلم خودکار ساخته می‌شود و رمز اولیه پس از ثبت نمایش داده خواهد شد. تخصیص کلاس و دروس از صفحه «کلاس‌ها» انجام می‌شود.</div></div><% } %>
+  <div class="form-grid"><% fields.forEach(function(f){ if (f.createOnly && row) return; var opts = {}; if (f.opts) opts[f.name] = f.opts; %><%- include('../partials/field', { f: f, vals: vals, options: opts }) %><% }) %></div>
+  <div class="form-actions"><button class="btn primary"><%- icon('save', 16) %> ذخیره</button><a class="btn" href="<%= u('/teachers') %>">انصراف</a></div>
+</form>

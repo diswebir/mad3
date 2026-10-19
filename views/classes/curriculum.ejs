@@ -1,0 +1,47 @@
+<% var AB = ['ش', 'ی', 'د', 'س', 'چ', 'پ', 'ج']; var mismatch = rows.some(function (r) { var p = placed[r.id]; return p && p.total && (p.total !== r.weekly_hours || p.maxDay > r.max_per_day); }); %>
+<div class="page-head"><div><div class="crumbs"><a href="<%= u('/classes') %>">کلاس‌ها</a> / <a href="<%= u('/classes/' + c.id) %>"><%= c.name %></a></div>
+<h1><%- icon('sliders-horizontal', 24) %> برنامه‌ریزی دروس و معلمان — <%= c.name %></h1>
+<div class="muted small">برای هر درس معلم، ساعت در هفته و سقف ساعت در روز را تعیین کنید؛ چیدمان واقعی در «برنامه هفتگی» با همین مقادیر کنترل می‌شود.</div></div>
+<div class="actions"><% if (hasTimetable && cap('timetable.edit')) { %><a class="btn" href="<%= u('/timetable?class_id=' + c.id + '&edit=1') %>"><%- icon('clock', 16) %> ویرایش برنامه هفتگی</a><% } %><a class="btn" href="<%= u('/classes/' + c.id) %>"><%- icon('arrow-left', 16) %> بازگشت به کلاس</a></div></div>
+
+<div class="plan-stats">
+  <div class="card"><div class="muted small">جمع ساعت‌های درسی در هفته</div><div class="stat-big"><span id="sum-total"><%= fa(summary.total) %></span><% if (slots.total) { %> <small>از <%= fa(slots.total) %> زنگ</small><% } %></div>
+    <% if (slots.total) { %><div class="meter"><i id="sum-bar" style="width:<%= Math.min(100, Math.round(summary.total * 100 / slots.total)) %>%" class="<%= summary.total > slots.total ? 'bad' : '' %>"></i></div><div class="small" id="sum-free"><%- summary.free >= 0 ? '<span class="muted">' + fa(summary.free) + ' زنگ خالی می‌ماند</span>' : '<b style="color:var(--red)">' + fa(-summary.free) + ' ساعت بیش از ظرفیت</b>' %></div><% } else { %><div class="muted small">ساعت زنگ‌ها هنوز تعریف نشده است.</div><% } %></div>
+  <% if (hasTimetable) { %><div class="card"><div class="muted small">چیده‌شده در برنامه هفتگی</div><div class="stat-big"><%= fa(summary.placedTotal) %> <small>از <%= fa(summary.total) %></small></div>
+    <div class="meter"><i style="width:<%= summary.total ? Math.min(100, Math.round(summary.placedTotal * 100 / summary.total)) : 0 %>%"></i></div>
+    <div class="small muted"><%= summary.placedTotal === summary.total ? 'برنامه کامل است' : summary.placedTotal < summary.total ? fa(summary.total - summary.placedTotal) + ' ساعت هنوز چیده نشده' : 'چیدمان بیش از ساعت‌های تعریف‌شده است' %></div></div><% } %>
+  <div class="card"><div class="muted small">دروس بدون معلم</div><div class="stat-big"><%= fa(rows.filter(function (r) { return !r.teacher_id; }).length) %> <small>از <%= fa(rows.length) %> درس</small></div>
+    <div class="small muted"><%= summary.warnings.filter(function (w) { return w.k !== 'no_teacher'; }).length ? fa(summary.warnings.filter(function (w) { return w.k !== 'no_teacher'; }).length) + ' هشدار' : 'بدون هشدار' %></div></div>
+</div>
+
+<div class="card quick no-print"><b class="small">میان‌بُرها:</b>
+  <% if (hasTimetable) { %><form method="post" action="<%= u('/classes/' + c.id + '/curriculum/sync') %>" data-confirm="ساعت‌های هفتگی هر درس برابر تعداد زنگ‌های چیده‌شده‌ی آن در برنامه هفتگی شود؟"><input type="hidden" name="_csrf" value="<%= csrf %>"><button class="btn sm <%= mismatch ? 'primary' : '' %>" <%= placedAny() ? '' : 'disabled' %>><%- icon('refresh-cw', 15) %> هم‌گام‌سازی ساعت‌ها با برنامه هفتگی</button></form><% } %>
+  <form method="post" action="<%= u('/classes/' + c.id + '/curriculum/add-grade') %>"><input type="hidden" name="_csrf" value="<%= csrf %>"><button class="btn sm" <%= gradeMatch ? '' : 'disabled' %> title="<%= c.grade_level ? '' : 'پایه‌ی کلاس تعیین نشده' %>"><%- icon('layers', 15) %> افزودن دروس پایه<%= c.grade_level ? ' «' + c.grade_level + '»' : '' %><%= gradeMatch ? ' (' + fa(gradeMatch) + ')' : '' %></button></form>
+  <% if (others.length) { %><form method="post" action="<%= u('/classes/' + c.id + '/curriculum/copy') %>" class="inline-form"><input type="hidden" name="_csrf" value="<%= csrf %>"><select name="from" required aria-label="کپی از کلاس"><option value="">کپی دروس از کلاس…</option><% others.forEach(function (o) { %><option value="<%= o.id %>"><%= o.name %></option><% }) %></select><label class="check small"><input type="checkbox" name="keep_teacher" value="1"> با همان معلم‌ها</label><button class="btn sm"><%- icon('copy', 15) %> کپی</button></form><% } %>
+</div>
+
+<form method="post" action="<%= u('/classes/' + c.id + '/curriculum') %>" id="plan-form" data-dirty-warn>
+<input type="hidden" name="_csrf" value="<%= csrf %>">
+<div class="card flush"><div class="table-wrap"><table class="t plan-t"><thead><tr><th>درس</th><th>معلم</th><th class="center">ساعت در هفته</th><th class="center">حداکثر در روز</th><% if (hasTimetable) { %><th>توزیع در برنامه هفتگی</th><% } %><th class="center">حذف</th></tr></thead><tbody id="plan-body">
+<% rows.forEach(function (r) { var p = placed[r.id] || { total: 0, byDay: {}, maxDay: 0 }; var st = p.total === 0 ? 'none' : p.total === r.weekly_hours ? 'ok' : p.total < r.weekly_hours ? 'short' : 'over'; %>
+<tr class="plan-row" data-id="<%= r.id %>">
+  <td><b><%= r.subject_name %></b><% if (r.subject_code) { %> <span class="muted small ltr"><%= r.subject_code %></span><% } %></td>
+  <td><select name="rows[<%= r.id %>][teacher_id]" class="p-teacher" aria-label="معلم <%= r.subject_name %>"><option value="">— بدون معلم —</option><% teachers.forEach(function (t) { var l = loads[t.id] || {}; %><option value="<%= t.id %>" <%= r.teacher_id === t.id ? 'selected' : '' %>><%= t.full_name %><%= l.load ? ' (' + fa(l.hours) + '/' + fa(l.load) + ')' : '' %></option><% }) %><% if (r.teacher_id && !teachers.some(function (t) { return t.id === r.teacher_id; })) { %><option value="<%= r.teacher_id %>" selected>معلم غیرفعال</option><% } %></select><div class="small p-tnote"></div></td>
+  <td class="center"><div class="stepper"><button type="button" data-step="-1" aria-label="کمتر">−</button><input type="number" name="rows[<%= r.id %>][weekly_hours]" class="p-hours" min="1" max="20" value="<%= r.weekly_hours %>" aria-label="ساعت هفتگی <%= r.subject_name %>"><button type="button" data-step="1" aria-label="بیشتر">+</button></div></td>
+  <td class="center"><div class="stepper"><button type="button" data-step="-1" aria-label="کمتر">−</button><input type="number" name="rows[<%= r.id %>][max_per_day]" class="p-max" min="1" max="6" value="<%= r.max_per_day %>" aria-label="حداکثر در روز <%= r.subject_name %>"><button type="button" data-step="1" aria-label="بیشتر">+</button></div></td>
+  <% if (hasTimetable) { %><td><div class="dist"><% days.forEach(function (d) { var n = p.byDay[d] || 0; %><span class="d <%= n ? 'on' : '' %> <%= n > r.max_per_day ? 'bad' : '' %>" title="<%= WEEKDAYS[d] %>: <%= n %> ساعت"><%= AB[d] %> <b><%= fa(n) %></b></span><% }) %><span class="badge <%= st === 'ok' ? 'green' : st === 'none' ? '' : st === 'short' ? 'amber' : 'red' %>" title="چیده‌شده در برنامه / تعریف‌شده"><%= fa(p.total) %> از <%= fa(r.weekly_hours) %></span></div></td><% } %>
+  <td class="center"><label class="del-toggle" title="حذف درس از کلاس"><input type="checkbox" name="rows[<%= r.id %>][remove]" value="1" class="p-remove"><span><%- icon('trash-2', 15) %></span></label></td>
+</tr>
+<% }) %>
+<% if (!rows.length) { %><tr id="plan-empty"><td colspan="6" class="center muted" style="padding:1.6rem">درسی تعریف نشده است. از ردیف پایین یک درس اضافه کنید یا از میان‌بُرها استفاده کنید.</td></tr><% } %>
+</tbody>
+<tfoot><tr class="add-row"><td colspan="6"><div class="inline-form"><b class="small">افزودن درس:</b>
+  <select id="add-subject"><option value="">انتخاب درس…</option><% subjects.forEach(function (s) { %><option value="<%= s.id %>" data-hours="<%= s.weekly_hours || 2 %>"><%= s.name %><%= s.grade_level ? ' — ' + s.grade_level : '' %></option><% }) %></select>
+  <button type="button" class="btn sm" id="add-btn"><%- icon('plus', 15) %> افزودن به جدول</button><span class="muted small">پس از افزودن، «ذخیره» را بزنید.</span></div></td></tr></tfoot></table></div></div>
+
+<% var w = summary.warnings.filter(function (x) { return x.k !== 'no_teacher'; }); if (w.length) { %><div class="alert warn" style="margin-top:.8rem"><%- icon('triangle-alert', 18) %><div><b>نکته‌ها و هشدارها</b><ul style="margin:.3rem 0 0;padding-inline-start:1.2rem"><% w.slice(0, 8).forEach(function (x) { %><li><%= x.text %></li><% }) %></ul></div></div><% } %>
+<div class="form-actions sticky-actions"><button class="btn primary"><%- icon('save', 16) %> ذخیره‌ی برنامه‌ی دروس</button><a class="btn" href="<%= u('/classes/' + c.id) %>">انصراف</a><span class="muted small" id="plan-live"></span></div>
+</form>
+<script type="application/json" id="plan-data"><%- JSON.stringify({ loads: loads, capTotal: slots.total, orig: Object.fromEntries(rows.map(function (r) { return [r.id, { t: r.teacher_id || 0, h: r.weekly_hours }]; })), days: days, ab: days.map(function (d) { return AB[d]; }) }).replace(/</g, '\\u003c') %></script>
+<script src="<%= asset('js/curriculum.js') %>" defer></script>
+<% function placedAny() { return rows.some(function (r) { return placed[r.id] && placed[r.id].total; }); } %>

@@ -1,0 +1,9 @@
+<div class="page-head"><div><h1><%- icon('clipboard-check', 24) %> ارزشیابی معلم</h1><div class="muted">هر معیار از ۱ (ضعیف) تا ۵ (عالی)؛ جمع نهایی از ۲۰ محاسبه می‌شود.</div></div></div>
+<%- include('_nav', { active: 'index' }) %>
+<form method="post" action="<%= u('/hr/evaluations') %>" class="card" style="max-width:760px"><input type="hidden" name="_csrf" value="<%= csrf %>">
+<div class="form-grid"><div class="field"><label>معلم *</label><select name="teacher_id" required><option value="">انتخاب…</option><% teachers.forEach(function(t){ %><option value="<%= t.id %>" <%= teacherId === t.id ? 'selected' : '' %>><%= t.full_name %></option><% }) %></select></div>
+<div class="field"><label>تاریخ</label><input class="jdate ltr" type="text" name="eval_date" value="<%= J.isoToJString(J.todayISO()) %>" autocomplete="off"></div>
+<div class="field"><label>نوبت</label><select name="term"><% for (var i = 1; i <= 4; i++) { %><option value="<%= i %>"><%= fa(i) %></option><% } %></select></div></div>
+<table class="t"><tbody><% CR.forEach(function(c){ %><tr><td><%= c.label %></td><td><select name="s_<%= c.key %>"><% [5,4,3,2,1].forEach(function(v){ %><option value="<%= v %>" <%= v === 4 ? 'selected' : '' %>><%= fa(v) %></option><% }) %></select></td></tr><% }) %></tbody></table>
+<div class="field full" style="margin-top:1rem"><label>توضیحات و پیشنهادها</label><textarea name="comment" rows="3" maxlength="2000"></textarea></div>
+<div class="form-actions"><button class="btn primary"><%- icon('check', 16) %> ثبت ارزشیابی</button><a class="btn" href="<%= u('/hr') %>">انصراف</a></div></form>

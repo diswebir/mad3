@@ -1,0 +1,10 @@
+<% if (pages > 1) { %>
+<nav class="pager" aria-label="صفحه‌بندی">
+  <% if (page > 1) { %><a href="<%= qs({page: page - 1}) %>">قبلی</a><% } %>
+  <% var from = Math.max(1, page - 3), to = Math.min(pages, page + 3); %>
+  <% if (from > 1) { %><a href="<%= qs({page: 1}) %>"><%= fa(1) %></a><% if (from > 2) { %><span>…</span><% } %><% } %>
+  <% for (var i = from; i <= to; i++) { %><% if (i === page) { %><span class="cur"><%= fa(i) %></span><% } else { %><a href="<%= qs({page: i}) %>"><%= fa(i) %></a><% } %><% } %>
+  <% if (to < pages) { %><% if (to < pages - 1) { %><span>…</span><% } %><a href="<%= qs({page: pages}) %>"><%= fa(pages) %></a><% } %>
+  <% if (page < pages) { %><a href="<%= qs({page: page + 1}) %>">بعدی</a><% } %>
+</nav>
+<% } %>

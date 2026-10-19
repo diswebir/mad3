@@ -1,0 +1,30 @@
+<%- include('_head', { heading: 'به راه‌اندازی سامانه‌ی مدیریت مدرسه خوش آمدید', lead: 'چند دقیقه‌ی کوتاه تا یک سامانه‌ی کامل: ابتدا سرور شما را بررسی می‌کنیم، بعد چند پرسش ساده می‌پرسیم.' }) %>
+<% var blockers = reqs.filter(function (r) { return !r.ok && !r.optional; }); var warns = reqs.filter(function (r) { return !r.ok && r.optional; }); %>
+<% if (progress) { %>
+<div class="iw-banner info"><%- icon('rotate-ccw', 20) %><div><b>نصب نیمه‌کاره‌ای از قبل دارید.</b> اطلاعات مراحل قبل نگه‌داری شده است.</div>
+  <div class="iw-banner-actions"><a class="btn sm primary" href="<%= u('/install/' + (progress.to || progress.next)) %>">ادامه از «<%= progress.label %>»</a>
+  <form method="post" action="<%= u('/install/reset') %>" data-confirm="اطلاعات واردشده‌ی مراحل قبل پاک شود و از اول شروع کنید؟"><input type="hidden" name="_csrf" value="<%= csrf %>"><button class="btn sm ghost">شروع از اول</button></form></div></div>
+<% } %>
+<form method="post" class="iw-card" novalidate>
+  <input type="hidden" name="_csrf" value="<%= csrf %>">
+  <% if (typeof error !== 'undefined') { %><div class="iw-banner error"><%- icon('circle-x', 20) %><div><%= error %></div></div><% } %>
+  <div class="iw-status <%= blockers.length ? 'bad' : (warns.length ? 'warn' : 'good') %>">
+    <span class="ic"><%- icon(blockers.length ? 'circle-x' : (warns.length ? 'triangle-alert' : 'circle-check'), 26) %></span>
+    <div><b><%= blockers.length ? 'یک یا چند پیش‌نیاز ضروری برآورده نشده است' : (warns.length ? 'آماده‌ی نصب — با چند توصیه' : 'سرور شما آماده‌ی نصب است') %></b>
+    <div class="muted small"><%= blockers.length ? 'موارد قرمز را برطرف و «بررسی دوباره» را بزنید.' : (warns.length ? 'موارد زرد اختیاری‌اند؛ می‌توانید ادامه دهید.' : 'همه‌ی بررسی‌ها موفق بود.') %></div></div>
+  </div>
+  <ul class="iw-checks">
+    <% reqs.forEach(function (r) { var st = r.ok ? 'ok' : (r.optional ? 'warn' : 'bad'); %>
+    <li class="<%= st %>"><span class="ic"><%- icon(st === 'ok' ? 'circle-check' : (st === 'warn' ? 'triangle-alert' : 'circle-x'), 20) %></span>
+      <div><span><%= r.label %></span><% if (!r.ok && r.hint) { %><div class="muted small"><%= r.hint %></div><% } %></div>
+      <span class="tag <%= st %>"><%= st === 'ok' ? 'آماده' : (st === 'warn' ? 'اختیاری' : 'ضروری') %></span></li>
+    <% }) %>
+  </ul>
+  <details class="iw-details"><summary>اطلاعات فنی سرور</summary>
+    <dl class="iw-kv"><% sys.forEach(function (r) { %><dt><%= r[0] %></dt><dd class="ltr"><%= r[1] %></dd><% }) %></dl></details>
+  <div class="iw-need"><b><%- icon('list-checks', 18) %> پیش از شروع آماده کنید:</b>
+    <ul><li>نام مدرسه و چند مشخصات ساده (نشانی، تلفن، تعداد زنگ‌ها)</li><li>نام کاربری و رمز مدیر مدرسه و سوپر ادمین (دو حساب جدا)</li><li>در صورت انتخاب MySQL: نام پایگاه‌داده، کاربر و رمز (از cPanel ← MySQL Databases)</li></ul></div>
+  <div class="iw-banner info"><%- icon('book-open', 20) %><div><b>نصب روی هاست یا کامپیوتر خودتان را بلد نیستید؟</b> راهنمای تصویری گام‌به‌گام برای cPanel و لوکال‌هاست (ویندوز، مک، لینوکس) آماده است.</div><div class="iw-banner-actions"><a class="btn sm primary" href="<%= u('/install/guide#cpanel') %>" target="_blank" rel="noopener">راهنمای cPanel</a><a class="btn sm" href="<%= u('/install/guide#local') %>" target="_blank" rel="noopener">راهنمای لوکال‌هاست</a></div></div>
+  <div class="iw-actions"><button class="btn primary lg" type="submit" <%= blockers.length ? 'disabled' : '' %>>شروع <%- icon('chevron-left', 18) %></button><a class="btn" href="<%= u('/install') %>"><%- icon('refresh-cw', 16) %> بررسی دوباره</a></div>
+</form>
+<%- include('_foot') %>

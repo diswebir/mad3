@@ -1,0 +1,16 @@
+<%# ویجت شمارش معکوس تولد (دانش‌آموز / اولیا) %>
+<% if (typeof bd !== 'undefined' && bd) { var who = (user.realRole === 'parent' && student) ? student.first_name : 'شما'; %>
+<a class="card bd-count <%= bd.today ? 'is-today' : '' %>" href="<%= u(bd.today ? '/students/me' : '/calendar') %>" style="display:block;text-decoration:none;color:inherit">
+  <% if (bd.today) { %>
+  <div class="bd-emoji">🎉</div><div class="bd-big">امروز تولد <%= who === 'شما' ? 'شماست' : who + ' است' %>!</div>
+  <div class="muted small"><%= who === 'شما' ? 'تولدت مبارک' : 'تولدش مبارک' %> — <%= fa(bd.age) %> ساله شدن</div>
+  <% } else { %>
+  <div class="bd-row"><div class="bd-ring" style="--p:<%= bd.pct %>"><span><%= fa(bd.days) %></span></div>
+    <div><div class="bd-big"><%= bd.days === 1 ? 'فردا تولد ' + (who === 'شما' ? 'شماست' : who + ' است') : fa(bd.days) + ' روز تا تولد ' + (who === 'شما' ? 'شما' : who) %></div>
+    <div class="muted small"><%= bd.weekday %> <%= ld(bd.date) %> — <%= fa(bd.age) %> ساله می‌شود</div></div></div>
+  <div class="bd-bar"><i style="width:<%= bd.pct %>%"></i></div>
+  <% } %>
+</a>
+<% } else if (typeof bdOn !== 'undefined' && student && !student.birth_date) { %>
+<div class="card muted small"><%- icon('cake', 16) %> تاریخ تولد در پرونده ثبت نشده است؛ برای فعال‌شدن شمارش معکوس تولد، آن را به دفتر مدرسه اطلاع دهید.</div>
+<% } %>

@@ -1,0 +1,12 @@
+<main class="gd-wrap" style="max-width:480px;margin:3rem auto;padding:0 1rem">
+  <div class="card" style="text-align:center">
+    <div class="alert warn" style="text-align:start"><%- icon('triangle-alert', 18) %><div><b>درگاه آزمایشی</b> — این صفحه فقط برای نمایش است و هیچ وجهی از حساب شما کم نمی‌شود.</div></div>
+    <h1 style="font-size:1.25rem;margin:.8rem 0 .3rem">پرداخت <%= fee ? fee.title : '' %></h1>
+    <div class="muted">مبلغ قابل پرداخت</div>
+    <div style="font-size:1.8rem;font-weight:800;margin:.3rem 0 1.2rem"><%= money(tx.amount) %> <span style="font-size:1rem;font-weight:500"><%= S('currency_label') %></span></div>
+    <form method="post" action="<%= u('/pay/demo/' + tx.token) %>" style="display:grid;gap:.6rem"><input type="hidden" name="_csrf" value="<%= csrf %>">
+      <button class="btn primary" name="result" value="ok" type="submit"><%- icon('check', 16) %> پرداخت موفق (شبیه‌سازی)</button>
+      <button class="btn" name="result" value="cancel" type="submit">انصراف / پرداخت ناموفق</button>
+    </form>
+  </div>
+</main>
