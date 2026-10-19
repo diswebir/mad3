@@ -55,6 +55,11 @@ const DEFS = [
   { key: 'student_password_mode', group: 'students', label: 'رمز اولیه دانش‌آموز', type: 'select', def: 'national_id', options: [['national_id', 'کد ملی (در نبود آن رمز تصادفی)'], ['random', 'همیشه رمز تصادفی']] },
   // مالی
   { key: 'currency_label', group: 'finance', label: 'واحد پول', type: 'select', def: 'تومان', options: ['تومان', 'ریال'] },
+  { key: 'pay_online_enabled', group: 'finance', label: 'پرداخت اینترنتی شهریه (توسط دانش‌آموز/اولیا)', type: 'checkbox', def: '0', hint: 'پس از فعال‌سازی، در صفحه‌ی هر صورت‌حساب دکمه‌ی «پرداخت آنلاین» نمایش داده می‌شود.' },
+  { key: 'pay_gateway', group: 'finance', label: 'درگاه پرداخت', type: 'select', def: 'demo', options: [['demo', 'آزمایشی داخلی (هیچ وجهی دریافت نمی‌شود — فقط نمایش)'], ['zarinpal', 'زرین‌پال (واقعی)'], ['zarinpal_sandbox', 'زرین‌پال — محیط آزمایشی (Sandbox)']] },
+  { key: 'pay_merchant_id', group: 'finance', label: 'مرچنت‌کد درگاه (۳۶ نویسه)', type: 'secret', def: '' },
+  { key: 'pay_base_url', group: 'finance', label: 'نشانی پایه‌ی درگاه (فقط برای آزمایش/پروکسی؛ معمولاً خالی)', type: 'text', def: '' },
+  { key: 'pay_allow_partial', group: 'finance', label: 'اجازه‌ی پرداخت بخشی از مبلغ به‌صورت آنلاین', type: 'checkbox', def: '1' },
   { key: 'sibling_discount_percent', group: 'finance', label: 'تخفیف برادر/خواهر (درصد برای فرزند دوم به بعد، ۰ = غیرفعال)', type: 'number', def: '0', min: 0, max: 100 },
   { key: 'hr_annual_leave_days', group: 'hr', label: 'سقف مرخصی استحقاقی سالانه معلم (روز)', type: 'number', def: '26', min: 0, max: 100 },
   // امنیت
@@ -119,6 +124,7 @@ const DEFS = [
   // ظاهر
   { key: 'primary_color', group: 'appearance', label: 'رنگ اصلی سامانه', type: 'color', def: '#2563eb' },
   { key: 'login_notice', group: 'appearance', label: 'اعلان صفحه‌ی ورود (اختیاری)', type: 'textarea', def: '', hint: 'برای همه‌ی بازدیدکنندگان بالای فرم ورود نمایش داده می‌شود؛ مثلاً زمان ثبت‌نام یا تعطیلی.' },
+  { key: 'pwa_enabled', group: 'appearance', label: 'امکان نصب سامانه روی گوشی (برنامه‌ی وب PWA)', type: 'checkbox', def: '1', hint: 'اگر خاموش شود، نصب‌های قبلی هم خود‌به‌خود پاک می‌شوند.' },
   { key: 'show_demo_logins', group: 'appearance', label: 'نمایش حساب‌های دمو در صفحه ورود', type: 'checkbox', def: '0' },
   { key: 'logo', group: 'appearance', label: 'لوگو', type: 'hidden', def: '' },
 ];
@@ -157,7 +163,7 @@ DEFS.push(...birthdayDefs());
 const SUPER_KEYS = new Set(['show_demo_logins', 'otp_demo_show_code']);
 for (const d of DEFS) {
   d.super = d.group === 'security' || d.group === 'system' || d.group === 'offsite' || SUPER_KEYS.has(d.key)
-    || (d.group === 'sms' && !/^sms_on_/.test(d.key)) || /^bd_(pattern|params)_/.test(d.key);
+    || (d.group === 'sms' && !/^sms_on_/.test(d.key)) || /^pay_(online_enabled|gateway|merchant_id|base_url)$/.test(d.key) || /^bd_(pattern|params)_/.test(d.key);
 }
 const isSuperKey = (key) => { const d = DEFS.find((x) => x.key === key); return !!(d && d.super); };
 const GROUPS = { general: 'اطلاعات مدرسه', academic: 'تنظیمات آموزشی', reportcard: 'کارنامه و قالب چاپ', attendance: 'حضور و غیاب', tickets: 'تیکت‌ها', students: 'دانش‌آموزان', birthday: 'تولد و تبریک', finance: 'مالی', hr: 'منابع انسانی', sms: 'پیامک (ippanel)', security: 'امنیت', appearance: 'ظاهر', system: 'نگهداری و پشتیبان', offsite: 'پشتیبان بیرونی' };

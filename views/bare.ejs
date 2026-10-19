@@ -9,7 +9,11 @@
 <link rel="stylesheet" href="<%= asset('css/app.css') %>">
 <% if (typeof S === 'function' && /^#[0-9a-fA-F]{6}$/.test(S('primary_color') || '')) { %><style>:root{--primary:<%= S('primary_color') %>}</style><% } %>
 <% if (typeof extraCss !== 'undefined' && extraCss) { %><link rel="stylesheet" href="<%= asset(extraCss) %>"><% } %>
+<link rel="manifest" href="<%= base %>/manifest.webmanifest">
+<link rel="apple-touch-icon" href="<%= base %>/assets/icons/apple-touch-icon.png">
+<meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="<%= typeof S === 'function' ? S('school_name') : '' %>">
 <script src="<%= asset('js/theme.js') %>"></script>
+<script src="<%= asset('js/pwa.js') %>" data-base="<%= base %>" defer></script>
 </head>
 <body>
 <%- body %>

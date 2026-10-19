@@ -2,6 +2,8 @@
 const express = require('express');
 const fs = require('fs');
 const path = require('path');
+const crypto = require('crypto');
+const ua = require('../lib/ua');
 const db = require('../db');
 const config = require('../config');
 const settings = require('../settings');
@@ -28,6 +30,38 @@ router.post('/profile', uploader('photos', 'avatar', { images: true, maxMB: 2 })
   } catch (e) { next(e); }
 });
 
+/* ---------- دستگاه‌ها و نشست‌های فعال + تاریخچه‌ی ورود ---------- */
+async function mySessions(userId) {
+  const k = db.get(); const hours = settings.num('session_hours') || 8;
+  const rows = await k('sessions').where((b) => b.where('sess', 'like', `%"uid":${Number(userId)},%`).orWhere('sess', 'like', `%"uid":${Number(userId)}}%`)).where('expires_at', '>', Date.now()).select('sid', 'sess', 'expires_at');
+  const out = [];
+  for (const r of rows) {
+    let s; try { s = JSON.parse(r.sess); } catch (_) { continue; } if (Number(s.uid) !== Number(userId)) continue;
+    const d = s.dev || {}; const seen = Number(r.expires_at) - ((s.cookie && s.cookie.originalMaxAge) || hours * 3600000);
+    out.push({ sid: r.sid, ...ua.parse(d.ua), ip: d.ip || '—', started: d.at || null, seen: seen > 0 ? seen : null, how: d.how || '' });
+  }
+  return out.sort((a, b) => (b.seen || 0) - (a.seen || 0));
+}
+router.get('/profile/sessions', async (req, res, next) => {
+  try {
+    const tok = (sid) => crypto.createHmac('sha256', config.load().sessionSecret || 'x').update(sid).digest('hex').slice(0, 24);
+    const list = (await mySessions(req.user.id)).map(({ sid, ...s }) => ({ ...s, current: sid === req.sessionID, token: tok(sid) }));
+    const hist = await db.get()('audit_logs').where({ user_id: req.user.id }).whereIn('action', ['login', 'password_reset_otp', 'password_change', 'sessions_end']).orderBy('id', 'desc').limit(15).select('action', 'ip', 'created_at');
+    res.view('profile/sessions', { title: 'دستگاه‌ها و نشست‌های فعال', list, hist, ua });
+  } catch (e) { next(e); }
+});
+router.post('/profile/sessions/end', async (req, res, next) => {
+  try {
+    const t = String(req.body.token || ''); const mine = await mySessions(req.user.id); let n = 0;
+    for (const s of mine) {
+      if (s.sid === req.sessionID) continue;
+      const tok = crypto.createHmac('sha256', config.load().sessionSecret || 'x').update(s.sid).digest('hex').slice(0, 24);
+      if (req.body.all === '1' || tok === t) { await db.get()('sessions').where({ sid: s.sid }).del(); n++; }
+    }
+    if (n) await svc.audit(req, 'sessions_end', 'user', req.user.id, `${n} نشست`);
+    req.flash(n ? 'success' : 'info', n ? `${n} نشست دیگر بسته شد.` : 'نشست دیگری برای بستن وجود ندارد.'); res.redirect('/profile/sessions');
+  } catch (e) { next(e); }
+});
 router.get('/profile/password', (req, res) => res.view('profile/password', { title: 'تغییر رمز عبور', errors: [], force: !!req.query.force || req.user.must_change_password }));
 router.post('/profile/password', async (req, res, next) => {
   try {

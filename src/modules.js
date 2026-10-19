@@ -35,6 +35,9 @@ const MODULES = [
     { label: 'کارنامه من', href: '/grades/my', icon: 'award', roles: ['student'], section: 'edu' }] },
   { key: 'homework', title: 'تکالیف', icon: 'notebook-pen', desc: 'تعریف تکلیف، تحویل آنلاین با فایل، نمره‌دهی و بازخورد', nav: [
     { label: 'تکالیف', href: '/homework', icon: 'notebook-pen', roles: ALL, section: 'edu' }] },
+  { key: 'lessonlog', title: 'دفتر کلاسی', icon: 'book-open-check', desc: 'ثبت درس و مبحث تدریس‌شده هر جلسه، تکلیف و یادداشت؛ نمایش برای دانش‌آموز/اولیا و گزارش پوشش برای مدیر', nav: [
+    { label: 'دفتر کلاسی', href: '/lessonlog', icon: 'book-open-check', roles: ALL, section: 'edu' },
+    { label: 'پوشش دفتر کلاسی', href: '/lessonlog/coverage', icon: 'chart-bar', roles: ['admin', 'deputy'], section: 'edu' }] },
   { key: 'exams', title: 'برنامه امتحانات', icon: 'clipboard-list', desc: 'زمان‌بندی امتحانات هر کلاس', nav: [
     { label: 'برنامه امتحانات', href: '/exams', icon: 'clipboard-list', roles: ALL, section: 'edu' , perm: 'exams' }] },
   { key: 'discipline', title: 'انضباطی و رفتار', icon: 'gavel', desc: 'ثبت موارد تشویقی/انضباطی و نمره رفتار', nav: [
@@ -56,7 +59,8 @@ const MODULES = [
     { label: 'بهداشت و سلامت', href: '/health', icon: 'heart-pulse', roles: STAFF, section: 'services' , perm: 'health' }] },
   { key: 'finance', title: 'امور مالی', icon: 'wallet', desc: 'شهریه، پرداخت‌ها، بدهکاران و رسید', nav: [
     { label: 'امور مالی', href: '/finance', icon: 'wallet', roles: ['admin', 'deputy', 'student'], section: 'services' , perm: 'finance' },
-    { label: 'گزارش درآمد', href: '/finance/income', icon: 'banknote', roles: ['admin', 'deputy'], section: 'services', perm: 'finance' }] },
+    { label: 'گزارش درآمد', href: '/finance/income', icon: 'banknote', roles: ['admin', 'deputy'], section: 'services', perm: 'finance' },
+    { label: 'پرداخت‌های آنلاین', href: '/finance/online', icon: 'credit-card', roles: ['admin', 'deputy'], section: 'services', perm: 'finance' }] },
   { key: 'library', title: 'کتابخانه', icon: 'library-big', desc: 'فهرست کتاب، امانت و بازگشت، دیرکرد', nav: [
     { label: 'کتابخانه', href: '/library', icon: 'library-big', roles: ALL, section: 'services' , perm: 'library' }] },
   { key: 'transport', title: 'سرویس مدرسه', icon: 'bus', desc: 'مسیرهای سرویس و تخصیص دانش‌آموز', nav: [

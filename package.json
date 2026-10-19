@@ -1,6 +1,6 @@
 {
   "name": "mad3-school-management",
-  "version": "2.7.1",
+  "version": "2.8.0",
   "description": "سامانه مدیریت مدرسه (Node.js) با ویزارد نصب و سازگار با cPanel",
   "main": "app.js",
   "private": true,
@@ -11,7 +11,7 @@
   "scripts": {
     "start": "node app.js",
     "dev": "node --watch app.js",
-    "test": "npm run test:smoke && npm run test:v2 && npm run test:v21 && npm run test:v22 && npm run test:v23 && npm run test:v24 && npm run test:v25 && npm run test:v26 && npm run test:v27",
+    "test": "npm run test:smoke && npm run test:v2 && npm run test:v21 && npm run test:v22 && npm run test:v23 && npm run test:v24 && npm run test:v25 && npm run test:v26 && npm run test:v27 && npm run test:v28",
     "demo": "node scripts/install-demo.js",
     "super:create": "node scripts/create-super.js",
     "reset:admin": "node scripts/reset-admin.js",
@@ -27,7 +27,8 @@
     "test:v24": "node test/v24.locks.test.js && node test/v24.offsite.test.js && node test/v24.ui.test.js",
     "test:v25": "node test/v25.access.test.js && node test/v25.curriculum.test.js && node test/v25.ui.test.js && node test/v25.sqlite.test.js",
     "test:v26": "node test/v26.crawl.test.js && node test/v26.installer.test.js",
-    "test:v27": "node test/v27.guide.test.js && node test/v27.security.test.js"
+    "test:v27": "node test/v27.guide.test.js && node test/v27.security.test.js",
+    "test:v28": "node test/v28.sessions.test.js && node test/v28.pwa.test.js && node test/v28.lessonlog.test.js && node test/v28.payment.test.js"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",

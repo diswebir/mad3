@@ -456,3 +456,20 @@ button.is-busy::after{content:"";display:inline-block;width:.9em;height:.9em;mar
   .cal .ev{padding:.3rem .4rem;font-size:.75rem}
   .crumbs a,.breadcrumb a{display:inline-block;padding:.3rem .1rem}
 }
+
+/* v2.8 — دستگاه‌های فعال، دفتر کلاسی */
+.ss-list{list-style:none;margin:.6rem 0 0;padding:0;display:grid;gap:.6rem}
+.ss-item{display:flex;align-items:center;gap:.8rem;padding:.8rem .9rem;border:1px solid var(--border);border-radius:12px;background:var(--card)}
+.ss-item.current{border-color:var(--primary);background:color-mix(in srgb,var(--primary) 6%,var(--card))}
+.ss-ic{width:44px;height:44px;border-radius:12px;background:color-mix(in srgb,var(--primary) 12%,transparent);color:var(--primary);display:grid;place-items:center;flex:none}
+.ss-main{flex:1;min-width:0}.ss-main .small{margin-top:.15rem}
+.ll-list{display:grid;gap:.8rem}
+.ll-item{display:grid;grid-template-columns:96px 1fr auto;gap:1rem;align-items:start;padding:1rem 1.1rem}
+.ll-item.cancelled{opacity:.78;border-style:dashed}
+.ll-date{display:grid;gap:.2rem;padding-inline-end:1rem;border-inline-end:2px solid var(--border);text-align:center}
+.ll-head{display:flex;gap:.4rem;align-items:center;flex-wrap:wrap;margin-bottom:.25rem}
+.ll-topic{font-weight:600;line-height:1.8}.ll-content{color:var(--muted);line-height:1.9;white-space:pre-line;margin-top:.2rem}
+.ll-hw{margin-top:.5rem;padding:.5rem .7rem;border-radius:10px;background:color-mix(in srgb,var(--amber,#d97706) 12%,transparent);line-height:1.8}
+.ll-act{display:flex;gap:.2rem}.ll-act form{margin:0}
+.ll-bar{height:7px;border-radius:99px;background:var(--border);overflow:hidden;margin-bottom:.2rem}.ll-bar span{display:block;height:100%;border-radius:99px}
+@media (max-width:700px){.ll-item{grid-template-columns:1fr;gap:.6rem}.ll-date{display:flex;justify-content:space-between;border:0;padding:0 0 .5rem;border-bottom:1px solid var(--border);text-align:start}.ss-item{flex-wrap:wrap}}

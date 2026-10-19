@@ -9,3 +9,7 @@
 <div class="field" style="margin-bottom:.6rem"><label>تاریخ پرداخت</label><input class="jdate ltr" type="text" name="paid_at" value="<%= today %>" autocomplete="off"></div>
 <div class="field" style="margin-bottom:.6rem"><label>روش</label><select name="method"><% Object.keys(L.payMethod).forEach(function(k){ %><option value="<%= k %>"><%= L.payMethod[k] %></option><% }) %></select></div>
 <div class="field"><label>شماره پیگیری / چک</label><input type="text" class="ltr" name="reference"></div><button class="btn primary" style="margin-top:.8rem"><%- icon('save', 16) %> ثبت پرداخت</button></form><% } %></div>
+<% if (user.role === 'student' && onlineReady && f.remaining > 0) { %><form class="card" method="post" action="<%= u('/finance/fees/' + f.id + '/online') %>" autocomplete="off" style="margin-top:1rem"><input type="hidden" name="_csrf" value="<%= csrf %>"><h3><%- icon('credit-card', 18) %> پرداخت آنلاین</h3>
+<% if (onlineDemo) { %><div class="alert warn" style="margin-bottom:.6rem"><%- icon('triangle-alert', 16) %><div>درگاه آزمایشی است؛ وجهی دریافت نمی‌شود.</div></div><% } %>
+<div class="field" style="margin-bottom:.6rem"><label for="po-amount">مبلغ (حداکثر <%= money(f.remaining) %> <%= S('currency_label') %>)</label><input id="po-amount" type="text" class="digits ltr" name="amount" value="<%= f.remaining %>" <%= allowPartial ? '' : 'readonly' %>></div>
+<button class="btn primary" type="submit"><%- icon('credit-card', 16) %> پرداخت و انتقال به درگاه</button></form><% } %>

@@ -13,6 +13,22 @@ async function seedV2(k) {
   const tByName = Object.fromEntries(teachers.map((t) => [t.username, t]));
   const subjects = await k('subjects').orderBy('id');
 
+  /* --- دفتر کلاسی --- */
+  if (mod('lessonlog')) {
+    const css = await k('class_subjects as cs').join('subjects as s', 's.id', 'cs.subject_id').whereNotNull('cs.teacher_id').orderBy('cs.id').limit(6).select('cs.id', 'cs.classroom_id', 'cs.teacher_id', 's.name as sname');
+    const topics = ['مرور درس قبل و آشنایی با مفهوم جدید', 'حل تمرین‌های صفحه‌ی ۳۲ تا ۳۵', 'تدریس مبحث اصلی فصل دوم', 'کار گروهی و ارائه‌ی دانش‌آموزان', 'جمع‌بندی فصل و رفع اشکال', 'آزمونک کتبی ده دقیقه‌ای'];
+    const rows = [];
+    for (const cs of css) {
+      let day = today; let n = 0; let guard = 0;
+      while (n < 5 && guard++ < 30) {
+        day = J.addDays(day, -1); const wd = new Date(day).getUTCDay(); if (wd === 4 || wd === 5) continue; // آخر هفته
+        const cancelled = cs.id % 4 === 0 && n === 2;
+        rows.push({ class_subject_id: cs.id, classroom_id: cs.classroom_id, teacher_id: cs.teacher_id, log_date: day, period: (cs.id % 5) + 1, status: cancelled ? 'cancelled' : 'held', topic: cancelled ? 'برگزار نشد — شرکت معلم در همایش آموزشی' : `${cs.sname}: ${topics[(cs.id + n) % topics.length]}`, content: cancelled ? null : 'نکات کلیدی جلسه روی تخته نوشته شد و پرسش و پاسخ انجام گرفت.', homework: !cancelled && n % 2 === 0 ? 'حل تمرین‌های پایان درس و مطالعه‌ی درس بعد' : null, visible: 1 });
+        n++;
+      }
+    }
+    if (rows.length) await k.batchInsert('lesson_logs', rows, 50);
+  }
   /* --- حساب اولیا --- */
   if (mod('parents')) {
     const { ensureParent } = require('./routes/parents');

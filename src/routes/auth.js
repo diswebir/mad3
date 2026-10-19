@@ -110,7 +110,7 @@ module.exports = function (r) {
     const returnTo = req.session.returnTo;
     req.session.regenerate((err) => {
       if (err) return next(err);
-      req.session.uid = usr.id; req.session.cookie.maxAge = (settings.num('session_hours') || 8) * 3600 * 1000;
+      req.session.uid = usr.id; req.session.dev = { ua: String(req.get('user-agent') || '').slice(0, 220), ip: req.ip, at: Date.now(), how }; req.session.cookie.maxAge = (settings.num('session_hours') || 8) * 3600 * 1000;
       db.get()('users').where({ id: usr.id }).update({ last_login: new Date().toISOString().replace('T', ' ').slice(0, 19), last_ip: req.ip }).then(() => svc.audit({ user: usr, ip: req.ip }, 'login', 'user', usr.id, how === 'otp' ? 'otp' : '')).catch(() => {});
       req.session.save(() => res.redirect(usr.must_change_password && how === 'password' ? '/profile/password?force=1' : (returnTo && returnTo.startsWith('/') && !returnTo.startsWith('//') && !returnTo.startsWith('/login') && !/\.[a-z0-9]{2,5}(\?|$)/i.test(returnTo) ? returnTo : '/')));
     });

@@ -9,7 +9,11 @@
 <link rel="stylesheet" href="<%= asset('css/app.css') %>">
 <style>:root{--primary:<%= /^#[0-9a-fA-F]{6}$/.test(S('primary_color')) ? S('primary_color') : '#2563eb' %>}</style>
 <% if (typeof extraCss !== 'undefined' && extraCss) { %><link rel="stylesheet" href="<%= asset(extraCss) %>"><% } %>
+<link rel="manifest" href="<%= base %>/manifest.webmanifest">
+<link rel="apple-touch-icon" href="<%= base %>/assets/icons/apple-touch-icon.png">
+<meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="<%= typeof S === 'function' ? S('school_name') : '' %>">
 <script src="<%= asset('js/theme.js') %>"></script>
+<script src="<%= asset('js/pwa.js') %>" data-base="<%= base %>" defer></script>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%232563eb' stroke-width='2'%3E%3Cpath d='m4 10 8-5 8 5-8 5z'/%3E%3Cpath d='M18 12v4c0 1-2.5 2-6 2s-6-1-6-2v-4'/%3E%3C/svg%3E">
 </head>
 <body>
@@ -54,6 +58,8 @@
       <div class="dropdown">
         <a href="<%= u('/profile') %>"><%- icon('user-round', 17) %> پروفایل من</a>
         <a href="<%= u('/profile/password') %>"><%- icon('key-round', 17) %> تغییر رمز عبور</a>
+        <button type="button" id="pwa-install" hidden><%- icon('smartphone', 17) %> نصب روی گوشی</button>
+        <a href="<%= u('/profile/sessions') %>"><%- icon('monitor', 17) %> دستگاه‌های من</a>
         <form method="post" action="<%= u('/logout') %>"><input type="hidden" name="_csrf" value="<%= csrf %>"><button type="submit"><%- icon('log-out', 17) %> خروج</button></form>
       </div>
     </div>

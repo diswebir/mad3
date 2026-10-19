@@ -12,7 +12,7 @@ const router = express.Router();
 const mgr = requireRole('admin', 'deputy');
 
 /** فقط‌خواندنی‌بودن حساب اولیا (به‌جز مکاتبه، اعلان و رمز) — در routes/index پیش از مسیرها نصب می‌شود */
-const PARENT_WRITE_OK = [/^\/tickets\/new$/, /^\/tickets\/\d+\/(reply|rate)$/, /^\/notifications(\/|$)/, /^\/profile(\/|$)/, /^\/logout$/, /^\/parent\/switch$/];
+const PARENT_WRITE_OK = [/^\/tickets\/new$/, /^\/tickets\/\d+\/(reply|rate)$/, /^\/notifications(\/|$)/, /^\/profile(\/|$)/, /^\/logout$/, /^\/parent\/switch$/, /^\/finance\/fees\/\d+\/online$/, /^\/pay\/demo\/[a-f0-9]{40}$/];
 function parentGuard(req, res, next) {
   const u = req.user;
   if (!u || u.realRole !== 'parent') return next();

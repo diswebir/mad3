@@ -103,7 +103,7 @@ router.get('/finance/fees/:id(\\d+)', async (req, res, next) => {
   try {
     const k = db.get(); const f = await loadFee(req, req.params.id); if (!f) return nf(res);
     const insts = fin.installmentStatus(await k('fee_installments').where({ fee_id: f.id }).orderBy('seq'), f.paid);
-    res.view('finance/show', { title: f.title, f, insts, payments: await k('payments as p').leftJoin('users as u', 'u.id', 'p.recorded_by').where('p.fee_id', f.id).orderBy('p.id').select('p.*', 'u.full_name as recorder'), today: J.isoToJString(J.todayISO()) });
+    res.view('finance/show', { title: f.title, f, insts, payments: await k('payments as p').leftJoin('users as u', 'u.id', 'p.recorded_by').where('p.fee_id', f.id).orderBy('p.id').select('p.*', 'u.full_name as recorder'), today: J.isoToJString(J.todayISO()), onlineReady: require('../lib/gateway').ready(), allowPartial: settings.bool('pay_allow_partial'), onlineDemo: require('../lib/gateway').cfg().provider === 'demo' });
   } catch (e) { next(e); }
 });
 router.post('/finance/fees/:id(\\d+)/pay', mgr, async (req, res, next) => {

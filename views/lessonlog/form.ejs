@@ -1,0 +1,16 @@
+<div class="page-head"><div><div class="crumbs"><a href="<%= u('/lessonlog') %>">دفتر کلاسی</a> / <%= row ? 'ویرایش' : 'جلسه‌ی جدید' %></div><h1><%= title %></h1></div></div>
+<form class="card" method="post" action="<%= u('/lessonlog/' + (row ? row.id + '/edit' : 'new')) %>" autocomplete="off">
+  <input type="hidden" name="_csrf" value="<%= csrf %>">
+  <% if (errors.length) { %><div class="alert error"><ul><% errors.forEach(function(e){ %><li><%= e %></li><% }) %></ul></div><% } %>
+  <div class="form-grid">
+    <div class="field"><label for="f-cs">درس و کلاس *</label><select id="f-cs" name="class_subject_id" <%= row ? 'disabled' : 'required' %>><option value="">— انتخاب کنید —</option><% opts.forEach(function(o){ %><option value="<%= o.id %>" <%= String(vals.class_subject_id) === String(o.id) ? 'selected' : '' %>><%= o.cname %> — <%= o.sname %></option><% }) %></select></div>
+    <div class="field"><label for="f-date">تاریخ جلسه *</label><input id="f-date" class="jdate ltr" type="text" name="log_date" value="<%= vals.log_date || '' %>" required></div>
+    <div class="field"><label for="f-period">زنگ</label><select id="f-period" name="period"><option value="">—</option><% for (var i = 1; i <= count; i++) { %><option value="<%= i %>" <%= String(vals.period) === String(i) ? 'selected' : '' %>>زنگ <%= fa(i) %></option><% } %></select></div>
+    <div class="field"><label for="f-status">وضعیت</label><select id="f-status" name="status"><option value="held" <%= vals.status !== 'cancelled' ? 'selected' : '' %>>کلاس برگزار شد</option><option value="cancelled" <%= vals.status === 'cancelled' ? 'selected' : '' %>>کلاس برگزار نشد</option></select></div>
+    <div class="field full"><label for="f-topic">مبحث تدریس‌شده (یا دلیل برگزارنشدن) *</label><input id="f-topic" type="text" name="topic" value="<%= vals.topic || '' %>" required maxlength="200" placeholder="مثلاً: فصل ۳ — درس ۲: معادله‌ی درجه‌ی دوم"></div>
+    <div class="field full"><label for="f-content">شرح جلسه / نکات</label><textarea id="f-content" name="content" rows="4" maxlength="4000"><%= vals.content || '' %></textarea></div>
+    <div class="field full"><label for="f-hw">تکلیف جلسه</label><textarea id="f-hw" name="homework" rows="2" maxlength="2000"><%= vals.homework || '' %></textarea></div>
+    <div class="field full"><label class="check"><input type="checkbox" name="visible" value="1" <%= vals.visible === undefined || String(vals.visible) === '1' || vals.visible === true || vals.visible === 'on' ? 'checked' : '' %>> نمایش به دانش‌آموزان و اولیا</label></div>
+  </div>
+  <div class="form-actions"><button class="btn primary" type="submit"><%- icon('save', 16) %> ذخیره</button><% if (!row) { %><button class="btn" type="submit" name="again" value="1">ذخیره و ثبت جلسه‌ی بعد</button><% } %><a class="btn ghost" href="<%= u('/lessonlog') %>">انصراف</a></div>
+</form>

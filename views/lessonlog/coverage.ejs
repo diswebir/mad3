@@ -1,0 +1,11 @@
+<div class="page-head"><div><div class="crumbs"><a href="<%= u('/lessonlog') %>">دفتر کلاسی</a> / پوشش</div><h1><%- icon('chart-bar', 24) %> پوشش دفتر کلاسی</h1><div class="sub">جلسات ثبت‌شده هر درس در بازه، در مقایسه با ساعت هفتگی (مقدار مورد انتظار تقریبی است).</div></div></div>
+<form class="card filters" method="get" style="margin-bottom:1rem"><div class="form-grid" style="grid-template-columns:repeat(auto-fit,minmax(170px,1fr))">
+  <div class="field"><label for="c-from">از تاریخ</label><input id="c-from" class="jdate ltr" type="text" name="from" value="<%= from %>"></div>
+  <div class="field"><label for="c-to">تا تاریخ</label><input id="c-to" class="jdate ltr" type="text" name="to" value="<%= to %>"></div></div>
+  <div class="form-actions"><button class="btn" type="submit">نمایش</button></div></form>
+<% if (silent.length) { %><div class="alert warn"><%- icon('triangle-alert', 18) %><div><b>معلمانی که در این بازه هیچ جلسه‌ای ثبت نکرده‌اند:</b> <%= silent.map(function(x){ return x[1]; }).join('، ') %></div></div><% } %>
+<div class="card flush"><div class="table-wrap"><table class="t"><thead><tr><th>کلاس</th><th>درس</th><th>معلم</th><th>ساعت هفتگی</th><th>ثبت‌شده / انتظار</th><th>پوشش</th><th>برگزارنشده</th><th>آخرین ثبت</th></tr></thead><tbody>
+<% rows.forEach(function(r){ %><tr><td><%= r.cname %></td><td><%= r.sname %></td><td><%= r.tname || '—' %></td><td><%= fa(r.weekly_hours) %></td><td><%= fa(r.held) %> / <%= fa(r.expected) %></td>
+<td style="min-width:120px"><div class="ll-bar"><span style="width:<%= r.pct %>%;background:<%= r.pct >= 70 ? 'var(--green,#16a34a)' : r.pct >= 35 ? 'var(--amber,#d97706)' : 'var(--red,#dc2626)' %>"></span></div><span class="small muted"><%= fa(r.pct) %>٪</span></td>
+<td><%= r.cancelled ? fa(r.cancelled) : '—' %></td><td><%- r.last ? (r.stale ? pill(d(r.last), 'amber') : d(r.last)) : pill('هرگز', 'red') %></td></tr><% }) %>
+</tbody></table></div></div>

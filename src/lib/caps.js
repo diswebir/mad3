@@ -19,7 +19,7 @@ const db = require('../db');
 const S = ['deputy']; const T = ['deputy', 'teacher']; const A = [];
 const GROUPS = {
   attendance: 'حضور و غیاب', timetable: 'برنامه هفتگی و زنگ‌ها', calendar: 'تقویم و رویدادها', classes: 'کلاس‌ها و دروس',
-  students: 'دانش‌آموزان و پرونده', teachers: 'معلمان', grades: 'نمرات و ارزشیابی', homework: 'تکالیف', exams: 'امتحانات و بانک سؤال',
+  students: 'دانش‌آموزان و پرونده', teachers: 'معلمان', grades: 'نمرات و ارزشیابی', homework: 'تکالیف', lessonlog: 'دفتر کلاسی', exams: 'امتحانات و بانک سؤال',
   discipline: 'انضباطی و جلسات', tickets: 'تیکت‌ها', messaging: 'پیام‌رسانی و اطلاعیه', finance: 'امور مالی', services: 'کتابخانه، بهداشت و سرویس',
   hr: 'منابع انسانی معلمان', parents: 'حساب اولیا', exits: 'خروج و دیرکرد', reports: 'گزارش‌ها', admin: 'مدیریتی و حساس', scope: 'دامنه‌ی دسترسی',
 };
@@ -96,6 +96,9 @@ add('homework', 'homework.create', 'تعریف تکلیف', T, ['GET /homework/n
 add('homework', 'homework.edit', 'ویرایش تکلیف', T, ['GET /homework/:n/edit', 'POST /homework/:n/edit']);
 add('homework', 'homework.delete', 'حذف تکلیف', T, ['POST /homework/:n/delete']);
 add('homework', 'homework.grade', 'نمره‌دهی به تحویل‌ها', T, ['POST /homework/:n/grade']);
+add('lessonlog', 'lessonlog.view', 'مشاهده‌ی دفتر کلاسی', T, ['GET /lessonlog']);
+add('lessonlog', 'lessonlog.write', 'ثبت و ویرایش درس‌های ارائه‌شده', T, ['GET /lessonlog/new', 'POST /lessonlog/new', 'GET /lessonlog/:n/edit', 'POST /lessonlog/:n/edit', 'POST /lessonlog/:n/delete']);
+add('lessonlog', 'lessonlog.coverage', 'گزارش پوشش دفتر کلاسی معلمان', S, ['GET /lessonlog/coverage']);
 /* ---------- امتحانات و سؤال ---------- */
 add('exams', 'exams.view', 'مشاهده‌ی برنامه‌ی امتحانات', T, ['GET /exams'], { area: 'exams' });
 add('exams', 'exams.create', 'ثبت امتحان جدید', S, ['GET /exams/new', 'POST /exams/new'], { area: 'exams' });
@@ -144,6 +147,8 @@ add('finance', 'finance.view', 'مشاهده‌ی شهریه‌ها، بدهکا
 add('finance', 'finance.income', 'گزارش درآمد', S, ['GET /finance/income'], { area: 'finance', risk: 'high' });
 add('finance', 'finance.fee.create', 'صدور شهریه', S, ['GET /finance/fees/new', 'POST /finance/fees/new'], { area: 'finance' });
 add('finance', 'finance.pay', 'ثبت پرداخت', S, ['POST /finance/fees/:n/pay'], { area: 'finance', risk: 'high' });
+add('finance', 'finance.online', 'مشاهده‌ی پرداخت‌های آنلاین', S, ['GET /finance/online'], { area: 'finance' });
+add('finance', 'finance.online.check', 'بررسی وضعیت پرداخت آنلاین نیمه‌کاره در درگاه', S, ['POST /finance/online/:n/check'], { area: 'finance', risk: 'high' });
 add('finance', 'finance.void', 'ابطال پرداخت', S, ['POST /finance/payments/:n/void'], { area: 'finance', risk: 'high' });
 add('finance', 'finance.fee.delete', 'حذف شهریه', S, ['POST /finance/fees/:n/delete'], { area: 'finance', risk: 'high' });
 add('finance', 'finance.payment.delete', 'حذف قطعی پرداخت', A, ['POST /finance/payments/:n/delete'], { area: 'finance', risk: 'high', gate: 'admin' });
